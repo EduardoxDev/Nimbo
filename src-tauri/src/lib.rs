@@ -3,6 +3,7 @@ mod assistant;
 mod broadlink;
 mod clipboard_history;
 mod home_assistant;
+mod hud;
 mod ir_climate;
 mod lyrics;
 mod media_control;
@@ -1778,6 +1779,7 @@ pub fn run() {
             }
             translation::init(app.handle());
             agents::init(app.handle());
+            hud::init(app.handle());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
                     eprintln!("failed to size and position island window: {error}");

@@ -175,7 +175,7 @@ pub(crate) fn set_volume(level: f32, muted: bool) -> Result<SystemVolume, String
     })
 }
 
-fn default_endpoint_volume() -> Result<IAudioEndpointVolume, String> {
+pub(crate) fn default_endpoint_volume() -> Result<IAudioEndpointVolume, String> {
     unsafe {
         let enumerator: IMMDeviceEnumerator =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|error| {

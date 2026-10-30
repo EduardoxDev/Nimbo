@@ -485,6 +485,18 @@ const zhCN: Translations = {
       model: "使用 Claude Opus 5.5，费用计入你的 Anthropic 账户。",
       privacy: "密钥只保存在 Windows 凭据管理器中。只有在你和助手对话时，你输入的内容和 Nimbo 的状态（任务、专注、喝水、音乐、家居）才会发送给 Anthropic。",
     },
+    hudPrefs: {
+      section: "灵动岛提示",
+      volume: "音量",
+      volumeHint: "音量变化时在灵动岛上显示进度条",
+      brightness: "亮度",
+      brightnessHint: "笔记本屏幕亮度变化时显示",
+      track: "切换歌曲",
+      trackHint: "切歌时显示几秒歌曲名称",
+      wheel: "滚动调节音量",
+      wheelHint: "在折叠的灵动岛上滚动鼠标滚轮",
+      note: "在 Windows 11 上，系统自带的音量提示仍会出现，目前没有可靠的方法隐藏。亮度仅支持笔记本内置屏幕。",
+    },
     about: {
       tagline: "把 Windows 放在屏幕顶部。",
       version: "版本",

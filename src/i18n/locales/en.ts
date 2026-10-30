@@ -482,6 +482,18 @@ const en: Translations = {
       model: "Uses Claude Opus 5.5. Usage is billed to your Anthropic account.",
       privacy: "The key stays in Windows Credential Manager only. What you type and Nimbo's state (tasks, focus, water, music and home) are sent to Anthropic only when you chat with the assistant.",
     },
+    hudPrefs: {
+      section: "Island HUD",
+      volume: "Volume",
+      volumeHint: "Shows a bar on the island when the volume changes",
+      brightness: "Brightness",
+      brightnessHint: "Shows the laptop screen brightness when it changes",
+      track: "New track",
+      trackHint: "Shows the song name for a few seconds when it changes",
+      wheel: "Scroll to change volume",
+      wheelHint: "Turn the mouse wheel over the closed island",
+      note: "On Windows 11 the system's own volume popup still shows: there is no reliable way to hide it. Brightness only works on the laptop's built-in screen.",
+    },
     about: {
       tagline: "Your Windows, at the top of the screen.",
       version: "Version",

@@ -50,7 +50,7 @@ type PageId =
   | "agents"
   | "about";
 
-type SoonPage = "calendar" | "shelf" | "hud";
+type SoonPage = "calendar" | "shelf";
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -69,7 +69,7 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "agents", icon: Bot, color: "#bf5af2" },
 ];
 
-const SOON_PAGES = new Set<PageId>(["calendar", "shelf", "hud"]);
+const SOON_PAGES = new Set<PageId>(["calendar", "shelf"]);
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
 const PAGE_STORAGE_KEY = SETTINGS_PAGE_STORAGE_KEY;
@@ -199,6 +199,7 @@ export default function SettingsWindow() {
           {page === "statusRing" && <StatusRingPage settings={settings} update={update} />}
           {page === "pomodoro" && <PomodoroPage settings={settings} update={update} />}
           {page === "water" && <WaterPage settings={settings} update={update} />}
+          {page === "hud" && <HudPage settings={settings} update={update} />}
           {page === "about" && <AboutPage />}
           {SOON_PAGES.has(page) && <SoonPageView page={page as SoonPage} />}
         </div>
@@ -632,6 +633,24 @@ function WaterPage({ settings, update }: PageProps) {
           onChange={(waterReminderMinutes) => update({ waterReminderMinutes })}
         />
       </Row>
+    </Section>
+  );
+}
+
+function HudPage({ settings, update }: PageProps) {
+  const copy = useTranslation().prefs.hudPrefs;
+  const toggle = (title: string, hint: string, key: "hudVolume" | "hudBrightness" | "hudTrack" | "wheelVolume") => (
+    <Row title={title} hint={hint}>
+      <Toggle label={title} checked={settings[key]} onChange={(value) => update({ [key]: value })} />
+    </Row>
+  );
+  return (
+    <Section title={copy.section}>
+      {toggle(copy.volume, copy.volumeHint, "hudVolume")}
+      {toggle(copy.brightness, copy.brightnessHint, "hudBrightness")}
+      {toggle(copy.track, copy.trackHint, "hudTrack")}
+      {toggle(copy.wheel, copy.wheelHint, "wheelVolume")}
+      <p className="prefs-card__hint prefs-card__hint--bottom">{copy.note}</p>
     </Section>
   );
 }

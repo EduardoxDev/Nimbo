@@ -31,6 +31,7 @@ npm run tauri build -- --no-bundle
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.
 - Ar-condicionado só de controle remoto: com um Broadlink RM4 Mini na mesma rede, o Nimbo
   fala direto com ele (sem nuvem) e usa os códigos do modelo escolhido na biblioteca SmartIR.
+- HUD na ilha fechada: volume, brilho do notebook e música nova; rolar o mouse sobre a ilha muda o volume.
 - Assistente na ilha (Claude Opus 5.5, com a sua chave da Anthropic): converse em português e ele
   cria e conclui tarefas, liga o ar, inicia o foco, marca a água e controla a música.
 - Agentes de IA (Claude Code, Codex, Claude Desktop, Cursor…): servidor MCP local onde eles

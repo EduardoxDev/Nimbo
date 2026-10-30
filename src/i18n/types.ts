@@ -485,6 +485,18 @@ export type Translations = {
       model: string;
       privacy: string;
     };
+    hudPrefs: {
+      section: string;
+      volume: string;
+      volumeHint: string;
+      brightness: string;
+      brightnessHint: string;
+      track: string;
+      trackHint: string;
+      wheel: string;
+      wheelHint: string;
+      note: string;
+    };
     about: {
       tagline: string;
       version: string;

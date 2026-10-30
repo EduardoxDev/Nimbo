@@ -482,6 +482,18 @@ const ptBR: Translations = {
       model: "Usa o Claude Opus 5.5. O uso é cobrado na sua conta da Anthropic.",
       privacy: "A chave fica só no Gerenciador de Credenciais do Windows. O que você escreve e o estado do Nimbo (tarefas, foco, água, música e casa) são enviados à Anthropic só quando você conversa com o assistente.",
     },
+    hudPrefs: {
+      section: "HUD na ilha",
+      volume: "Volume",
+      volumeHint: "Mostra uma barra na ilha quando o volume muda",
+      brightness: "Brilho",
+      brightnessHint: "Mostra o brilho da tela do notebook quando ele muda",
+      track: "Música nova",
+      trackHint: "Mostra o nome da música por alguns segundos quando ela troca",
+      wheel: "Rolar para mudar o volume",
+      wheelHint: "Gire a rodinha do mouse sobre a ilha fechada",
+      note: "No Windows 11, o aviso de volume do próprio sistema continua aparecendo: não há um jeito confiável de escondê-lo. O brilho só funciona na tela do notebook.",
+    },
     about: {
       tagline: "Seu Windows no topo da tela.",
       version: "Versão",

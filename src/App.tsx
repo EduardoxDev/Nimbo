@@ -50,6 +50,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
+  Sun,
   Timer,
   Trash2,
   Volume1,
@@ -82,11 +83,13 @@ import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
 import { ProgressRing } from "./island/PageChrome";
+import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { AgentsPanel } from "./agents/AgentsPanel";
 import { AssistantPanel } from "./assistant/AssistantPanel";
 import { ASSISTANT_DEMO, useAssistant, type ToolExecutor } from "./assistant/useAssistant";
 import { homeApi } from "./home/homeStore";
 import "./assistant/Assistant.css";
+import "./hud/Hud.css";
 import {
   activeAgentOf,
   currentStepOf,
@@ -258,6 +261,10 @@ export type IslandSettings = {
   waterCupMl: number;
   /** Minutes between water reminders; 0 turns them off. */
   waterReminderMinutes: number;
+  hudVolume: boolean;
+  hudBrightness: boolean;
+  hudTrack: boolean;
+  wheelVolume: boolean;
 };
 
 type IslandPreset = {
@@ -270,6 +277,8 @@ type IslandPreset = {
 
 /** What the closed island shows besides tasks: ring, a notice and a timer. */
 type CollapsedStatus = {
+  /** Brief volume/brightness/track display that takes over the closed island. */
+  hud: HudState | null;
   ring: { progress: number; color: string } | null;
   notice: {
     text: string;
@@ -284,6 +293,7 @@ type CollapsedStatus = {
 
 type IslandShellProps = {
   collapsedStatus: CollapsedStatus;
+  onWheelVolume?: (direction: 1 | -1) => void;
   mode: IslandMode;
   page: IslandPage;
   appearanceMode: AppearanceMode;
@@ -419,6 +429,10 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   waterGoalMl: 2000,
   waterCupMl: 250,
   waterReminderMinutes: 60,
+  hudVolume: true,
+  hudBrightness: true,
+  hudTrack: true,
+  wheelVolume: true,
 };
 const LEGACY_DEFAULT_PRESET_IDS = new Set(["default-white", "default-khaki"]);
 const LEGACY_DEFAULT_PRESET_NAMES = new Set(["白色", "卡其"]);
@@ -781,6 +795,11 @@ export function normalizeSettings(
       typeof settings?.focusSound === "boolean" ? settings.focusSound : DEFAULT_SETTINGS.focusSound,
     waterGoalMl: stepped(settings?.waterGoalMl, DEFAULT_SETTINGS.waterGoalMl, 500, 5000, 250),
     waterCupMl: stepped(settings?.waterCupMl, DEFAULT_SETTINGS.waterCupMl, 100, 1000, 50),
+    hudVolume: typeof settings?.hudVolume === "boolean" ? settings.hudVolume : DEFAULT_SETTINGS.hudVolume,
+    hudBrightness:
+      typeof settings?.hudBrightness === "boolean" ? settings.hudBrightness : DEFAULT_SETTINGS.hudBrightness,
+    hudTrack: typeof settings?.hudTrack === "boolean" ? settings.hudTrack : DEFAULT_SETTINGS.hudTrack,
+    wheelVolume: typeof settings?.wheelVolume === "boolean" ? settings.wheelVolume : DEFAULT_SETTINGS.wheelVolume,
     waterReminderMinutes: stepped(
       settings?.waterReminderMinutes,
       DEFAULT_SETTINGS.waterReminderMinutes,
@@ -1098,6 +1117,7 @@ function createTodoId() {
 
 export function IslandShell({
   collapsedStatus,
+  onWheelVolume,
   mode,
   page,
   appearanceMode,
@@ -1337,6 +1357,11 @@ export function IslandShell({
       onPointerLeave={resetGlassPointer}
       onMouseEnter={handleIslandEnter}
       onMouseLeave={handleIslandLeave}
+      onWheel={(event) => {
+        if (!isExpanded && onWheelVolume && event.deltaY !== 0) {
+          onWheelVolume(event.deltaY < 0 ? 1 : -1);
+        }
+      }}
     >
       <div className="island__surface">
         {isLiquidGlass && (
@@ -1372,7 +1397,9 @@ export function IslandShell({
               }
             }}
           >
-            {collapsedStatus.ring ? (
+            {collapsedStatus.hud ? (
+              <IslandHud hud={collapsedStatus.hud} />
+            ) : collapsedStatus.ring ? (
               <ProgressRing
                 progress={collapsedStatus.ring.progress}
                 size={16}
@@ -1382,6 +1409,7 @@ export function IslandShell({
             ) : (
               <span className={pulseClassName} title={agentStatusLabel} />
             )}
+            {!collapsedStatus.hud && (
             <span className="island__summary" role="status" aria-live="polite" aria-atomic="true">
               <span className="island__summary-layer">
                 <span className="island__summary-row">
@@ -1411,8 +1439,9 @@ export function IslandShell({
                 </span>
               </span>
             </span>
+            )}
           </button>
-          {collapsedStatus.notice?.actions ? (
+          {collapsedStatus.hud ? null : collapsedStatus.notice?.actions ? (
             <span className="island__notice-actions">
               {collapsedStatus.notice.actions.map((action) => (
                 <button
@@ -1547,6 +1576,33 @@ export function IslandShell({
         </div>
       </div>
     </section>
+  );
+}
+
+/** The closed island's HUD: an icon, a level bar and the percentage (or the new track). */
+function IslandHud({ hud }: { hud: HudState }) {
+  if (hud.kind === "track") {
+    return (
+      <span className="island-hud island-hud--track" role="status">
+        <Music size={15} strokeWidth={2.4} aria-hidden="true" />
+        <span className="island-hud__track">
+          <strong>{hud.title}</strong>
+          {hud.artist && <span>{hud.artist}</span>}
+        </span>
+      </span>
+    );
+  }
+  const level = hud.kind === "volume" && hud.muted ? 0 : hud.level;
+  const Icon =
+    hud.kind === "brightness" ? Sun : level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
+  return (
+    <span className={`island-hud island-hud--${hud.kind}`} role="status">
+      <Icon size={16} strokeWidth={2.4} aria-hidden="true" />
+      <span className="island-hud__bar" aria-hidden="true">
+        <span style={{ width: `${Math.round(level * 100)}%` }} />
+      </span>
+      <strong className="island-hud__value">{Math.round(level * 100)}</strong>
+    </span>
   );
 }
 
@@ -4193,7 +4249,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4355,6 +4411,13 @@ function IslandApp({
     }).catch(() => {});
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
+  const islandHud = useHud({
+    volume: settings.hudVolume,
+    brightness: settings.hudBrightness,
+    track: settings.hudTrack,
+    trackTitle: mediaState.title,
+    trackArtist: mediaState.artist,
+  });
 
   const isFocusActive = focusTimer.state.status !== "idle";
   const focusColor =
@@ -4369,6 +4432,7 @@ function IslandApp({
           : { progress: water.progress, color: "#5ac8fa" };
   const activeAgentStep = activeAgent ? currentStepOf(activeAgent) : null;
   const collapsedStatus: CollapsedStatus = {
+    hud: islandHud.hud,
     label: activeAgent ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}` : null,
     ring: statusRing,
     notice: agentNotice
@@ -4400,7 +4464,10 @@ function IslandApp({
   const collapsedIslandWidth = useMemo(
     () =>
       getCollapsedIslandWidth(
-        collapsedNoticeText ?? (collapsedTaskTitle ? null : collapsedStatus.label)
+        collapsedStatus.hud
+          ? // Fixed width for the HUD bar.
+            "x".repeat(28)
+          : collapsedNoticeText ?? (collapsedTaskTitle ? null : collapsedStatus.label)
           ? // Room for the reminder's two buttons.
             `${collapsedNoticeText ?? collapsedStatus.label}${collapsedHasActions ? " ".repeat(14) : ""}`
           : settings.showCollapsedText
@@ -4409,7 +4476,7 @@ function IslandApp({
               : settings.showTitle ? "Nimbo" : "")
             : "",
       ),
-    [collapsedNoticeText, collapsedHasActions, collapsedStatus.label, collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
+    [collapsedStatus.hud, collapsedNoticeText, collapsedHasActions, collapsedStatus.label, collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
   );
   const isTodoArchivePage =
     page === "todo" && (todoPageMode === "archive" || todoPageMode === "review");
@@ -5999,6 +6066,7 @@ function IslandApp({
         agentVisualState={agentVisualState}
         agentStatusLabel={agentStatusLabel}
         collapsedStatus={collapsedStatus}
+        onWheelVolume={settings.wheelVolume ? islandHud.nudgeVolume : undefined}
         onOpenPage={openIslandPage}
         onWindowDragStart={startIslandDrag}
         onCollapse={collapseIsland}
