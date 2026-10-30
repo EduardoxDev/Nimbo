@@ -22,6 +22,7 @@ import {
   Columns2,
   Copy,
   Download,
+  Droplet,
   ExternalLink,
   House,
   FastForward,
@@ -47,6 +48,7 @@ import {
   Settings,
   SlidersHorizontal,
   Star,
+  Timer,
   Trash2,
   Volume1,
   Volume2,
@@ -73,13 +75,19 @@ import { HOME_DEMO } from "./demo/homeDemo";
 import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
 import { HomePanel } from "./HomePanel";
 import { IslandTabs } from "./IslandTabs";
+import { FocusPanel } from "./focus/FocusPanel";
+import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
+import { WaterPanel } from "./water/WaterPanel";
+import { useWater } from "./water/useWater";
+import { ProgressRing } from "./island/PageChrome";
 import "./App.css";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
+import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "music" | "home" | "clipboard" | "layout";
+type IslandPage = "todo" | "music" | "home" | "focus" | "water" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -197,6 +205,7 @@ type IslandPosition = {
 
 export type IslandOpenMode = "hover" | "click";
 export type AnimationSpeed = "normal" | "fast";
+export type StatusRingSource = "auto" | "focus" | "water" | "none";
 
 export type IslandSettings = {
   topEdgeLayoutVersion: 1;
@@ -222,6 +231,17 @@ export type IslandSettings = {
   animationSpeed: AnimationSpeed;
   /** Darkness of the glass behind the open island, 0-100. */
   glassTint: number;
+  statusRing: StatusRingSource;
+  focusMinutes: number;
+  shortBreakMinutes: number;
+  longBreakMinutes: number;
+  focusRounds: number;
+  focusAutoStart: boolean;
+  focusSound: boolean;
+  waterGoalMl: number;
+  waterCupMl: number;
+  /** Minutes between water reminders; 0 turns them off. */
+  waterReminderMinutes: number;
 };
 
 type IslandPreset = {
@@ -232,7 +252,20 @@ type IslandPreset = {
   isDefault?: boolean;
 };
 
+/** What the closed island shows besides tasks: ring, a notice and a timer. */
+type CollapsedStatus = {
+  ring: { progress: number; color: string } | null;
+  notice: {
+    text: string;
+    color: string;
+    page: IslandPage;
+    actions?: { label: string; primary?: boolean; onClick: () => void }[];
+  } | null;
+  timer: { text: string; color: string } | null;
+};
+
 type IslandShellProps = {
+  collapsedStatus: CollapsedStatus;
   mode: IslandMode;
   page: IslandPage;
   appearanceMode: AppearanceMode;
@@ -284,6 +317,7 @@ const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
 const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
+const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -355,6 +389,16 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   showPageIcons: true,
   animationSpeed: "normal",
   glassTint: 20,
+  statusRing: "auto",
+  focusMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 15,
+  focusRounds: 4,
+  focusAutoStart: false,
+  focusSound: true,
+  waterGoalMl: 2000,
+  waterCupMl: 250,
+  waterReminderMinutes: 60,
 };
 const LEGACY_DEFAULT_PRESET_IDS = new Set(["default-white", "default-khaki"]);
 const LEGACY_DEFAULT_PRESET_NAMES = new Set(["白色", "卡其"]);
@@ -700,7 +744,38 @@ export function normalizeSettings(
       0,
       100,
     ),
+    statusRing: (["auto", "focus", "water", "none"] as const).includes(
+      settings?.statusRing as StatusRingSource,
+    )
+      ? (settings?.statusRing as StatusRingSource)
+      : DEFAULT_SETTINGS.statusRing,
+    focusMinutes: stepped(settings?.focusMinutes, DEFAULT_SETTINGS.focusMinutes, 5, 90, 5),
+    shortBreakMinutes: stepped(settings?.shortBreakMinutes, DEFAULT_SETTINGS.shortBreakMinutes, 1, 30, 1),
+    longBreakMinutes: stepped(settings?.longBreakMinutes, DEFAULT_SETTINGS.longBreakMinutes, 5, 60, 5),
+    focusRounds: stepped(settings?.focusRounds, DEFAULT_SETTINGS.focusRounds, 2, 8, 1),
+    focusAutoStart:
+      typeof settings?.focusAutoStart === "boolean"
+        ? settings.focusAutoStart
+        : DEFAULT_SETTINGS.focusAutoStart,
+    focusSound:
+      typeof settings?.focusSound === "boolean" ? settings.focusSound : DEFAULT_SETTINGS.focusSound,
+    waterGoalMl: stepped(settings?.waterGoalMl, DEFAULT_SETTINGS.waterGoalMl, 500, 5000, 250),
+    waterCupMl: stepped(settings?.waterCupMl, DEFAULT_SETTINGS.waterCupMl, 100, 1000, 50),
+    waterReminderMinutes: stepped(
+      settings?.waterReminderMinutes,
+      DEFAULT_SETTINGS.waterReminderMinutes,
+      0,
+      180,
+      15,
+    ),
   };
+}
+
+/** A number setting kept on its step and inside its range. */
+function stepped(value: unknown, fallback: number, min: number, max: number, step: number) {
+  const number = Number(value ?? fallback);
+  if (!Number.isFinite(number)) return fallback;
+  return clamp(Math.round(number / step) * step, min, max);
 }
 
 function getDefaultSettingPresets(): IslandPreset[] {
@@ -1002,6 +1077,7 @@ function createTodoId() {
 }
 
 export function IslandShell({
+  collapsedStatus,
   mode,
   page,
   appearanceMode,
@@ -1271,24 +1347,39 @@ export function IslandShell({
             onPointerCancel={cancelWindowDrag}
             onClick={(event) => {
               if (event.detail === 0 || !didDragRef.current) {
-                onOpenPage(page);
+                // A notice (water, focus) opens its own page.
+                onOpenPage(collapsedStatus.notice?.page ?? page);
               }
             }}
           >
-            <span className={pulseClassName} title={agentStatusLabel} />
+            {collapsedStatus.ring ? (
+              <ProgressRing
+                progress={collapsedStatus.ring.progress}
+                size={16}
+                stroke={2.6}
+                color={collapsedStatus.ring.color}
+              />
+            ) : (
+              <span className={pulseClassName} title={agentStatusLabel} />
+            )}
             <span className="island__summary" role="status" aria-live="polite" aria-atomic="true">
               <span className="island__summary-layer">
                 <span className="island__summary-row">
-              {showCollapsedText && showTitle && (
+              {collapsedStatus.notice && (
+                <span className="island__notice" style={{ color: collapsedStatus.notice.color }}>
+                  {collapsedStatus.notice.text}
+                </span>
+              )}
+              {!collapsedStatus.notice && showCollapsedText && showTitle && (
                 <span className="island__brand">Nimbo</span>
               )}
-              {showCollapsedText && collapsedTaskTitle && (
+              {!collapsedStatus.notice && showCollapsedText && collapsedTaskTitle && (
                 <span className="island__active-task">
                   {showTitle ? "· " : ""}
                   {collapsedTaskTitle}
                 </span>
               )}
-              {showCollapsedText && !collapsedTaskTitle && collapsedTodoCount !== null && (
+              {!collapsedStatus.notice && showCollapsedText && !collapsedTaskTitle && collapsedTodoCount !== null && (
                 <span className="island__todo-count">
                   {showTitle ? "· " : ""}
                   {t.island.pendingTodos(collapsedTodoCount)}
@@ -1298,7 +1389,27 @@ export function IslandShell({
               </span>
             </span>
           </button>
-          {mediaState.available || mediaState.audioActive ? (
+          {collapsedStatus.notice?.actions ? (
+            <span className="island__notice-actions">
+              {collapsedStatus.notice.actions.map((action) => (
+                <button
+                  key={action.label}
+                  className={`island__notice-action${action.primary ? " island__notice-action--primary" : ""}`}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    action.onClick();
+                  }}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </span>
+          ) : collapsedStatus.timer ? (
+            <span className="island__clock" style={{ color: collapsedStatus.timer.color }}>
+              {collapsedStatus.timer.text}
+            </span>
+          ) : mediaState.available || mediaState.audioActive ? (
             <MusicWaveButton
               isAvailable
               isPlaying={isMusicPlaying}
@@ -4165,16 +4276,76 @@ function IslandApp({
   const collapsedTodoCount = settings.showIdleTodoCount && !collapsedTaskTitle
     ? todos.filter((todo) => !todo.completed).length
     : null;
+  const focusDurations = useMemo(
+    () => ({
+      focusMinutes: settings.focusMinutes,
+      shortBreakMinutes: settings.shortBreakMinutes,
+      longBreakMinutes: settings.longBreakMinutes,
+      rounds: settings.focusRounds,
+    }),
+    [settings.focusMinutes, settings.shortBreakMinutes, settings.longBreakMinutes, settings.focusRounds],
+  );
+  const [focusNotice, setFocusNotice] = useState<{ text: string; until: number } | null>(null);
+  const focusTimer = useFocusTimer(focusDurations, {
+    autoStart: settings.focusAutoStart,
+    sound: settings.focusSound,
+    onPhaseEnd: (ended) => setFocusNotice({ text: t.focus.ended[ended], until: Date.now() + 12_000 }),
+  });
+  useEffect(() => {
+    if (!focusNotice) return;
+    const timer = window.setTimeout(() => setFocusNotice(null), Math.max(0, focusNotice.until - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [focusNotice]);
+  const waterSettings = useMemo(
+    () => ({
+      goalMl: settings.waterGoalMl,
+      cupMl: settings.waterCupMl,
+      reminderMinutes: settings.waterReminderMinutes,
+    }),
+    [settings.waterGoalMl, settings.waterCupMl, settings.waterReminderMinutes],
+  );
+  const water = useWater(waterSettings);
+  const isFocusActive = focusTimer.state.status !== "idle";
+  const focusColor =
+    focusTimer.state.phase === "focus" ? "#ff7a59" : focusTimer.state.phase === "short" ? "#35e985" : "#5ac8fa";
+  const statusRing: CollapsedStatus["ring"] =
+    settings.statusRing === "none"
+      ? null
+      : (settings.statusRing === "focus" || (settings.statusRing === "auto" && isFocusActive))
+        ? { progress: focusTimer.progress, color: focusColor }
+        : { progress: water.progress, color: "#5ac8fa" };
+  const collapsedStatus: CollapsedStatus = {
+    ring: statusRing,
+    notice: focusNotice
+      ? { text: focusNotice.text, color: focusColor, page: "focus" }
+      : water.reminderDue
+        ? {
+            text: t.water.reminder,
+            color: "#5ac8fa",
+            page: "water",
+            actions: [
+              { label: t.water.drank, primary: true, onClick: water.add },
+              { label: t.water.later, onClick: water.dismiss },
+            ],
+          }
+        : null,
+    timer: isFocusActive ? { text: formatClock(focusTimer.remainingMs), color: focusColor } : null,
+  };
+  const collapsedNoticeText = collapsedStatus.notice?.text ?? null;
+  const collapsedHasActions = Boolean(collapsedStatus.notice?.actions?.length);
   const collapsedIslandWidth = useMemo(
     () =>
       getCollapsedIslandWidth(
-        settings.showCollapsedText
-          ? collapsedTaskTitle ?? (collapsedTodoCount !== null
-            ? t.island.pendingTodos(collapsedTodoCount)
-            : settings.showTitle ? "Nimbo" : "")
-          : "",
+        collapsedNoticeText
+          ? // Room for the reminder's two buttons.
+            `${collapsedNoticeText}${collapsedHasActions ? " ".repeat(14) : ""}`
+          : settings.showCollapsedText
+            ? collapsedTaskTitle ?? (collapsedTodoCount !== null
+              ? t.island.pendingTodos(collapsedTodoCount)
+              : settings.showTitle ? "Nimbo" : "")
+            : "",
       ),
-    [collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
+    [collapsedNoticeText, collapsedHasActions, collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
   );
   const isTodoArchivePage =
     page === "todo" && (todoPageMode === "archive" || todoPageMode === "review");
@@ -4195,9 +4366,11 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "home"
+        : page === "home" || page === "water"
           ? HOME_EXPANDED_ISLAND_HEIGHT
-          : page === "clipboard"
+          : page === "focus"
+            ? FOCUS_EXPANDED_ISLAND_HEIGHT
+            : page === "clipboard"
           ? CLIPBOARD_EXPANDED_ISLAND_HEIGHT
           : EDITOR_EXPANDED_ISLAND_HEIGHT;
   const layoutSync = useRef<{
@@ -4566,6 +4739,8 @@ function IslandApp({
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "music", label: t.island.music, icon: Music },
     { id: "home", label: t.home.title, icon: House },
+    { id: "focus", label: t.focus.title, icon: Timer },
+    { id: "water", label: t.water.title, icon: Droplet },
     { id: "clipboard", label: t.island.clipboardTab, icon: Clipboard },
     { id: "layout", label: t.island.layoutTab, icon: SlidersHorizontal },
   ];
@@ -5643,6 +5818,7 @@ function IslandApp({
         mediaState={mediaState}
         agentVisualState={agentVisualState}
         agentStatusLabel={agentStatusLabel}
+        collapsedStatus={collapsedStatus}
         onOpenPage={openIslandPage}
         onWindowDragStart={startIslandDrag}
         onCollapse={collapseIsland}
@@ -5697,6 +5873,28 @@ function IslandApp({
             onNext={() => void runMediaCommand("media_next")}
             onPrevious={() => void runMediaCommand("media_previous")}
             onRefresh={refreshMediaState}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "focus" && (
+          <FocusPanel
+            timer={focusTimer}
+            rounds={settings.focusRounds}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "water" && (
+          <WaterPanel
+            water={water}
+            goalMl={settings.waterGoalMl}
+            cupMl={settings.waterCupMl}
+            reminderMinutes={settings.waterReminderMinutes}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

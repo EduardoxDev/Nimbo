@@ -240,6 +240,32 @@ export type Translations = {
       defrosting: string;
     };
   };
+  focus: {
+    title: string;
+    phases: { focus: string; short: string; long: string };
+    headlines: { focus: string; short: string; long: string };
+    ended: { focus: string; short: string; long: string };
+    paused: string;
+    roundOf: (round: number, total: number) => string;
+    start: string;
+    pause: string;
+    resume: string;
+    reset: string;
+    skip: string;
+  };
+  water: {
+    title: string;
+    cupsOf: (cups: number, total: number) => string;
+    goalReached: string;
+    addCup: (ml: string) => string;
+    undo: string;
+    remindersOff: string;
+    nextReminder: (time: string) => string;
+    noMoreReminders: string;
+    reminder: string;
+    drank: string;
+    later: string;
+  };
   prefs: {
     windowTitle: string;
     close: string;
@@ -363,6 +389,32 @@ export type Translations = {
       forget: string;
       step1: string;
       step2: string;
+    };
+    statusRing: {
+      section: string;
+      source: string;
+      auto: string;
+      focus: string;
+      water: string;
+      none: string;
+      hint: string;
+    };
+    pomodoro: {
+      section: string;
+      focus: string;
+      shortBreak: string;
+      longBreak: string;
+      rounds: string;
+      autoStart: string;
+      autoStartHint: string;
+      sound: string;
+    };
+    waterPrefs: {
+      section: string;
+      goal: string;
+      cup: string;
+      reminder: string;
+      off: string;
     };
     about: {
       tagline: string;

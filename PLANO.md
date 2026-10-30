@@ -99,7 +99,7 @@ Depois: conexão direta com Tuya e SmartThings para quem não tem Home Assistant
 4. ✅ **Configurações** — janela com barra lateral e cartões.
 5. **Sistema** — volume por app, brilho, Wi-Fi, Bluetooth, modo escuro.
 6. ✅ **Casa** — Home Assistant: ar-condicionado e luzes.
-7. **Produtividade** — agenda, to-do, Pomodoro, prateleira de arquivos.
+7. ✅ (parcial: foco e água) **Produtividade** — agenda, to-do, Pomodoro, prateleira de arquivos.
 8. **Plugins e temas**.
 9. **Distribuição** — instalador assinado, atualização automática.
 

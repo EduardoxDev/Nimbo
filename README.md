@@ -32,6 +32,9 @@ npm run tauri build -- --no-bundle
 - Ar-condicionado só de controle remoto: com um Broadlink RM4 Mini na mesma rede, o Nimbo
   fala direto com ele (sem nuvem) e usa os códigos do modelo escolhido na biblioteca SmartIR.
 - Janela de configurações (bandeja > Configurações… ou engrenagem na ilha).
+- Foco (Pomodoro) com anel de progresso, rodadas e som ao fim de cada fase.
+- Água: meta do dia, copo que enche e lembretes na ilha fechada ("Bebi" / "Depois").
+- Anel de status na ilha fechada mostrando o foco ou a meta de água.
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
 - Tradução rápida (DeepSeek, com chave do próprio usuário).

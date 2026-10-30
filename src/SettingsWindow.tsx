@@ -47,7 +47,7 @@ type PageId =
   | "hud"
   | "about";
 
-type SoonPage = "statusRing" | "calendar" | "pomodoro" | "water" | "shelf" | "hud";
+type SoonPage = "calendar" | "shelf" | "hud";
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -65,7 +65,7 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "hud", icon: Bell, color: "#0a84ff" },
 ];
 
-const SOON_PAGES = new Set<PageId>(["statusRing", "calendar", "pomodoro", "water", "shelf", "hud"]);
+const SOON_PAGES = new Set<PageId>(["calendar", "shelf", "hud"]);
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
 const PAGE_STORAGE_KEY = SETTINGS_PAGE_STORAGE_KEY;
@@ -191,6 +191,9 @@ export default function SettingsWindow() {
           {page === "music" && <MusicPage />}
           {page === "todo" && <TodoPage settings={settings} update={update} />}
           {page === "home" && <HomeSettingsPage />}
+          {page === "statusRing" && <StatusRingPage settings={settings} update={update} />}
+          {page === "pomodoro" && <PomodoroPage settings={settings} update={update} />}
+          {page === "water" && <WaterPage settings={settings} update={update} />}
           {page === "about" && <AboutPage />}
           {SOON_PAGES.has(page) && <SoonPageView page={page as SoonPage} />}
         </div>
@@ -507,6 +510,121 @@ function TodoPage({ settings, update }: PageProps) {
           label={copy.reorder}
           checked={settings.enableTodoReorder}
           onChange={(enableTodoReorder) => update({ enableTodoReorder })}
+        />
+      </Row>
+    </Section>
+  );
+}
+
+function StatusRingPage({ settings, update }: PageProps) {
+  const copy = useTranslation().prefs.statusRing;
+  return (
+    <Section title={copy.section}>
+      <Row title={copy.source}>
+        <Segmented
+          label={copy.source}
+          value={settings.statusRing}
+          options={[
+            { value: "auto", label: copy.auto },
+            { value: "focus", label: copy.focus },
+            { value: "water", label: copy.water },
+            { value: "none", label: copy.none },
+          ]}
+          onChange={(statusRing) => update({ statusRing })}
+        />
+      </Row>
+      <p className="prefs-card__hint prefs-card__hint--bottom">{copy.hint}</p>
+    </Section>
+  );
+}
+
+function PomodoroPage({ settings, update }: PageProps) {
+  const t = useTranslation();
+  const copy = t.prefs.pomodoro;
+  const appearance = t.prefs.appearance;
+  const minutes = (value: number) => `${value} min`;
+  const stepper = (
+    title: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    format: (value: number) => string,
+    onChange: (value: number) => void,
+  ) => (
+    <Row title={title}>
+      <Stepper
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        format={format}
+        decreaseLabel={`${appearance.decrease} ${title}`}
+        increaseLabel={`${appearance.increase} ${title}`}
+        onChange={onChange}
+      />
+    </Row>
+  );
+
+  return (
+    <Section title={copy.section}>
+      {stepper(copy.focus, settings.focusMinutes, 5, 90, 5, minutes, (focusMinutes) => update({ focusMinutes }))}
+      {stepper(copy.shortBreak, settings.shortBreakMinutes, 1, 30, 1, minutes, (shortBreakMinutes) => update({ shortBreakMinutes }))}
+      {stepper(copy.longBreak, settings.longBreakMinutes, 5, 60, 5, minutes, (longBreakMinutes) => update({ longBreakMinutes }))}
+      {stepper(copy.rounds, settings.focusRounds, 2, 8, 1, String, (focusRounds) => update({ focusRounds }))}
+      <Row title={copy.autoStart} hint={copy.autoStartHint}>
+        <Toggle label={copy.autoStart} checked={settings.focusAutoStart} onChange={(focusAutoStart) => update({ focusAutoStart })} />
+      </Row>
+      <Row title={copy.sound}>
+        <Toggle label={copy.sound} checked={settings.focusSound} onChange={(focusSound) => update({ focusSound })} />
+      </Row>
+    </Section>
+  );
+}
+
+function WaterPage({ settings, update }: PageProps) {
+  const t = useTranslation();
+  const copy = t.prefs.waterPrefs;
+  const appearance = t.prefs.appearance;
+  const number = new Intl.NumberFormat(t.localeTag);
+  const ml = (value: number) => `${number.format(value)} ml`;
+
+  return (
+    <Section title={copy.section}>
+      <Row title={copy.goal}>
+        <Stepper
+          value={settings.waterGoalMl}
+          min={500}
+          max={5000}
+          step={250}
+          format={ml}
+          decreaseLabel={`${appearance.decrease} ${copy.goal}`}
+          increaseLabel={`${appearance.increase} ${copy.goal}`}
+          onChange={(waterGoalMl) => update({ waterGoalMl })}
+        />
+      </Row>
+      <Row title={copy.cup}>
+        <Stepper
+          value={settings.waterCupMl}
+          min={100}
+          max={1000}
+          step={50}
+          format={ml}
+          decreaseLabel={`${appearance.decrease} ${copy.cup}`}
+          increaseLabel={`${appearance.increase} ${copy.cup}`}
+          onChange={(waterCupMl) => update({ waterCupMl })}
+        />
+      </Row>
+      <Row title={copy.reminder}>
+        <Stepper
+          value={settings.waterReminderMinutes}
+          min={0}
+          max={180}
+          step={15}
+          format={(value) => (value === 0 ? copy.off : `${value} min`)}
+          decreaseLabel={`${appearance.decrease} ${copy.reminder}`}
+          increaseLabel={`${appearance.increase} ${copy.reminder}`}
+          onChange={(waterReminderMinutes) => update({ waterReminderMinutes })}
         />
       </Row>
     </Section>

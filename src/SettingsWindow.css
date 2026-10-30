@@ -833,3 +833,8 @@
   gap: 8px;
   padding: 0 16px 14px;
 }
+
+.prefs-card__hint--bottom {
+  padding: 4px 16px 14px;
+  line-height: 1.45;
+}
