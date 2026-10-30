@@ -1,3 +1,4 @@
+mod agents;
 mod broadlink;
 mod clipboard_history;
 mod home_assistant;
@@ -1775,6 +1776,7 @@ pub fn run() {
                 eprintln!("failed to initialize clipboard history: {error}");
             }
             translation::init(app.handle());
+            agents::init(app.handle());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
                     eprintln!("failed to size and position island window: {error}");
@@ -1821,6 +1823,12 @@ pub fn run() {
             ir_climate::ir_select_model,
             ir_climate::ir_apply,
             ir_climate::ir_learn,
+            agents::agents_board,
+            agents::agents_server_info,
+            agents::agents_set_enabled,
+            agents::agents_regenerate_token,
+            agents::agents_clear,
+            agents::agents_sync_todos,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,

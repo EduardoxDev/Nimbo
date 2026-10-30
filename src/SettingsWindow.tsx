@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   Archive,
   Bell,
+  Bot,
   CalendarDays,
   Check,
   CircleCheck,
@@ -28,6 +29,7 @@ import {
 } from "./App";
 import { LOCALE_CODES, TRANSLATIONS, useLocale, useTranslation } from "./i18n";
 import { HomeSettingsPage } from "./home/HomeSettingsPage";
+import { AgentsSettings } from "./agents/AgentsSettings";
 import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
@@ -45,6 +47,7 @@ type PageId =
   | "home"
   | "shelf"
   | "hud"
+  | "agents"
   | "about";
 
 type SoonPage = "calendar" | "shelf" | "hud";
@@ -63,6 +66,7 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "home", icon: House, color: "#40c8e0" },
   { id: "shelf", icon: Archive, color: "#ffb340" },
   { id: "hud", icon: Bell, color: "#0a84ff" },
+  { id: "agents", icon: Bot, color: "#bf5af2" },
 ];
 
 const SOON_PAGES = new Set<PageId>(["calendar", "shelf", "hud"]);
@@ -191,6 +195,7 @@ export default function SettingsWindow() {
           {page === "music" && <MusicPage />}
           {page === "todo" && <TodoPage settings={settings} update={update} />}
           {page === "home" && <HomeSettingsPage />}
+          {page === "agents" && <AgentsSettings />}
           {page === "statusRing" && <StatusRingPage settings={settings} update={update} />}
           {page === "pomodoro" && <PomodoroPage settings={settings} update={update} />}
           {page === "water" && <WaterPage settings={settings} update={update} />}

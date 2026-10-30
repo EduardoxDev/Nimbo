@@ -13,6 +13,7 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  Bot,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -80,6 +81,16 @@ import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
 import { ProgressRing } from "./island/PageChrome";
+import { AgentsPanel } from "./agents/AgentsPanel";
+import {
+  activeAgentOf,
+  currentStepOf,
+  progressOf as agentProgressOf,
+  AGENTS_DEMO,
+  useAgentBoard,
+  useAgentEvents,
+  type AgentNotice,
+} from "./agents/agentsStore";
 import "./App.css";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
@@ -87,7 +98,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "music" | "home" | "focus" | "water" | "clipboard" | "layout";
+type IslandPage = "todo" | "music" | "home" | "focus" | "water" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -262,6 +273,8 @@ type CollapsedStatus = {
     actions?: { label: string; primary?: boolean; onClick: () => void }[];
   } | null;
   timer: { text: string; color: string } | null;
+  /** Replaces the idle to-do count, e.g. what an AI agent is doing right now. */
+  label: string | null;
 };
 
 type IslandShellProps = {
@@ -318,6 +331,7 @@ const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
 const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
+const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -1379,7 +1393,10 @@ export function IslandShell({
                   {collapsedTaskTitle}
                 </span>
               )}
-              {!collapsedStatus.notice && showCollapsedText && !collapsedTaskTitle && collapsedTodoCount !== null && (
+              {!collapsedStatus.notice && !collapsedTaskTitle && collapsedStatus.label && (
+                <span className="island__todo-count">{collapsedStatus.label}</span>
+              )}
+              {!collapsedStatus.notice && !collapsedStatus.label && showCollapsedText && !collapsedTaskTitle && collapsedTodoCount !== null && (
                 <span className="island__todo-count">
                   {showTitle ? "· " : ""}
                   {t.island.pendingTodos(collapsedTodoCount)}
@@ -4170,7 +4187,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO ? "expanded" : "collapsed",
+    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4178,7 +4195,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4305,6 +4322,33 @@ function IslandApp({
     [settings.waterGoalMl, settings.waterCupMl, settings.waterReminderMinutes],
   );
   const water = useWater(waterSettings);
+  const agentBoard = useAgentBoard();
+  const [agentNotice, setAgentNotice] = useState<{ text: string; until: number } | null>(null);
+  const handleAgentNotice = useCallback(
+    (notice: AgentNotice) =>
+      setAgentNotice({ text: `${notice.agent}: ${notice.text}`, until: Date.now() + 12_000 }),
+    [],
+  );
+  const handleAgentTodo = useCallback((title: string, agent: string) => {
+    setTodos((currentTodos) => [
+      { id: createTodoId(), title, completed: false, createdAt: Date.now() },
+      ...currentTodos,
+    ]);
+    setAgentNotice({ text: t.agents.addedTask(agent, title), until: Date.now() + 12_000 });
+  }, [t]);
+  useAgentEvents(handleAgentNotice, handleAgentTodo);
+  useEffect(() => {
+    if (!agentNotice) return;
+    const timer = window.setTimeout(() => setAgentNotice(null), Math.max(0, agentNotice.until - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [agentNotice]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("agents_sync_todos", {
+      todos: todos.map((todo) => ({ title: todo.title, done: todo.completed })),
+    }).catch(() => {});
+  }, [todos]);
+  const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const isFocusActive = focusTimer.state.status !== "idle";
   const focusColor =
     focusTimer.state.phase === "focus" ? "#ff7a59" : focusTimer.state.phase === "short" ? "#35e985" : "#5ac8fa";
@@ -4313,10 +4357,16 @@ function IslandApp({
       ? null
       : (settings.statusRing === "focus" || (settings.statusRing === "auto" && isFocusActive))
         ? { progress: focusTimer.progress, color: focusColor }
-        : { progress: water.progress, color: "#5ac8fa" };
+        : settings.statusRing === "auto" && activeAgent
+          ? { progress: agentProgressOf(activeAgent), color: "#bf8cff" }
+          : { progress: water.progress, color: "#5ac8fa" };
+  const activeAgentStep = activeAgent ? currentStepOf(activeAgent) : null;
   const collapsedStatus: CollapsedStatus = {
+    label: activeAgent ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}` : null,
     ring: statusRing,
-    notice: focusNotice
+    notice: agentNotice
+      ? { text: agentNotice.text, color: "#bf8cff", page: "agents" }
+      : focusNotice
       ? { text: focusNotice.text, color: focusColor, page: "focus" }
       : water.reminderDue
         ? {
@@ -4329,23 +4379,30 @@ function IslandApp({
             ],
           }
         : null,
-    timer: isFocusActive ? { text: formatClock(focusTimer.remainingMs), color: focusColor } : null,
+    timer: isFocusActive
+      ? { text: formatClock(focusTimer.remainingMs), color: focusColor }
+      : activeAgent && activeAgent.steps.length > 0
+        ? {
+            text: `${activeAgent.steps.filter((step) => step.status === "completed").length}/${activeAgent.steps.length}`,
+            color: "#bf8cff",
+          }
+        : null,
   };
   const collapsedNoticeText = collapsedStatus.notice?.text ?? null;
   const collapsedHasActions = Boolean(collapsedStatus.notice?.actions?.length);
   const collapsedIslandWidth = useMemo(
     () =>
       getCollapsedIslandWidth(
-        collapsedNoticeText
+        collapsedNoticeText ?? (collapsedTaskTitle ? null : collapsedStatus.label)
           ? // Room for the reminder's two buttons.
-            `${collapsedNoticeText}${collapsedHasActions ? " ".repeat(14) : ""}`
+            `${collapsedNoticeText ?? collapsedStatus.label}${collapsedHasActions ? " ".repeat(14) : ""}`
           : settings.showCollapsedText
             ? collapsedTaskTitle ?? (collapsedTodoCount !== null
               ? t.island.pendingTodos(collapsedTodoCount)
               : settings.showTitle ? "Nimbo" : "")
             : "",
       ),
-    [collapsedNoticeText, collapsedHasActions, collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
+    [collapsedNoticeText, collapsedHasActions, collapsedStatus.label, collapsedTaskTitle, collapsedTodoCount, settings.showCollapsedText, settings.showTitle, t],
   );
   const isTodoArchivePage =
     page === "todo" && (todoPageMode === "archive" || todoPageMode === "review");
@@ -4366,7 +4423,9 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "home" || page === "water"
+        : page === "agents"
+          ? AGENTS_EXPANDED_ISLAND_HEIGHT
+          : page === "home" || page === "water"
           ? HOME_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
             ? FOCUS_EXPANDED_ISLAND_HEIGHT
@@ -4741,6 +4800,7 @@ function IslandApp({
     { id: "home", label: t.home.title, icon: House },
     { id: "focus", label: t.focus.title, icon: Timer },
     { id: "water", label: t.water.title, icon: Droplet },
+    { id: "agents", label: t.agents.title, icon: Bot },
     { id: "clipboard", label: t.island.clipboardTab, icon: Clipboard },
     { id: "layout", label: t.island.layoutTab, icon: SlidersHorizontal },
   ];
@@ -5895,6 +5955,16 @@ function IslandApp({
             goalMl={settings.waterGoalMl}
             cupMl={settings.waterCupMl}
             reminderMinutes={settings.waterReminderMinutes}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "agents" && (
+          <AgentsPanel
+            board={agentBoard.board}
+            onClear={agentBoard.clear}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

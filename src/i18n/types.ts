@@ -266,6 +266,16 @@ export type Translations = {
     drank: string;
     later: string;
   };
+  agents: {
+    title: string;
+    done: string;
+    working: string;
+    dismiss: string;
+    emptyTitle: string;
+    emptyHint: string;
+    connect: string;
+    addedTask: (agent: string, title: string) => string;
+  };
   prefs: {
     windowTitle: string;
     close: string;
@@ -283,6 +293,7 @@ export type Translations = {
       home: string;
       shelf: string;
       hud: string;
+      agents: string;
       about: string;
     };
     soon: {
@@ -415,6 +426,25 @@ export type Translations = {
       cup: string;
       reminder: string;
       off: string;
+    };
+    agents: {
+      section: string;
+      hint: string;
+      enabled: string;
+      running: string;
+      stopped: string;
+      address: string;
+      token: string;
+      show: string;
+      hide: string;
+      regenerate: string;
+      connectSection: string;
+      claudeCode: string;
+      others: string;
+      copy: string;
+      copied: string;
+      tip: string;
+      privacy: string;
     };
     about: {
       tagline: string;

@@ -31,6 +31,9 @@ npm run tauri build -- --no-bundle
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.
 - Ar-condicionado só de controle remoto: com um Broadlink RM4 Mini na mesma rede, o Nimbo
   fala direto com ele (sem nuvem) e usa os códigos do modelo escolhido na biblioteca SmartIR.
+- Agentes de IA (Claude Code, Codex, Claude Desktop, Cursor…): servidor MCP local onde eles
+  mostram o próprio plano na ilha, avisam quando terminam e te passam tarefas. Configurações >
+  Agentes de IA tem o comando pronto para conectar.
 - Janela de configurações (bandeja > Configurações… ou engrenagem na ilha).
 - Foco (Pomodoro) com anel de progresso, rodadas e som ao fim de cada fase.
 - Água: meta do dia, copo que enche e lembretes na ilha fechada ("Bebi" / "Depois").
