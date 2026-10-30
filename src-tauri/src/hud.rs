@@ -80,7 +80,7 @@ fn watch(app: AppHandle) {
             endpoint = None;
         }
 
-        if tick % BRIGHTNESS_EVERY == 0 {
+        if tick.is_multiple_of(BRIGHTNESS_EVERY) {
             if let Some(connection) = brightness.as_ref() {
                 match connection.query::<MonitorBrightness>() {
                     Ok(readings) => match readings.first().map(|reading| reading.current_brightness) {
