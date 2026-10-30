@@ -4,6 +4,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import { Row, Section, Toggle } from "../settings/controls";
 import { AGENTS_DEMO, type AgentServerInfo } from "./agentsStore";
+import { AssistantSettings } from "../assistant/AssistantSettings";
 
 const DEMO_INFO: AgentServerInfo = {
   enabled: true,
@@ -61,7 +62,7 @@ export function AgentsSettings() {
       .catch((reason) => setError(String(reason)));
   };
 
-  if (!info) return null;
+  if (!info) return <AssistantSettings />;
   const masked = showToken ? info.token : `${info.token.slice(0, 6)}${"•".repeat(18)}`;
   const claudeCommand = `claude mcp add --transport http nimbo ${info.url} --header "Authorization: Bearer ${info.token}"`;
   const jsonConfig = JSON.stringify(
@@ -72,6 +73,8 @@ export function AgentsSettings() {
 
   return (
     <>
+      <AssistantSettings />
+
       <Section title={copy.section}>
         <p className="prefs-card__hint">{copy.hint}</p>
         <Row title={copy.enabled} hint={info.running ? copy.running : info.error ?? copy.stopped}>

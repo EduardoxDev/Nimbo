@@ -880,3 +880,30 @@
   word-break: break-all;
   user-select: text;
 }
+
+.prefs-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  color: var(--prefs-blue) !important;
+  background: none;
+  border: 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.prefs-inline-link:hover {
+  text-decoration: underline;
+}
+
+.prefs-card__hint--icon {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.prefs-card__hint--icon svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}

@@ -276,6 +276,33 @@ export type Translations = {
     connect: string;
     addedTask: (agent: string, title: string) => string;
   };
+  assistant: {
+    title: string;
+    placeholder: string;
+    send: string;
+    newChat: string;
+    thinking: string;
+    noKey: string;
+    noKeyHint: string;
+    addKey: string;
+    emptyTitle: string;
+    suggestion1: string;
+    suggestion2: string;
+    suggestion3: string;
+    suggestion4: string;
+    refused: string;
+    longConversation: string;
+    actions: {
+      get_status: string;
+      add_task: string;
+      complete_task: string;
+      focus_timer: string;
+      log_water: string;
+      music: string;
+      air_conditioner: string;
+      toggle_device: string;
+    };
+  };
   prefs: {
     windowTitle: string;
     close: string;
@@ -444,6 +471,18 @@ export type Translations = {
       copy: string;
       copied: string;
       tip: string;
+      privacy: string;
+    };
+    assistant: {
+      section: string;
+      hint: string;
+      key: string;
+      keyPlaceholder: string;
+      getKey: string;
+      save: string;
+      saved: string;
+      remove: string;
+      model: string;
       privacy: string;
     };
     about: {

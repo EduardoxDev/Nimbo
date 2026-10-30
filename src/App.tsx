@@ -48,6 +48,7 @@ import {
   Search,
   Settings,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Timer,
   Trash2,
@@ -82,6 +83,10 @@ import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
 import { ProgressRing } from "./island/PageChrome";
 import { AgentsPanel } from "./agents/AgentsPanel";
+import { AssistantPanel } from "./assistant/AssistantPanel";
+import { ASSISTANT_DEMO, useAssistant, type ToolExecutor } from "./assistant/useAssistant";
+import { homeApi } from "./home/homeStore";
+import "./assistant/Assistant.css";
 import {
   activeAgentOf,
   currentStepOf,
@@ -98,7 +103,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "music" | "home" | "focus" | "water" | "agents" | "clipboard" | "layout";
+type IslandPage = "todo" | "assistant" | "music" | "home" | "focus" | "water" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -332,6 +337,7 @@ const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
 const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
+const ASSISTANT_EXPANDED_ISLAND_HEIGHT = 300;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -4187,7 +4193,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO ? "expanded" : "collapsed",
+    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4195,7 +4201,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4349,6 +4355,7 @@ function IslandApp({
     }).catch(() => {});
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
+
   const isFocusActive = focusTimer.state.status !== "idle";
   const focusColor =
     focusTimer.state.phase === "focus" ? "#ff7a59" : focusTimer.state.phase === "short" ? "#35e985" : "#5ac8fa";
@@ -4425,6 +4432,8 @@ function IslandApp({
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
         : page === "agents"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
+          : page === "assistant"
+            ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
           : page === "home" || page === "water"
           ? HOME_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
@@ -4796,6 +4805,7 @@ function IslandApp({
 
   const islandPageLinks: IslandPageLink[] = [
     { id: "todo", label: t.island.todoList, icon: ListTodo },
+    { id: "assistant", label: t.assistant.title, icon: Sparkles },
     { id: "music", label: t.island.music, icon: Music },
     { id: "home", label: t.home.title, icon: House },
     { id: "focus", label: t.focus.title, icon: Timer },
@@ -5857,6 +5867,116 @@ function IslandApp({
     });
   }, []);
 
+  const assistantStateRef = useRef({ todos, mediaState, focusTimer, water, locale: t.localeTag });
+  assistantStateRef.current = { todos, mediaState, focusTimer, water, locale: t.localeTag };
+  const assistantContext = useCallback(() => {
+    const now = new Date();
+    return `[context] language: ${assistantStateRef.current.locale}; local time: ${now.toLocaleString(
+      assistantStateRef.current.locale,
+    )}`;
+  }, []);
+  const runAssistantTool = useCallback<ToolExecutor>(async (name, input) => {
+    const current = assistantStateRef.current;
+    const climateOf = async () => {
+      const home = await homeApi.island();
+      return { home, climate: home.entities.find((entity) => entity.domain === "climate") ?? null };
+    };
+    switch (name) {
+      case "get_status": {
+        const { home } = await climateOf().catch(() => ({ home: { configured: false, entities: [] } }));
+        const timer = current.focusTimer;
+        return JSON.stringify({
+          time: new Date().toLocaleString(current.locale),
+          openTasks: current.todos.filter((todo) => !todo.completed).map((todo) => todo.title),
+          doneTasks: current.todos.filter((todo) => todo.completed).length,
+          focusTimer: {
+            phase: timer.state.phase,
+            status: timer.state.status,
+            minutesLeft: Math.ceil(timer.remainingMs / 60_000),
+          },
+          water: { drankMl: current.water.drankMl, goalMl: settings.waterGoalMl },
+          music: current.mediaState.title
+            ? { title: current.mediaState.title, artist: current.mediaState.artist, status: current.mediaState.playbackStatus }
+            : null,
+          home: home.entities.map((entity) => ({
+            name: entity.name,
+            kind: entity.domain,
+            state: entity.state,
+            targetTemperature: entity.targetTemperature,
+          })),
+        });
+      }
+      case "add_task": {
+        const title = String(input.title ?? "").trim().slice(0, 200);
+        if (!title) throw new Error("Empty title");
+        setTodos((currentTodos) => [
+          { id: createTodoId(), title, completed: false, createdAt: Date.now() },
+          ...currentTodos,
+        ]);
+        return `Added "${title}".`;
+      }
+      case "complete_task": {
+        const wanted = String(input.title ?? "").trim().toLowerCase();
+        const open = current.todos.filter((todo) => !todo.completed);
+        const match =
+          open.find((todo) => todo.title.toLowerCase() === wanted) ??
+          open.find((todo) => todo.title.toLowerCase().includes(wanted));
+        if (!match) throw new Error(`No open task matches "${input.title}".`);
+        toggleTodo(match.id);
+        return `Marked "${match.title}" as done.`;
+      }
+      case "focus_timer": {
+        const action = String(input.action);
+        if (action === "start") current.focusTimer.start();
+        else if (action === "pause") current.focusTimer.pause();
+        else if (action === "skip") current.focusTimer.skip();
+        else if (action === "reset") current.focusTimer.reset();
+        else throw new Error("Unknown action");
+        return `Focus timer: ${action}.`;
+      }
+      case "log_water": {
+        const glasses = Math.min(5, Math.max(1, Math.round(Number(input.glasses) || 1)));
+        for (let index = 0; index < glasses; index += 1) current.water.add();
+        return `Logged ${glasses} glass(es).`;
+      }
+      case "music": {
+        const action = String(input.action);
+        const command =
+          action === "next" ? "media_next" : action === "previous" ? "media_previous" : "media_play_pause";
+        await runMediaCommand(command);
+        return `Music: ${action}.`;
+      }
+      case "air_conditioner": {
+        const { climate } = await climateOf();
+        if (!climate) throw new Error("No air conditioner is set up in Nimbo.");
+        const action = String(input.action);
+        const call: { service: string; data?: Record<string, string | number> } =
+          action === "set_temperature"
+            ? { service: "set_temperature", data: { temperature: Number(input.temperature) } }
+            : action === "set_mode"
+              ? { service: "set_hvac_mode", data: { hvac_mode: String(input.mode) } }
+              : action === "turn_off"
+                ? { service: "turn_off", data: undefined }
+                : { service: "turn_on", data: undefined };
+        await homeApi.call({ domain: "climate", entityId: climate.entityId, ...call });
+        return `${climate.name}: ${action}${input.temperature ? ` ${input.temperature}°C` : ""}${input.mode ? ` ${input.mode}` : ""}.`;
+      }
+      case "toggle_device": {
+        const { home } = await climateOf();
+        const wanted = String(input.name ?? "").trim().toLowerCase();
+        const device = home.entities.find(
+          (entity) => entity.domain !== "climate" && entity.name.toLowerCase().includes(wanted),
+        );
+        if (!device) throw new Error(`No device named "${input.name}".`);
+        await homeApi.call({ domain: device.domain, service: "toggle", entityId: device.entityId });
+        return `Toggled ${device.name}.`;
+      }
+      default:
+        throw new Error(`Unknown tool ${name}`);
+    }
+  }, [runMediaCommand, settings.waterGoalMl, toggleTodo]);
+  const assistant = useAssistant(runAssistantTool, assistantContext);
+
   return (
     <main
       className={`stage stage--font-${settings.fontFamily}${
@@ -5955,6 +6075,23 @@ function IslandApp({
             goalMl={settings.waterGoalMl}
             cupMl={settings.waterCupMl}
             reminderMinutes={settings.waterReminderMinutes}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "assistant" && (
+          <AssistantPanel
+            entries={assistant.entries}
+            busy={assistant.busy}
+            onSend={(text) =>
+              void assistant.send(text, {
+                refused: t.assistant.refused,
+                longConversation: t.assistant.longConversation,
+              })
+            }
+            onReset={assistant.reset}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

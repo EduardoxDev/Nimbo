@@ -1,4 +1,5 @@
 mod agents;
+mod assistant;
 mod broadlink;
 mod clipboard_history;
 mod home_assistant;
@@ -1829,6 +1830,10 @@ pub fn run() {
             agents::agents_regenerate_token,
             agents::agents_clear,
             agents::agents_sync_todos,
+            assistant::assistant_has_key,
+            assistant::assistant_save_key,
+            assistant::assistant_delete_key,
+            assistant::assistant_step,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,
