@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Nimbo",
+  "version": "0.1.0",
+  "identifier": "com.nimbo.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Nimbo",
+        "width": 820,
+        "height": 460,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
+      },
+      {
+        "label": "translation",
+        "title": "Nimbo · Tradução",
+        "url": "index.html?window=translation",
+        "width": 480,
+        "height": 640,
+        "minWidth": 480,
+        "minHeight": 380,
+        "decorations": false,
+        "transparent": true,
+        "resizable": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
