@@ -73,6 +73,8 @@ const ptBR: Translations = {
     music: "Música",
     clipboardHistory: "Histórico de copiados",
     layoutEditor: "Editor de layout",
+    clipboardTab: "Copiados",
+    layoutTab: "Ajustes",
   },
 
   agent: {
@@ -91,6 +93,7 @@ const ptBR: Translations = {
 
   notebook: {
     sectionLabel: "Tarefas",
+    today: "Hoje",
     backToToday: "Voltar para as tarefas de hoje",
     saveToday: "Salvar as tarefas de hoje",
     saveTodayMarkdown: "Salvar as tarefas de hoje em Markdown",

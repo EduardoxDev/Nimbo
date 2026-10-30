@@ -73,6 +73,8 @@ const zhCN: Translations = {
     music: "Music",
     clipboardHistory: "剪贴板历史",
     layoutEditor: "布局编辑",
+    clipboardTab: "剪贴板",
+    layoutTab: "调整",
   },
 
   agent: {
@@ -94,6 +96,7 @@ const zhCN: Translations = {
   // locale is identical here. Translate later if a fully-Chinese UI is wanted.
   notebook: {
     sectionLabel: "任务清单",
+    today: "今天",
     backToToday: "Back to today's todo list",
     saveToday: "Save today's todo list",
     saveTodayMarkdown: "Save today's todo list as markdown",

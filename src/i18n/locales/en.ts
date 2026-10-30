@@ -73,6 +73,8 @@ const en: Translations = {
     music: "Music",
     clipboardHistory: "Clipboard history",
     layoutEditor: "Layout editor",
+    clipboardTab: "Clipboard",
+    layoutTab: "Tweaks",
   },
 
   agent: {
@@ -91,6 +93,7 @@ const en: Translations = {
 
   notebook: {
     sectionLabel: "Tasks",
+    today: "Today",
     backToToday: "Back to today's todo list",
     saveToday: "Save today's todo list",
     saveTodayMarkdown: "Save today's todo list as markdown",

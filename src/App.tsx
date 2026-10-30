@@ -21,14 +21,15 @@ import {
   ClipboardList,
   Columns2,
   Copy,
+  Download,
   ExternalLink,
   House,
   FastForward,
   GripVertical,
+  History,
   ImageIcon,
   Keyboard,
   Languages,
-  LayoutGrid,
   ListTodo,
   MessageSquareQuote,
   Minus,
@@ -44,6 +45,7 @@ import {
   Save,
   Search,
   Settings,
+  SlidersHorizontal,
   Star,
   Trash2,
   Volume1,
@@ -68,10 +70,12 @@ import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import { HOME_DEMO } from "./demo/homeDemo";
+import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
 import { HomePanel } from "./HomePanel";
 import { IslandTabs } from "./IslandTabs";
 import "./App.css";
 import "./IslandSummary.css";
+import "./PagesRefresh.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
@@ -1882,7 +1886,19 @@ function LayoutEditor({
   return (
     <div className="editor-panel">
       <div className="editor-panel__header">
-        <span>{t.settings.title}</span>
+        <span>{t.island.layoutTab}</span>
+        <button
+          className="editor-panel__more"
+          type="button"
+          onClick={() =>
+            void invoke("open_settings_window").catch((error) =>
+              console.error("Failed to open settings", error),
+            )
+          }
+        >
+          <Settings size={14} strokeWidth={2.2} aria-hidden="true" />
+          {t.prefs.windowTitle}
+        </button>
         <button
           className="reset-button"
           type="button"
@@ -2495,8 +2511,18 @@ function TodoNotebook({
     .join(" ");
   const inputPlaceholder =
     pageMode === "today"
-      ? t.notebook.addTaskFor(currentDate)
+      ? t.notebook.addTaskHint
       : t.notebook.reviewTodos;
+  // "sex, 30 out" next to the "Today" title.
+  const todayLabel = new Intl.DateTimeFormat(t.localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })
+    .formatToParts(new Date(`${currentDate}T12:00:00`))
+    .filter((part) => part.type !== "literal")
+    .map((part) => part.value.replace(/\.$/, ""))
+    .join(" ");
   const archiveTitle =
     archiveLayout === "cards"
       ? t.notebook.notebookCards
@@ -2609,122 +2635,99 @@ function TodoNotebook({
 
   return (
     <section className={notebookClassName} aria-label={t.notebook.sectionLabel}>
-      <div className="todo-notebook__spine">
-        <button
-          className={[
-            "todo-spine-button",
-            "todo-spine-button--today",
-            isTodayMode || isDailyMode ? "todo-spine-button--active" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          type="button"
-          title={t.notebook.backToToday}
-          aria-label={t.notebook.backToToday}
-          onClick={onShowToday}
-        />
-        <button
-          className={[
-            "todo-spine-button",
-            "todo-spine-button--save",
-            saveState === "saved" ? "todo-spine-button--saved" : "",
-            saveState === "saving" ? "todo-spine-button--saving" : "",
-            saveState === "needs-path" || saveState === "error"
-              ? "todo-spine-button--attention"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          type="button"
-          title={t.notebook.saveToday}
-          aria-label={t.notebook.saveTodayMarkdown}
-          onClick={onSaveToday}
-        >
-          {saveState === "saved" && (
-            <Check className="save-check-icon" size={12} strokeWidth={3} />
-          )}
-        </button>
-        <button
-          className={[
-            "todo-spine-button",
-            "todo-spine-button--archive",
-            pageMode === "archive" || pageMode === "review"
-              ? "todo-spine-button--active"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          type="button"
-          title={t.notebook.reviewSaved}
-          aria-label={t.notebook.reviewSaved}
-          onClick={onShowArchive}
-        />
-      </div>
-
-      <div className="todo-notebook__topline">
-        <div className="todo-notebook__title-group">
-          <span className="todo-notebook__tab">
-            {isDailyMode ? (
-              <NotebookPen size={15} strokeWidth={2.1} />
-            ) : (
-              <ClipboardList size={15} strokeWidth={2.1} />
-            )}
+      <header className="todo-head">
+        <div className="todo-head__title">
+          <strong>
             {isReviewMode
               ? selectedArchive?.date ?? t.notebook.reviewTab
-              : isDailyMode
-                ? t.notebook.dailyTab
-                : t.notebook.tasksTab}
-          </span>
+              : isArchiveMode
+                ? t.notebook.reviewTab
+                : t.notebook.today}
+          </strong>
           {!isArchiveMode && !isReviewMode && (
-            <button
-              className={[
-                "todo-page-toggle",
-                isDailyMode ? "todo-page-toggle--active" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              title={isDailyMode ? t.notebook.backToTasks : t.notebook.openDailyNote}
-              aria-label={
-                isDailyMode ? t.notebook.backToTasks : t.notebook.openDailyNote
-              }
-              onClick={isDailyMode ? onShowToday : onShowDaily}
-            >
-              {isDailyMode ? (
-                <ClipboardList size={14} strokeWidth={2.2} />
-              ) : (
-                <NotebookPen size={14} strokeWidth={2.2} />
-              )}
-            </button>
+            <span className="todo-head__date">{todayLabel}</span>
+          )}
+          {!isArchiveMode && !isReviewMode && !isDailyMode && (
+            <span className="todo-head__count">{t.notebook.openCount(openCount)}</span>
           )}
         </div>
-        {isArchiveMode ? (
-          <div className="archive-layout-toggle" aria-label={archiveTitle}>
+        <div className="todo-head__tools">
+          {isArchiveMode && (
+            <div className="archive-layout-toggle" aria-label={archiveTitle}>
+              <button
+                className={archiveLayout === "cards" ? "archive-layout-toggle--active" : ""}
+                type="button"
+                title={t.notebook.notebookCards}
+                aria-label={t.notebook.notebookCards}
+                onClick={() => onArchiveLayoutChange("cards")}
+              >
+                <ClipboardList size={14} strokeWidth={2.1} />
+              </button>
+              <button
+                className={archiveLayout === "timeline" ? "archive-layout-toggle--active" : ""}
+                type="button"
+                title={t.notebook.twoColumnTimeline}
+                aria-label={t.notebook.twoColumnTimeline}
+                onClick={() => onArchiveLayoutChange("timeline")}
+              >
+                <Columns2 size={14} strokeWidth={2.1} />
+              </button>
+            </div>
+          )}
+          <div className="todo-modes" role="group" aria-label={t.notebook.sectionLabel}>
             <button
-              className={archiveLayout === "cards" ? "archive-layout-toggle--active" : ""}
+              className={`todo-mode${isTodayMode ? " todo-mode--active" : ""}`}
               type="button"
-              title={t.notebook.notebookCards}
-              aria-label={t.notebook.notebookCards}
-              onClick={() => onArchiveLayoutChange("cards")}
+              title={t.notebook.backToToday}
+              aria-pressed={isTodayMode}
+              onClick={onShowToday}
             >
-              <ClipboardList size={14} strokeWidth={2.1} />
+              <ListTodo size={14} strokeWidth={2.2} aria-hidden="true" />
+              <span>{t.notebook.tasksTab}</span>
             </button>
             <button
-              className={archiveLayout === "timeline" ? "archive-layout-toggle--active" : ""}
+              className={`todo-mode${isDailyMode ? " todo-mode--active" : ""}`}
               type="button"
-              title={t.notebook.twoColumnTimeline}
-              aria-label={t.notebook.twoColumnTimeline}
-              onClick={() => onArchiveLayoutChange("timeline")}
+              title={t.notebook.openDailyNote}
+              aria-pressed={isDailyMode}
+              onClick={onShowDaily}
             >
-              <Columns2 size={14} strokeWidth={2.1} />
+              <NotebookPen size={14} strokeWidth={2.2} aria-hidden="true" />
+              <span>{t.notebook.dailyNoteLabel}</span>
+            </button>
+            <button
+              className={`todo-mode${isArchiveMode || isReviewMode ? " todo-mode--active" : ""}`}
+              type="button"
+              title={t.notebook.reviewSaved}
+              aria-pressed={isArchiveMode || isReviewMode}
+              onClick={onShowArchive}
+            >
+              <History size={14} strokeWidth={2.2} aria-hidden="true" />
+              <span>{t.notebook.reviewTab}</span>
             </button>
           </div>
-        ) : (
-          <span className="todo-notebook__open-count">
-            {t.notebook.openCount(openCount)}
-          </span>
-        )}
-      </div>
+          <button
+            className={[
+              "todo-save",
+              saveState === "saved" ? "todo-save--saved" : "",
+              saveState === "saving" ? "todo-save--saving" : "",
+              saveState === "needs-path" || saveState === "error" ? "todo-save--attention" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            title={t.notebook.saveToday}
+            aria-label={t.notebook.saveTodayMarkdown}
+            onClick={onSaveToday}
+          >
+            {saveState === "saved" ? (
+              <Check className="save-check-icon" size={14} strokeWidth={3} />
+            ) : (
+              <Download size={14} strokeWidth={2.3} />
+            )}
+          </button>
+        </div>
+      </header>
 
       {!isDailyMode && !isArchiveMode && (
         <form
@@ -4056,7 +4059,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    MUSIC_DEMO || HOME_DEMO ? "expanded" : "collapsed",
+    MUSIC_DEMO || HOME_DEMO || PAGES_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4125,7 +4128,11 @@ function IslandApp({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savePathState, setSavePathState] = useState<SavePathState>("idle");
   const [clipboardHistory, setClipboardHistory] =
-    useState<ClipboardHistorySnapshot>(DEFAULT_CLIPBOARD_HISTORY);
+    useState<ClipboardHistorySnapshot>(
+      PAGES_DEMO
+        ? { ...DEFAULT_CLIPBOARD_HISTORY, items: DEMO_CLIPBOARD_ITEMS }
+        : DEFAULT_CLIPBOARD_HISTORY,
+    );
   const [agentHooksInstallState, setAgentHooksInstallState] =
     useState<AgentHooksInstallState>("idle");
   const [agentHooksInstallResult, setAgentHooksInstallResult] =
@@ -4372,6 +4379,7 @@ function IslandApp({
   }, []);
 
   const refreshClipboardHistory = useCallback(async () => {
+    if (PAGES_DEMO) return;
     try {
       const snapshot = await invoke<ClipboardHistorySnapshot>(
         "get_clipboard_history",
@@ -4558,8 +4566,8 @@ function IslandApp({
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "music", label: t.island.music, icon: Music },
     { id: "home", label: t.home.title, icon: House },
-    { id: "clipboard", label: t.island.clipboardHistory, icon: Clipboard },
-    { id: "layout", label: t.island.layoutEditor, icon: LayoutGrid },
+    { id: "clipboard", label: t.island.clipboardTab, icon: Clipboard },
+    { id: "layout", label: t.island.layoutTab, icon: SlidersHorizontal },
   ];
 
   const openIslandPage = useCallback((nextPage: IslandPage) => {

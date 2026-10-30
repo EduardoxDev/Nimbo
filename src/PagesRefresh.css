@@ -1,0 +1,700 @@
+/* Tasks, Clipboard and Tweaks on the dark island glass.
+   Loaded after App.css so these rules win over the older page styles. */
+.island.island--expanded :is(.todo-notebook, .clipboard-panel, .editor-panel),
+.island--appearance-liquidGlass.island--expanded :is(.todo-notebook, .clipboard-panel, .editor-panel) {
+  --page-text: #ffffff;
+  --page-muted: rgba(235, 238, 245, 0.6);
+  --page-card: rgba(255, 255, 255, 0.055);
+  --page-card-hover: rgba(255, 255, 255, 0.09);
+  --page-line: rgba(255, 255, 255, 0.08);
+  --page-accent: 53, 233, 133;
+  color: var(--page-text);
+  font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.island--expanded :is(.todo-notebook, .clipboard-panel, .editor-panel)::before,
+.island--expanded :is(.todo-notebook, .clipboard-panel, .editor-panel)::after {
+  display: none;
+}
+
+/* ---------------- Tasks ---------------- */
+.island--expanded .todo-notebook,
+.island--expanded .todo-notebook--archive {
+  gap: 10px;
+  padding: 4px 6px 6px;
+}
+
+.todo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.todo-head__title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.todo-head__title strong {
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-head__date {
+  flex: 0 0 auto;
+  color: var(--page-muted);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.todo-head__count {
+  flex: 0 0 auto;
+  padding: 2px 9px;
+  color: rgb(var(--page-accent));
+  background: rgba(var(--page-accent), 0.12);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.todo-head__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.todo-mode {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 160ms ease;
+}
+
+.todo-mode span {
+  display: none;
+}
+
+.todo-mode:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.todo-mode--active,
+.todo-mode--active:hover {
+  padding: 0 11px 0 9px;
+  color: #101218;
+  background: #ffffff;
+}
+
+.todo-mode--active span {
+  display: inline;
+}
+
+.todo-save {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.todo-save:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.todo-save--saved {
+  color: #101218;
+  background: rgb(var(--page-accent));
+}
+
+.todo-save--attention {
+  color: #ffb340;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 179, 64, 0.6);
+}
+
+.todo-save--saving {
+  opacity: 0.6;
+}
+
+.todo-mode:focus-visible,
+.todo-save:focus-visible,
+.editor-panel__more:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.island--expanded .todo-form {
+  height: 40px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--page-line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.island--expanded .todo-form:focus-within {
+  border-color: rgba(var(--page-accent), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--page-accent), 0.14);
+}
+
+.island--expanded .todo-form input {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.island--expanded .todo-form input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.island--expanded .todo-list {
+  gap: 6px;
+}
+
+.island--expanded .todo-item {
+  align-items: center;
+  padding: 7px 8px 7px 10px;
+  background: var(--page-card);
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.island--expanded .todo-item:hover {
+  background: var(--page-card-hover);
+}
+
+.island--expanded .todo-item--active {
+  background: linear-gradient(90deg, rgba(var(--page-accent), 0.16), rgba(var(--page-accent), 0.04));
+  border-color: rgba(var(--page-accent), 0.35);
+}
+
+.island--expanded .todo-item--drag-over {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: none;
+}
+
+.island--expanded .todo-check {
+  width: 20px;
+  height: 20px;
+  align-self: center;
+  color: #101218;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.island--expanded .todo-check:hover:not(:disabled) {
+  border-color: rgb(var(--page-accent));
+}
+
+.island--expanded .todo-check[aria-pressed="true"] {
+  background: rgb(var(--page-accent));
+  border-color: rgb(var(--page-accent));
+}
+
+.island--expanded :is(.todo-title, .todo-title-input) {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.island--expanded .todo-item--done .todo-title {
+  color: rgba(255, 255, 255, 0.38);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+}
+
+.island--expanded .todo-title-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--page-accent), 0.5);
+  border-radius: 8px;
+}
+
+.island--expanded .todo-start {
+  height: 26px;
+  gap: 5px;
+  padding: 0 11px 0 9px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.island--expanded .todo-start:hover:not(:disabled) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.island--expanded .todo-start--active,
+.island--expanded .todo-start--active:hover {
+  color: #101218;
+  background: rgb(var(--page-accent));
+}
+
+.island--expanded .todo-start:disabled {
+  opacity: 0.3;
+}
+
+.island--expanded :is(.todo-delete, .todo-drag-handle) {
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: 0;
+  opacity: 0;
+  transition:
+    opacity 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.island--expanded .todo-item:hover :is(.todo-delete, .todo-drag-handle),
+.island--expanded :is(.todo-delete, .todo-drag-handle):focus-visible {
+  opacity: 1;
+}
+
+.island--expanded .todo-delete:hover {
+  color: #ff6b61;
+  background: rgba(255, 69, 58, 0.14);
+}
+
+.island--expanded .todo-empty {
+  color: var(--page-muted);
+  background: transparent;
+  border: 1.5px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  font-weight: 550;
+}
+
+.island--expanded .daily-note {
+  padding: 14px 16px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--page-line);
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.island--expanded .daily-note::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.island--expanded .daily-note:focus {
+  border-color: rgba(var(--page-accent), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--page-accent), 0.12);
+}
+
+.island--expanded :is(.archive-card, .archive-timeline__item) {
+  color: #ffffff;
+  background: var(--page-card);
+  border: 1px solid var(--page-line);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.island--expanded :is(.archive-card__date, .archive-card__eyebrow, .archive-card__empty, .archive-card__preview) {
+  color: var(--page-muted);
+}
+
+.island--expanded .archive-layout-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  border-radius: 999px;
+}
+
+.island--expanded .archive-layout-toggle button {
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+}
+
+.island--expanded .archive-layout-toggle .archive-layout-toggle--active {
+  color: #101218;
+  background: #ffffff;
+}
+
+/* ---------------- Clipboard ---------------- */
+.island--expanded .clipboard-panel {
+  gap: 10px;
+  padding: 4px 6px 6px;
+}
+
+.island--expanded .clipboard-panel__title {
+  gap: 10px;
+  color: #ffffff;
+}
+
+.island--expanded .clipboard-panel__title svg {
+  display: none;
+}
+
+.island--expanded .clipboard-panel__title > span {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.island--expanded .clipboard-panel__title strong {
+  padding: 2px 9px;
+  color: #101218;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.island--expanded .clipboard-panel__title em {
+  color: #ffd60a;
+  background: rgba(255, 214, 10, 0.12);
+  border-radius: 999px;
+}
+
+.island--expanded :is(.clipboard-shortcut-display, .clipboard-clear-button) {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  border-radius: 999px;
+}
+
+.island--expanded .clipboard-clear-button:hover:not(:disabled) {
+  color: #ff6b61;
+  background: rgba(255, 69, 58, 0.14);
+}
+
+.island--expanded .clipboard-segments {
+  justify-self: start;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  border-radius: 999px;
+}
+
+.island--expanded .clipboard-segments button {
+  height: 26px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.island--expanded .clipboard-segments .clipboard-segment--active {
+  color: #101218;
+  background: #ffffff;
+}
+
+.island--expanded .clipboard-segments .clipboard-segment--active::after {
+  display: none;
+}
+
+.island--expanded .clipboard-search {
+  height: 38px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--page-line);
+  border-radius: 12px;
+}
+
+.island--expanded .clipboard-search:focus-within {
+  border-color: rgba(10, 132, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.island--expanded .clipboard-search input {
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.island--expanded .clipboard-search input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.island--expanded .clipboard-list {
+  gap: 6px;
+}
+
+.island--expanded .clipboard-item {
+  background: var(--page-card);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.island--expanded .clipboard-item:hover {
+  background: var(--page-card-hover);
+}
+
+.island--expanded :is(.clipboard-item__text-icon, .clipboard-item__thumb) {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  border-radius: 9px;
+}
+
+.island--expanded .clipboard-item__preview {
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 550;
+}
+
+.island--expanded :is(.clipboard-item time, .clipboard-note) {
+  color: var(--page-muted);
+}
+
+.island--expanded .clipboard-note--filled {
+  color: #ffd60a;
+  background: rgba(255, 214, 10, 0.1);
+}
+
+.island--expanded .clipboard-item__actions button {
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+}
+
+.island--expanded .clipboard-item__actions button:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.island--expanded .clipboard-favorite-button--active {
+  color: #ffd60a !important;
+}
+
+.island--expanded .clipboard-copy-button--copied {
+  color: #101218 !important;
+  background: rgb(var(--page-accent)) !important;
+}
+
+.island--expanded .clipboard-empty {
+  color: var(--page-muted);
+  background: transparent;
+  border: 1.5px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  font-weight: 550;
+}
+
+.island--expanded .clipboard-note-editor input {
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--page-line);
+  border-radius: 8px;
+}
+
+/* ---------------- Tweaks ---------------- */
+.island--expanded .editor-panel {
+  gap: 12px;
+  padding: 4px 8px 10px 6px;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.island--expanded .editor-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.island--expanded .editor-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.island--expanded .editor-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.island--expanded .editor-panel__header > span {
+  flex: 1;
+}
+
+.editor-panel__more {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: #101218;
+  background: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: filter 140ms ease;
+}
+
+.editor-panel__more:hover {
+  filter: brightness(0.92);
+}
+
+.island--expanded .editor-panel .reset-button {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+}
+
+.island--expanded .editor-panel .settings-section {
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--page-card);
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.island--expanded .editor-panel .settings-section__header {
+  min-height: 0;
+  color: var(--page-muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.island--expanded .editor-panel :is(input[type="text"], select) {
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--page-line);
+  border-radius: 8px;
+}
+
+.island--expanded .editor-panel input[type="range"] {
+  accent-color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-mode,
+  .todo-save,
+  .island--expanded :is(.todo-check, .todo-delete, .todo-drag-handle),
+  .editor-panel__more {
+    transition: none;
+  }
+}
+
+/* Clipboard rows stay calm: tools show up on hover (a starred item keeps its star). */
+.island--expanded .clipboard-item :is(.clipboard-note:not(.clipboard-note--filled), .clipboard-item__actions button:not(.clipboard-favorite-button--active)) {
+  opacity: 0;
+  transition: opacity 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.island--expanded .clipboard-item:is(:hover, :focus-within) :is(.clipboard-note, .clipboard-item__actions button) {
+  opacity: 1;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list)::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list)::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+}
+
+/* Text gets the full row; note and tools float over its end with a fade. */
+.island--expanded .clipboard-item {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+}
+
+.island--expanded .clipboard-item__note:not(:has(.clipboard-note--filled)):not(:has(.clipboard-note-editor)) {
+  position: absolute;
+  right: 112px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.island--expanded .clipboard-item:is(:hover, :focus-within) .clipboard-item__note {
+  pointer-events: auto;
+}
+
+.island--expanded .clipboard-item__actions {
+  position: relative;
+}
+
+.island--expanded .clipboard-item:is(:hover, :focus-within)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 230px;
+  border-radius: 0 12px 12px 0;
+  background: linear-gradient(90deg, transparent, rgba(40, 44, 56, 0.96) 30%);
+  pointer-events: none;
+}
+
+.island--expanded .clipboard-item :is(.clipboard-item__note, .clipboard-item__actions) {
+  z-index: 1;
+}
+
+.island--expanded :is(.clipboard-list, .todo-list, .editor-panel) {
+  scrollbar-width: none;
+}

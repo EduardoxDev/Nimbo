@@ -75,6 +75,8 @@ export type Translations = {
     music: string;
     clipboardHistory: string;
     layoutEditor: string;
+    clipboardTab: string;
+    layoutTab: string;
   };
 
   agent: {
@@ -93,6 +95,7 @@ export type Translations = {
 
   notebook: {
     sectionLabel: string;
+    today: string;
     backToToday: string;
     saveToday: string;
     saveTodayMarkdown: string;
