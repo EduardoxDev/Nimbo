@@ -68,7 +68,7 @@ export function saveLocale(locale: LocaleCode) {
   }
 }
 
-const TranslationContext = createContext<Translations>(zhCN);
+const TranslationContext = createContext<Translations>(TRANSLATIONS[FALLBACK_LOCALE]);
 const LocaleContext = createContext<{ locale: LocaleCode; setLocale: (locale: LocaleCode) => void }>({
   locale: FALLBACK_LOCALE,
   setLocale: () => {},

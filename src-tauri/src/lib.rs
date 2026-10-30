@@ -1681,11 +1681,28 @@ mod tests {
     }
 }
 
+const SETTINGS_WINDOW_LABEL: &str = "settings";
+
+/// Shows the settings window (it is created hidden and only hidden again on close).
+#[tauri::command]
+fn open_settings_window(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window(SETTINGS_WINDOW_LABEL)
+        .ok_or_else(|| "Settings window was not found.".to_string())?;
+    if window.is_minimized().unwrap_or(false) {
+        window.unminimize().map_err(|error| error.to_string())?;
+    }
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}
+
 fn build_tray(app: &App) -> tauri::Result<()> {
-    let show_item = MenuItem::with_id(app, "show", "Show Island", true, None::<&str>)?;
-    let hide_item = MenuItem::with_id(app, "hide", "Hide Island", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+    let show_item = MenuItem::with_id(app, "show", "Mostrar ilha", true, None::<&str>)?;
+    let hide_item = MenuItem::with_id(app, "hide", "Esconder ilha", true, None::<&str>)?;
+    let settings_item =
+        MenuItem::with_id(app, "settings", "Configurações…", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &settings_item, &quit_item])?;
 
     let mut tray = TrayIconBuilder::new()
         .tooltip("Nimbo")
@@ -1696,6 +1713,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
                 let _ = show_island(app);
             }
             "hide" => hide_island(app),
+            "settings" => {
+                let _ = open_settings_window(app.clone());
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -1727,7 +1747,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .on_window_event(|window, event| {
-            if window.label() == "translation" {
+            if window.label() == "translation" || window.label() == SETTINGS_WINDOW_LABEL {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
@@ -1762,6 +1782,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_island_layout,
+            open_settings_window,
             set_island_interaction,
             start_island_drag,
             reset_island_position,

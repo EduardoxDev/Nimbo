@@ -1074,6 +1074,8 @@ input,
   background:
     radial-gradient(120% 160% at 50% -30%, rgba(120, 140, 180, 0.22), transparent 60%),
     linear-gradient(180deg, rgba(50, 57, 74, 0.9), rgba(30, 34, 46, 0.93) 55%, rgba(22, 25, 35, 0.95)),
+    /* "Glass tint" in settings darkens the glass further. */
+    rgba(6, 7, 10, calc(var(--glass-tint, 0.2) * 0.9)),
     rgba(22, 25, 35, 0.9);
   background-size: 100% 100%;
   box-shadow:
@@ -1531,6 +1533,33 @@ input,
   width: 17px;
   height: 3px;
   background: #ffffff;
+}
+
+.np-dot svg {
+  display: none;
+}
+
+/* "Page icons": hovering the dots turns them into small page icons. */
+.np-dots--icons:hover {
+  gap: 6px;
+}
+
+.np-dots--icons:hover .np-dot {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.np-dots--icons:hover .np-dot--active {
+  color: #1b1d24;
+  background: #ffffff;
+}
+
+.np-dots--icons:hover .np-dot svg {
+  display: block;
 }
 
 /* Lyrics take the place of the cover row. */
@@ -4225,4 +4254,19 @@ input,
     animation: none;
     transition: none;
   }
+}
+
+/* "Animation speed: Fast" in settings. */
+.stage--fast .island {
+  transition-duration: 300ms;
+}
+
+.stage--fast .island--expanded .island__expanded {
+  transition:
+    opacity 160ms ease 60ms,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1) 40ms;
+}
+
+.stage--fast .island__collapsed {
+  transition-delay: 60ms, 0s;
 }

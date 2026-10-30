@@ -199,6 +199,90 @@ export type Translations = {
     noteFallback: string;
   };
 
+  prefs: {
+    windowTitle: string;
+    close: string;
+    comingSoon: string;
+    pages: {
+      general: string;
+      statusRing: string;
+      display: string;
+      appearance: string;
+      music: string;
+      todo: string;
+      calendar: string;
+      pomodoro: string;
+      water: string;
+      home: string;
+      shelf: string;
+      hud: string;
+      about: string;
+    };
+    soon: {
+      statusRing: string;
+      calendar: string;
+      pomodoro: string;
+      water: string;
+      home: string;
+      shelf: string;
+      hud: string;
+    };
+    appearance: {
+      notchStyle: string;
+      classic: string;
+      classicHint: string;
+      floating: string;
+      floatingHint: string;
+      glass: string;
+      glassHint: string;
+      glassTint: string;
+      decrease: string;
+      increase: string;
+      notch: string;
+      openNotch: string;
+      hover: string;
+      click: string;
+      pageIcons: string;
+      pageIconsHint: string;
+      motion: string;
+      animationSpeed: string;
+      normal: string;
+      fast: string;
+    };
+    general: {
+      section: string;
+      language: string;
+      launchAtStartup: string;
+      launchAtStartupHint: string;
+      collapsedText: string;
+      idleTodoCount: string;
+    };
+    display: {
+      section: string;
+      collapsedScale: string;
+      expandedScale: string;
+      opacity: string;
+      marginY: string;
+    };
+    music: {
+      section: string;
+      lyrics: string;
+      lyricsHint: string;
+      player: string;
+      playerHint: string;
+    };
+    todo: {
+      section: string;
+      carryOver: string;
+      reorder: string;
+    };
+    about: {
+      tagline: string;
+      version: string;
+      basedOn: string;
+      github: string;
+    };
+  };
   settings: {
     messageReception: string;
     title: string;

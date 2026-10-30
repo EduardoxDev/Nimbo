@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDot,
+  Clipboard,
   ClipboardList,
   Columns2,
   Copy,
@@ -26,6 +27,8 @@ import {
   ImageIcon,
   Keyboard,
   Languages,
+  LayoutGrid,
+  ListTodo,
   MessageSquareQuote,
   Minus,
   Music,
@@ -39,6 +42,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Settings,
   Star,
   Trash2,
   Volume1,
@@ -183,7 +187,10 @@ type IslandPosition = {
   y: number;
 };
 
-type IslandSettings = {
+export type IslandOpenMode = "hover" | "click";
+export type AnimationSpeed = "normal" | "fast";
+
+export type IslandSettings = {
   topEdgeLayoutVersion: 1;
   appearanceMode: AppearanceMode;
   fontFamily: IslandFont;
@@ -202,6 +209,11 @@ type IslandSettings = {
   showIdleTodoCount: boolean;
   carryOverIncompleteTodos: boolean;
   enableTodoReorder: boolean;
+  openMode: IslandOpenMode;
+  showPageIcons: boolean;
+  animationSpeed: AnimationSpeed;
+  /** Darkness of the glass behind the open island, 0-100. */
+  glassTint: number;
 };
 
 type IslandPreset = {
@@ -235,10 +247,11 @@ type IslandShellProps = {
   onTuck: () => void;
   onReveal: () => void;
   onPageChange: (page: IslandPage) => void;
+  openOnHover: boolean;
   children: ReactNode;
 };
 
-const STORAGE_KEY = "nimbo-settings";
+export const STORAGE_KEY = "nimbo-settings";
 const COLLAPSED_TEXT_DEFAULT_MIGRATION_KEY =
   "nimbo-collapsed-text-default-v1";
 const FLOATING_DEFAULT_MIGRATION_KEY = "nimbo-floating-default-v1";
@@ -307,7 +320,7 @@ const DEFAULT_CLIPBOARD_HISTORY: ClipboardHistorySnapshot = {
   },
   items: [],
 };
-const DEFAULT_SETTINGS: IslandSettings = {
+export const DEFAULT_SETTINGS: IslandSettings = {
   topEdgeLayoutVersion: 1,
   appearanceMode: "liquidGlass",
   fontFamily: "system",
@@ -326,6 +339,10 @@ const DEFAULT_SETTINGS: IslandSettings = {
   showIdleTodoCount: true,
   carryOverIncompleteTodos: false,
   enableTodoReorder: false,
+  openMode: "hover",
+  showPageIcons: true,
+  animationSpeed: "normal",
+  glassTint: 20,
 };
 const LEGACY_DEFAULT_PRESET_IDS = new Set(["default-white", "default-khaki"]);
 const LEGACY_DEFAULT_PRESET_NAMES = new Set(["白色", "卡其"]);
@@ -572,7 +589,7 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
-function normalizeSettings(
+export function normalizeSettings(
   settings: LegacyIslandSettings | null | undefined,
 ): IslandSettings {
   const taskTextColor = getColorSetting(
@@ -658,6 +675,19 @@ function normalizeSettings(
       typeof settings?.enableTodoReorder === "boolean"
         ? settings.enableTodoReorder
         : DEFAULT_SETTINGS.enableTodoReorder,
+    openMode: settings?.openMode === "click" || settings?.openMode === "hover"
+      ? settings.openMode
+      : DEFAULT_SETTINGS.openMode,
+    showPageIcons:
+      typeof settings?.showPageIcons === "boolean"
+        ? settings.showPageIcons
+        : DEFAULT_SETTINGS.showPageIcons,
+    animationSpeed: settings?.animationSpeed === "fast" ? "fast" : "normal",
+    glassTint: clamp(
+      Math.round(Number(settings?.glassTint ?? DEFAULT_SETTINGS.glassTint) / 5) * 5,
+      0,
+      100,
+    ),
   };
 }
 
@@ -709,7 +739,7 @@ function getTodoVisualRows(todoList: TodoItem[]) {
   );
 }
 
-function loadSettings(): IslandSettings {
+export function loadSettings(): IslandSettings {
   const stored = window.localStorage.getItem(STORAGE_KEY);
 
   if (!stored) {
@@ -982,6 +1012,7 @@ export function IslandShell({
   onTuck,
   onReveal,
   onPageChange,
+  openOnHover,
   children,
 }: IslandShellProps) {
   const t = useTranslation();
@@ -1161,6 +1192,27 @@ export function IslandShell({
     windowDragRef.current = null;
   }, []);
 
+  // Hover mode: open after a short rest on the island, close a moment after leaving it.
+  const hoverTimerRef = useRef<number | undefined>(undefined);
+  const clearHoverTimer = () => window.clearTimeout(hoverTimerRef.current);
+  useEffect(() => clearHoverTimer, []);
+  const handleIslandEnter = () => {
+    if (isTucked) {
+      onReveal();
+      return;
+    }
+    clearHoverTimer();
+    if (openOnHover && !isExpanded) {
+      hoverTimerRef.current = window.setTimeout(() => onOpenPage(page), 160);
+    }
+  };
+  const handleIslandLeave = () => {
+    clearHoverTimer();
+    if (openOnHover && isExpanded) {
+      hoverTimerRef.current = window.setTimeout(onCollapse, 450);
+    }
+  };
+
   return (
     <section
       className={className}
@@ -1172,11 +1224,8 @@ export function IslandShell({
       }}
       onPointerMove={handleGlassPointerMove}
       onPointerLeave={resetGlassPointer}
-      onMouseEnter={() => {
-        if (isTucked) {
-          onReveal();
-        }
-      }}
+      onMouseEnter={handleIslandEnter}
+      onMouseLeave={handleIslandLeave}
     >
       <div className="island__surface">
         {isLiquidGlass && (
@@ -1333,6 +1382,20 @@ export function IslandShell({
             />
 
             <div className="window-actions">
+              <button
+                className="icon-button"
+                type="button"
+                title={t.prefs.windowTitle}
+                aria-label={t.prefs.windowTitle}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void invoke("open_settings_window").catch((error) =>
+                    console.error("Failed to open settings", error),
+                  );
+                }}
+              >
+                <Settings size={17} strokeWidth={1.9} aria-hidden="true" />
+              </button>
               <button
                 className="icon-button island-translate-button"
                 type="button"
@@ -2962,6 +3025,7 @@ type LyricsState =
 type IslandPageLink = {
   id: IslandPage;
   label: string;
+  icon: typeof Music;
 };
 
 /** Lyrics already fetched in this session, so revisiting a track never refetches. */
@@ -3003,6 +3067,7 @@ function MusicPlayerPanel({
   commandError,
   pages,
   currentPage,
+  showPageIcons,
   onPageChange,
   onPlayPause,
   onNext,
@@ -3014,6 +3079,7 @@ function MusicPlayerPanel({
   commandError: string | null;
   pages: IslandPageLink[];
   currentPage: IslandPage;
+  showPageIcons: boolean;
   onPageChange: (page: IslandPage) => void;
   onPlayPause: () => void;
   onNext: () => void;
@@ -3389,17 +3455,22 @@ function MusicPlayerPanel({
           </button>
         </div>
 
-        <nav className="np-dots" aria-label={t.island.editor}>
-          {pages.map((link) => (
+        <nav
+          className={`np-dots${showPageIcons ? " np-dots--icons" : ""}`}
+          aria-label={t.island.editor}
+        >
+          {pages.map(({ id, label, icon: PageIcon }) => (
             <button
-              key={link.id}
-              className={`np-dot${link.id === currentPage ? " np-dot--active" : ""}`}
+              key={id}
+              className={`np-dot${id === currentPage ? " np-dot--active" : ""}`}
               type="button"
-              title={link.label}
-              aria-label={link.label}
-              aria-current={link.id === currentPage ? "page" : undefined}
-              onClick={() => onPageChange(link.id)}
-            />
+              title={label}
+              aria-label={label}
+              aria-current={id === currentPage ? "page" : undefined}
+              onClick={() => onPageChange(id)}
+            >
+              {showPageIcons && <PageIcon size={12} strokeWidth={2.2} aria-hidden="true" />}
+            </button>
           ))}
         </nav>
       </div>
@@ -4160,6 +4231,7 @@ function IslandApp({
 
       return ({
         "--island-opacity": settings.opacity / 100,
+        "--glass-tint": settings.glassTint / 100,
         "--island-scale": mode === "collapsed" ? settings.collapsedScale : settings.expandedScale,
         "--collapsed-island-width": `${collapsedIslandWidth}px`,
         "--expanded-island-height": `${expandedIslandHeight}px`,
@@ -5250,8 +5322,28 @@ function IslandApp({
   }, [saveDirectory]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    const serialized = JSON.stringify(settings);
+    // Skip identical writes so the settings window and the island do not echo each other.
+    if (window.localStorage.getItem(STORAGE_KEY) !== serialized) {
+      window.localStorage.setItem(STORAGE_KEY, serialized);
+    }
   }, [settings]);
+
+  useEffect(() => {
+    const syncSettings = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      try {
+        const next = normalizeSettings(JSON.parse(event.newValue));
+        setSettings((current) =>
+          JSON.stringify(current) === JSON.stringify(next) ? current : next,
+        );
+      } catch {
+        // A half-written value from another window is ignored; the next write fixes it.
+      }
+    };
+    window.addEventListener("storage", syncSettings);
+    return () => window.removeEventListener("storage", syncSettings);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -5534,7 +5626,12 @@ function IslandApp({
   }, []);
 
   return (
-    <main className={`stage stage--font-${settings.fontFamily}`} style={stageStyle}>
+    <main
+      className={`stage stage--font-${settings.fontFamily}${
+        settings.animationSpeed === "fast" ? " stage--fast" : ""
+      }`}
+      style={stageStyle}
+    >
       <IslandShell
         mode={mode}
         page={page}
@@ -5558,6 +5655,7 @@ function IslandApp({
         onTuck={tuckIsland}
         onReveal={revealIsland}
         onPageChange={setPage}
+        openOnHover={settings.openMode === "hover"}
       >
         {page === "layout" && (
           <LayoutEditor
@@ -5601,12 +5699,13 @@ function IslandApp({
             onPrevious={() => void runMediaCommand("media_previous")}
             onRefresh={refreshMediaState}
             pages={[
-              { id: "todo", label: t.island.todoList },
-              { id: "music", label: t.island.music },
-              { id: "clipboard", label: t.island.clipboardHistory },
-              { id: "layout", label: t.island.layoutEditor },
+              { id: "todo", label: t.island.todoList, icon: ListTodo },
+              { id: "music", label: t.island.music, icon: Music },
+              { id: "clipboard", label: t.island.clipboardHistory, icon: Clipboard },
+              { id: "layout", label: t.island.layoutEditor, icon: LayoutGrid },
             ]}
             currentPage={page}
+            showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
           />
         )}
