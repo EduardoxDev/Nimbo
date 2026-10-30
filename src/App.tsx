@@ -13,6 +13,7 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  Archive,
   Bot,
   Check,
   ChevronLeft,
@@ -84,6 +85,9 @@ import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
 import { ProgressRing } from "./island/PageChrome";
 import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
+import { ShelfPanel } from "./shelf/ShelfPanel";
+import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
+import "./shelf/Shelf.css";
 import { AgentsPanel } from "./agents/AgentsPanel";
 import { AssistantPanel } from "./assistant/AssistantPanel";
 import { ASSISTANT_DEMO, useAssistant, type ToolExecutor } from "./assistant/useAssistant";
@@ -106,7 +110,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "assistant" | "music" | "home" | "focus" | "water" | "agents" | "clipboard" | "layout";
+type IslandPage = "todo" | "assistant" | "music" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -4249,7 +4253,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4257,7 +4261,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4411,6 +4415,10 @@ function IslandApp({
     }).catch(() => {});
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
+  const shelf = useShelf({
+    onDragEnter: () => openIslandPageRef.current?.("shelf"),
+    onAdded: (count) => setAgentNotice({ text: t.shelf.added(count), until: Date.now() + 5_000 }),
+  });
   const islandHud = useHud({
     volume: settings.hudVolume,
     brightness: settings.hudBrightness,
@@ -4497,7 +4505,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents"
+        : page === "agents" || page === "shelf"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
@@ -4877,16 +4885,19 @@ function IslandApp({
     { id: "home", label: t.home.title, icon: House },
     { id: "focus", label: t.focus.title, icon: Timer },
     { id: "water", label: t.water.title, icon: Droplet },
+    { id: "shelf", label: t.shelf.title, icon: Archive },
     { id: "agents", label: t.agents.title, icon: Bot },
     { id: "clipboard", label: t.island.clipboardTab, icon: Clipboard },
     { id: "layout", label: t.island.layoutTab, icon: SlidersHorizontal },
   ];
 
+  const openIslandPageRef = useRef<((page: IslandPage) => void) | null>(null);
   const openIslandPage = useCallback((nextPage: IslandPage) => {
     setPage(nextPage);
     setMode("expanded");
     setIsTucked(false);
   }, []);
+  openIslandPageRef.current = openIslandPage;
 
   const openClipboardHistory = useCallback(() => {
     openIslandPage("clipboard");
@@ -6160,6 +6171,21 @@ function IslandApp({
               })
             }
             onReset={assistant.reset}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "shelf" && (
+          <ShelfPanel
+            items={shelf.items}
+            isDragOver={shelf.isDragOver}
+            error={shelf.error}
+            onRemove={(id) => void shelf.remove(id)}
+            onOpen={shelf.open}
+            onReveal={shelf.reveal}
+            onDragOut={shelf.dragOut}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

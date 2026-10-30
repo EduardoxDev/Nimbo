@@ -50,7 +50,7 @@ type PageId =
   | "agents"
   | "about";
 
-type SoonPage = "calendar" | "shelf";
+type SoonPage = "calendar";
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -69,7 +69,7 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "agents", icon: Bot, color: "#bf5af2" },
 ];
 
-const SOON_PAGES = new Set<PageId>(["calendar", "shelf"]);
+const SOON_PAGES = new Set<PageId>(["calendar"]);
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
 const PAGE_STORAGE_KEY = SETTINGS_PAGE_STORAGE_KEY;
@@ -200,6 +200,7 @@ export default function SettingsWindow() {
           {page === "pomodoro" && <PomodoroPage settings={settings} update={update} />}
           {page === "water" && <WaterPage settings={settings} update={update} />}
           {page === "hud" && <HudPage settings={settings} update={update} />}
+          {page === "shelf" && <ShelfPage />}
           {page === "about" && <AboutPage />}
           {SOON_PAGES.has(page) && <SoonPageView page={page as SoonPage} />}
         </div>
@@ -651,6 +652,29 @@ function HudPage({ settings, update }: PageProps) {
       {toggle(copy.track, copy.trackHint, "hudTrack")}
       {toggle(copy.wheel, copy.wheelHint, "wheelVolume")}
       <p className="prefs-card__hint prefs-card__hint--bottom">{copy.note}</p>
+    </Section>
+  );
+}
+
+function ShelfPage() {
+  const copy = useTranslation().prefs.shelfPrefs;
+  const [cleared, setCleared] = useState(false);
+  return (
+    <Section title={copy.section}>
+      <p className="prefs-card__hint prefs-card__hint--bottom">{copy.hint}</p>
+      <Row title={cleared ? copy.cleared : copy.clear}>
+        <button
+          className="prefs-button prefs-button--quiet"
+          type="button"
+          disabled={cleared}
+          onClick={() => {
+            if (!isTauri()) return;
+            void invoke("shelf_remove", { id: null }).then(() => setCleared(true));
+          }}
+        >
+          {copy.clear}
+        </button>
+      </Row>
     </Section>
   );
 }

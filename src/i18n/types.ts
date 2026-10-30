@@ -303,6 +303,22 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  shelf: {
+    title: string;
+    emptyTitle: string;
+    emptyHint: string;
+    dropHere: string;
+    dropHint: string;
+    count: (count: number) => string;
+    added: (count: number) => string;
+    dragOutHint: string;
+    openHint: string;
+    reveal: string;
+    remove: string;
+    clear: string;
+    missing: string;
+    folder: string;
+  };
   prefs: {
     windowTitle: string;
     close: string;
@@ -496,6 +512,12 @@ export type Translations = {
       wheel: string;
       wheelHint: string;
       note: string;
+    };
+    shelfPrefs: {
+      section: string;
+      hint: string;
+      clear: string;
+      cleared: string;
     };
     about: {
       tagline: string;

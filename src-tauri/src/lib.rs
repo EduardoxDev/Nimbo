@@ -6,6 +6,7 @@ mod home_assistant;
 mod hud;
 mod ir_climate;
 mod lyrics;
+mod shelf;
 mod media_control;
 mod translation;
 
@@ -1752,6 +1753,7 @@ pub fn run() {
             let _ = show_island(app);
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_drag::init())
         .on_window_event(|window, event| {
             if window.label() == "translation" || window.label() == SETTINGS_WINDOW_LABEL {
                 if let WindowEvent::CloseRequested { api, .. } = event {
@@ -1836,6 +1838,12 @@ pub fn run() {
             assistant::assistant_save_key,
             assistant::assistant_delete_key,
             assistant::assistant_step,
+            shelf::shelf_list,
+            shelf::shelf_add,
+            shelf::shelf_remove,
+            shelf::shelf_open,
+            shelf::shelf_reveal,
+            shelf::shelf_drag_icon,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,

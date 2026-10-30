@@ -1067,21 +1067,21 @@ input,
 
 /* ---------- Now playing: the whole island becomes the player ----------
    Sizes are measured from the reference shot and scaled to a 560 px island. */
-.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) .island__header {
+.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) .island__header {
   display: none;
 }
 
-.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) .island__expanded {
+.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) .island__expanded {
   gap: 0;
   padding: 0;
 }
 
-.island--detached.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) {
+.island--detached.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) {
   border-radius: 30px;
 }
 
 /* Dark frosted glass, a touch lighter at the top like the reference. */
-.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) {
+.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) {
   background:
     radial-gradient(120% 160% at 50% -30%, rgba(120, 140, 180, 0.22), transparent 60%),
     linear-gradient(180deg, rgba(50, 57, 74, 0.9), rgba(30, 34, 46, 0.93) 55%, rgba(22, 25, 35, 0.95)),
@@ -1096,11 +1096,11 @@ input,
 }
 
 /* The liquid-glass sheen draws an inner frame the reference does not have. */
-.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) .island__glass {
+.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) .island__glass {
   opacity: 0;
 }
 
-.island--appearance-liquidGlass.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant) .island__surface::after {
+.island--appearance-liquidGlass.island--expanded:is(.island--music, .island--home, .island--focus, .island--water, .island--agents, .island--assistant, .island--shelf) .island__surface::after {
   content: "";
   position: absolute;
   inset: 0;
