@@ -381,6 +381,8 @@ const en: Translations = {
       expandedScale: "Open notch size",
       opacity: "Opacity",
       marginY: "Distance from the top",
+      hideInFullscreen: "Hide in full screen",
+      hideInFullscreenHint: "Hides during full-screen games, videos and presentations and comes back when they close",
     },
     music: {
       section: "Music",

@@ -2,6 +2,7 @@ mod agents;
 mod assistant;
 mod broadlink;
 mod clipboard_history;
+mod fullscreen;
 mod home_assistant;
 mod hud;
 mod ir_climate;
@@ -57,6 +58,7 @@ const TUCKED_VISIBLE_EDGE_HEIGHT: f64 = 10.0;
 const POSITION_ANIMATION_DURATION: Duration = Duration::from_millis(320);
 const STARTUP_REGISTRY_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
 const STARTUP_REGISTRY_VALUE: &str = "Nimbo";
+const STARTUP_INITIALIZED_FILE_NAME: &str = "startup-initialized";
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const AGENT_STATUS_FILE_NAME: &str = "agent-status.json";
 const CODEX_RUNNING_MARKER_FILE_NAME: &str = "agent-codex-running.flag";
@@ -458,6 +460,25 @@ fn set_launch_at_startup(enabled: bool) -> Result<(), String> {
     } else {
         Err("Startup registry command failed.".to_string())
     }
+}
+
+fn keep_launch_at_startup_current(app: AppHandle) {
+    if cfg!(debug_assertions) {
+        return;
+    }
+    thread::spawn(move || {
+        let Ok(dir) = app.path().app_data_dir() else {
+            return;
+        };
+        let marker = dir.join(STARTUP_INITIALIZED_FILE_NAME);
+        let first_run = !marker.exists();
+        if first_run || get_launch_at_startup().unwrap_or(false) {
+            if set_launch_at_startup(true).is_ok() && first_run {
+                let _ = fs::create_dir_all(&dir);
+                let _ = fs::write(marker, "");
+            }
+        }
+    });
 }
 
 #[tauri::command]
@@ -1717,9 +1738,13 @@ fn build_tray(app: &App) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
+                fullscreen::user_changed_visibility();
                 let _ = show_island(app);
             }
-            "hide" => hide_island(app),
+            "hide" => {
+                fullscreen::user_changed_visibility();
+                hide_island(app);
+            }
             "settings" => {
                 let _ = open_settings_window(app.clone());
             }
@@ -1733,6 +1758,7 @@ fn build_tray(app: &App) -> tauri::Result<()> {
                 ..
             } = event
             {
+                fullscreen::user_changed_visibility();
                 let _ = show_island(tray.app_handle());
             }
         });
@@ -1750,6 +1776,7 @@ pub fn run() {
     let context = tauri::generate_context!();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            fullscreen::user_changed_visibility();
             let _ = show_island(app);
         }))
         .plugin(tauri_plugin_opener::init())
@@ -1782,6 +1809,8 @@ pub fn run() {
             translation::init(app.handle());
             agents::init(app.handle());
             hud::init(app.handle());
+            fullscreen::init(app.handle());
+            keep_launch_at_startup_current(app.handle().clone());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
                     eprintln!("failed to size and position island window: {error}");
@@ -1802,6 +1831,7 @@ pub fn run() {
             minimize_island,
             get_launch_at_startup,
             set_launch_at_startup,
+            fullscreen::set_hide_in_fullscreen,
             get_agent_status,
             clear_agent_status,
             install_agent_status_hooks,

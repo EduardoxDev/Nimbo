@@ -384,6 +384,8 @@ const zhCN: Translations = {
       expandedScale: "展开尺寸",
       opacity: "不透明度",
       marginY: "距顶部距离",
+      hideInFullscreen: "全屏时隐藏",
+      hideInFullscreenHint: "全屏游戏、视频和演示时自动隐藏，退出后恢复",
     },
     music: {
       section: "音乐",

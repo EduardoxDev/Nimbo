@@ -487,6 +487,13 @@ function DisplayPage({ settings, update }: PageProps) {
           onChange={(marginY) => update({ marginY })}
         />
       </Row>
+      <Row title={copy.hideInFullscreen} hint={copy.hideInFullscreenHint}>
+        <Toggle
+          label={copy.hideInFullscreen}
+          checked={settings.hideInFullscreen}
+          onChange={(hideInFullscreen) => update({ hideInFullscreen })}
+        />
+      </Row>
     </Section>
   );
 }

@@ -119,9 +119,9 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 ### Fase A — Base sólida (antes de crescer)
 | # | Melhoria | Por quê | Tam. |
 |---|---|---|---|
-| A1 | **Iniciar com o Windows** (`tauri-plugin-autostart`), opção em Geral | Hoje a ilha some depois de reiniciar o PC | P |
+| A1 | ✅ **Iniciar com o Windows** (`tauri-plugin-autostart`), opção em Geral | Hoje a ilha some depois de reiniciar o PC | P |
 | A2 | **Atualização automática** (`tauri-plugin-updater` + GitHub Releases, assinatura própria do updater, grátis) | Sem isso, cada versão nova exige baixar e instalar de novo na mão | M |
-| A3 | **Tela cheia e jogos**: esconder a ilha quando um app está em tela cheia (vídeo, jogo, apresentação) | A ilha por cima de jogo/filme incomoda e pode atrapalhar cliques | P |
+| A3 | ✅ **Tela cheia e jogos**: esconder a ilha quando um app está em tela cheia (vídeo, jogo, apresentação) | A ilha por cima de jogo/filme incomoda e pode atrapalhar cliques | P |
 | A4 | **Vários monitores**: escolher o monitor, ou seguir o monitor do mouse; testar DPI 100/125/150% | Risco já anotado na seção 5 e nunca testado | M |
 | A5 | **Leveza**: medir CPU/RAM parado, pausar animações e consultas quando a ilha está fechada ou oculta | App de fundo tem que ser quase invisível no Gerenciador de Tarefas | M |
 | A6 | **Quebrar arquivos gigantes**: `App.tsx` (6.265 linhas), `App.css` (4.483), `lib.rs` (1.866) em módulos por página | Cada mudança fica mais lenta e arriscada; facilita plugins depois | G |
@@ -160,7 +160,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | D5 | **Revisar inglês e chinês** com quem fala a língua | Textos foram escritos sem revisão nativa | P |
 
 ### Ordem sugerida
-1. **A1 + A3** (rápidos e o uso diário melhora na hora).
+1. ✅ **A1 + A3** — liga sozinho na primeira abertura, o desinstalador limpa o registro; a ilha some em tela cheia no mesmo monitor (Configurações → Tela).
 2. **A2 + A8** (atualizar sem reinstalar, com testes automáticos).
 3. **B1 Agenda** e **B2 Tradução** (fecha as pontas soltas).
 4. **A6** (organizar o código antes das features grandes).

@@ -247,6 +247,7 @@ export type IslandSettings = {
   showTitle: boolean;
   showCollapsedText: boolean;
   showIdleTodoCount: boolean;
+  hideInFullscreen: boolean;
   carryOverIncompleteTodos: boolean;
   enableTodoReorder: boolean;
   openMode: IslandOpenMode;
@@ -417,6 +418,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   showTitle: false,
   showCollapsedText: true,
   showIdleTodoCount: true,
+  hideInFullscreen: true,
   carryOverIncompleteTodos: false,
   enableTodoReorder: false,
   openMode: "hover",
@@ -757,6 +759,10 @@ export function normalizeSettings(
       typeof settings?.showCollapsedText === "boolean"
         ? settings.showCollapsedText
         : DEFAULT_SETTINGS.showCollapsedText,
+    hideInFullscreen:
+      typeof settings?.hideInFullscreen === "boolean"
+        ? settings.hideInFullscreen
+        : DEFAULT_SETTINGS.hideInFullscreen,
     showIdleTodoCount:
       typeof settings?.showIdleTodoCount === "boolean"
         ? settings.showIdleTodoCount
@@ -4296,6 +4302,13 @@ function IslandApp({
     expiresAt: number;
   } | null>(null);
   const [settings, setSettings] = useState<IslandSettings>(loadSettings);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("set_hide_in_fullscreen", { enabled: settings.hideInFullscreen }).catch(
+      (error) => console.error("Failed to update hide in full screen", error),
+    );
+  }, [settings.hideInFullscreen]);
   const [nativeGlassState, setNativeGlassState] =
     useState<NativeGlassState>("disabled");
   const [launchAtStartup, setLaunchAtStartup] = useState(false);

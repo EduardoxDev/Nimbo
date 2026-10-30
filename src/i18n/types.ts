@@ -384,6 +384,8 @@ export type Translations = {
       expandedScale: string;
       opacity: string;
       marginY: string;
+      hideInFullscreen: string;
+      hideInFullscreenHint: string;
     };
     music: {
       section: string;
