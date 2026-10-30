@@ -128,6 +128,17 @@ const en: Translations = {
     pause: "Pause",
     next: "Next",
     nextTrack: "Next track",
+    lyrics: "Lyrics",
+    hideLyrics: "Back to cover",
+    loadingLyrics: "Looking for lyrics…",
+    noLyrics: "No lyrics found",
+    lyricsError: "Couldn't fetch the lyrics",
+    instrumental: "Instrumental track",
+    volume: "Volume",
+    mute: "Mute",
+    unmute: "Unmute",
+    seek: "Track position",
+    emptyHint: "Play something in Spotify, YouTube or another player",
   },
 
   todo: {

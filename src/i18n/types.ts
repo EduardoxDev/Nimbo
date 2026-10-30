@@ -130,6 +130,17 @@ export type Translations = {
     pause: string;
     next: string;
     nextTrack: string;
+    lyrics: string;
+    hideLyrics: string;
+    loadingLyrics: string;
+    noLyrics: string;
+    lyricsError: string;
+    instrumental: string;
+    volume: string;
+    mute: string;
+    unmute: string;
+    seek: string;
+    emptyHint: string;
   };
 
   todo: {

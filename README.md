@@ -23,7 +23,9 @@ npm run tauri build -- --no-bundle
 ## O que já funciona
 
 - Ilha fechada e aberta, nos estilos clássico (colada no topo) e vidro (flutuante).
-- Player de música do Windows (qualquer app que apareça no controle de mídia: Spotify, YouTube no navegador…).
+- Player de música do Windows (qualquer app que apareça no controle de mídia: Spotify, YouTube no navegador…):
+  capa, título, artista e álbum, barra de progresso (clique para pular), volume do sistema e
+  letras sincronizadas do [LRCLIB](https://lrclib.net) (só título, artista, álbum e duração saem do PC).
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
 - Tradução rápida (DeepSeek, com chave do próprio usuário).

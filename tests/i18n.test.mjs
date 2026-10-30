@@ -8,8 +8,10 @@ test("locale detection respects language preference order and regional tags", ()
   assert.equal(detectLocale(["zh-Hant-TW", "en-GB"]), "zh-CN");
   assert.equal(detectLocale(["fr-FR", "EN-gb"]), "en");
   assert.equal(detectLocale(["ZH-cn"]), "zh-CN");
-  assert.equal(detectLocale(["de-DE"]), "zh-CN");
-  assert.equal(detectLocale([]), "zh-CN");
+  assert.equal(detectLocale(["pt-PT", "en-US"]), "pt-BR");
+  assert.equal(detectLocale(["PT-br"]), "pt-BR");
+  assert.equal(detectLocale(["de-DE"]), "pt-BR");
+  assert.equal(detectLocale([]), "pt-BR");
 });
 
 test("stored locale validation rejects prototype keys and malformed values", () => {
@@ -39,11 +41,13 @@ test("saved preferences override the system while unavailable storage falls back
   } finally {
     if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
     else delete globalThis.window;
-    Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+    // Node 20 has no global navigator, so there may be nothing to restore.
+    if (navigatorDescriptor) Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+    else delete globalThis.navigator;
   }
 });
 
-test("both dictionaries have complete, nonempty copy including new panels", () => {
+test("all dictionaries have complete, nonempty copy including new panels", () => {
   function entries(value, prefix = "") {
     return Object.entries(value).flatMap(([key, item]) => typeof item === "object"
       ? entries(item, `${prefix}${key}.`)
@@ -51,12 +55,16 @@ test("both dictionaries have complete, nonempty copy including new panels", () =
   }
   const zh = entries(TRANSLATIONS["zh-CN"]);
   const en = entries(TRANSLATIONS.en);
+  const pt = entries(TRANSLATIONS["pt-BR"]);
   assert.deepEqual(zh.map(([key]) => key), en.map(([key]) => key));
-  for (const [key, value] of [...zh, ...en]) {
+  assert.deepEqual(pt.map(([key]) => key), en.map(([key]) => key));
+  for (const [key, value] of [...zh, ...en, ...pt]) {
     assert.ok(typeof value === "function" || typeof value === "string" && value.trim(), key);
   }
   assert.equal(TRANSLATIONS.en.island.pendingTodos(1), "1 todo left");
   assert.equal(TRANSLATIONS.en.island.pendingTodos(2), "2 todos left");
+  assert.equal(TRANSLATIONS["pt-BR"].island.pendingTodos(0), "Nenhuma tarefa pendente");
+  assert.equal(TRANSLATIONS["pt-BR"].island.pendingTodos(3), "Faltam 3 tarefas");
 });
 
 test("narrow scripts do not inflate island sizing and wide scripts still wrap", () => {

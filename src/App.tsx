@@ -23,7 +23,9 @@ import {
   ImageIcon,
   Keyboard,
   Languages,
+  MessageSquareQuote,
   Minus,
+  Music,
   NotebookPen,
   Pencil,
   Pause,
@@ -37,6 +39,9 @@ import {
   SkipForward,
   Star,
   Trash2,
+  Volume1,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -53,6 +58,7 @@ import {
   type Translations,
 } from "./i18n";
 import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
+import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
 import "./App.css";
 import "./IslandSummary.css";
 
@@ -95,6 +101,13 @@ type MediaState = {
   audioPeak: number;
   playbackStatus: MediaPlaybackStatus;
   updatedAt: number;
+  title: string | null;
+  artist: string | null;
+  albumTitle: string | null;
+  sourceApp: string | null;
+  positionMs: number | null;
+  durationMs: number | null;
+  canSeek: boolean;
 };
 
 type ClipboardHistorySettings = {
@@ -241,7 +254,7 @@ const MIN_COLLAPSED_TEXT_UNITS = 2;
 const MAX_COLLAPSED_TEXT_UNITS = 12;
 const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
-const MUSIC_EXPANDED_ISLAND_HEIGHT = 286;
+const MUSIC_EXPANDED_ISLAND_HEIGHT = 316;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -257,6 +270,13 @@ const DEFAULT_MEDIA_STATE: MediaState = {
   audioPeak: 0,
   playbackStatus: "unavailable",
   updatedAt: 0,
+  title: null,
+  artist: null,
+  albumTitle: null,
+  sourceApp: null,
+  positionMs: null,
+  durationMs: null,
+  canSeek: false,
 };
 const DEFAULT_AGENT_TASK_STATUS: AgentTaskStatus = {
   phase: "idle",
@@ -2907,6 +2927,56 @@ function ArchiveBrowser({
   );
 }
 
+type SystemVolume = {
+  level: number;
+  muted: boolean;
+};
+
+type LyricsAnswer = {
+  synced: string | null;
+  plain: string | null;
+  instrumental: boolean;
+};
+
+type LyricsState =
+  | { status: "loading" }
+  | { status: "missing" }
+  | { status: "error" }
+  | { status: "ready"; lines: LyricLine[]; plain: string[]; instrumental: boolean };
+
+/** Lyrics already fetched in this session, so revisiting a track never refetches. */
+const lyricsCache = new Map<string, LyricsState>();
+
+function trackKeyOf(mediaState: MediaState): string | null {
+  if (!mediaState.title) return null;
+  return [mediaState.title, mediaState.artist ?? "", mediaState.albumTitle ?? ""].join("␟");
+}
+
+function toLyricsState(answer: LyricsAnswer | null): LyricsState {
+  if (!answer) return { status: "missing" };
+  const lines = answer.synced ? parseLrc(answer.synced) : [];
+  const plain = answer.plain
+    ? answer.plain.split(/\r?\n/).map((line) => line.trim())
+    : [];
+  if (!answer.instrumental && lines.length === 0 && plain.every((line) => !line)) {
+    return { status: "missing" };
+  }
+  return { status: "ready", lines, plain, instrumental: answer.instrumental };
+}
+
+function useTicker(isActive: boolean, intervalMs: number) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+    if (!isActive) return;
+    const interval = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(interval);
+  }, [isActive, intervalMs]);
+
+  return now;
+}
+
 function MusicPlayerPanel({
   mediaState,
   isTrackChanging,
@@ -2914,6 +2984,7 @@ function MusicPlayerPanel({
   onPlayPause,
   onNext,
   onPrevious,
+  onRefresh,
 }: {
   mediaState: MediaState;
   isTrackChanging: boolean;
@@ -2921,11 +2992,158 @@ function MusicPlayerPanel({
   onPlayPause: () => void;
   onNext: () => void;
   onPrevious: () => void;
+  onRefresh: () => Promise<void>;
 }) {
   const t = useTranslation();
   const isPlaying = mediaState.playbackStatus === "playing";
   const isPaused = mediaState.playbackStatus === "paused";
+  const hasTrack = Boolean(mediaState.title);
   const hasAudioSignal = mediaState.available || mediaState.audioActive;
+  const trackKey = trackKeyOf(mediaState);
+  const now = useTicker(true, isPlaying ? 250 : 1000);
+  const [artwork, setArtwork] = useState<string | null>(null);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [lyrics, setLyrics] = useState<LyricsState | null>(null);
+  const [volume, setVolume] = useState<SystemVolume | null>(null);
+  const [scrubMs, setScrubMs] = useState<number | null>(null);
+  const lyricsListRef = useRef<HTMLOListElement | null>(null);
+
+  const durationMs = mediaState.durationMs ?? 0;
+  const hasTimeline = durationMs > 0 && mediaState.positionMs !== null;
+  const livePositionMs = hasTimeline
+    ? clamp(
+        (mediaState.positionMs ?? 0) +
+          (isPlaying ? Math.max(0, now - mediaState.updatedAt) : 0),
+        0,
+        durationMs,
+      )
+    : 0;
+  const positionMs = scrubMs ?? livePositionMs;
+  const progress = hasTimeline ? positionMs / durationMs : 0;
+
+  useEffect(() => {
+    setArtwork(null);
+    if (!trackKey || !isTauri()) return;
+
+    let didCancel = false;
+    let retry: number | undefined;
+    const load = async (attempt: number) => {
+      try {
+        const image = await invoke<string | null>("get_media_artwork");
+        if (didCancel) return;
+        // Players often publish the cover a moment after the title.
+        if (!image && attempt === 0) {
+          retry = window.setTimeout(() => void load(1), 1500);
+          return;
+        }
+        setArtwork(image);
+      } catch (error) {
+        console.error("Failed to read album art", error);
+      }
+    };
+    void load(0);
+
+    return () => {
+      didCancel = true;
+      window.clearTimeout(retry);
+    };
+  }, [trackKey]);
+
+  useEffect(() => {
+    const query = mediaState.title
+      ? lyricsQueryFor(mediaState.title, mediaState.artist)
+      : null;
+    if (!trackKey || !query) {
+      setLyrics(trackKey ? { status: "missing" } : null);
+      return;
+    }
+    const cached = lyricsCache.get(trackKey);
+    if (cached) {
+      setLyrics(cached);
+      return;
+    }
+    if (!isTauri()) return;
+
+    let didCancel = false;
+    setLyrics({ status: "loading" });
+    invoke<LyricsAnswer | null>("fetch_lyrics", {
+      title: query.title,
+      artist: query.artist,
+      album: mediaState.albumTitle,
+      durationMs: mediaState.durationMs,
+    })
+      .then((answer) => {
+        const next = toLyricsState(answer);
+        lyricsCache.set(trackKey, next);
+        if (!didCancel) setLyrics(next);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch lyrics", error);
+        if (!didCancel) setLyrics({ status: "error" });
+      });
+
+    return () => {
+      didCancel = true;
+    };
+    // The key already captures title, artist and album.
+  }, [trackKey]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    invoke<SystemVolume>("get_system_volume")
+      .then(setVolume)
+      .catch((error) => console.error("Failed to read the system volume", error));
+  }, []);
+
+  const activeLine =
+    lyrics?.status === "ready" ? activeLyricIndex(lyrics.lines, positionMs + 250) : -1;
+
+  useEffect(() => {
+    const list = lyricsListRef.current;
+    if (!showLyrics || !list) return;
+    const line = list.children[Math.max(0, activeLine)] as HTMLElement | undefined;
+    if (!line) return;
+    list.scrollTo({
+      top: line.offsetTop - list.clientHeight / 2 + line.clientHeight / 2,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [activeLine, showLyrics]);
+
+  const commitSeek = async () => {
+    if (scrubMs === null) return;
+    const target = scrubMs;
+    try {
+      await invoke<boolean>("media_seek", { positionMs: Math.round(target) });
+      await onRefresh();
+    } catch (error) {
+      console.error("Failed to seek", error);
+    } finally {
+      setScrubMs(null);
+    }
+  };
+
+  const changeVolume = async (next: SystemVolume) => {
+    setVolume(next);
+    try {
+      setVolume(await invoke<SystemVolume>("set_system_volume", { ...next }));
+    } catch (error) {
+      console.error("Failed to change the system volume", error);
+    }
+  };
+
+  const dateLabel = new Intl.DateTimeFormat(t.localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(now);
+  const timeLabel = new Intl.DateTimeFormat(t.localeTag, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(now);
+  const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" - ");
   const statusLabel = commandError
     ? t.music.controlFailed
     : isPaused
@@ -2933,10 +3151,8 @@ function MusicPlayerPanel({
       : isPlaying
         ? t.music.playing
         : t.music.noMedia;
-  const peakPercent = Math.round(
-    clamp(Math.log1p(mediaState.audioPeak * 160) / Math.log1p(160), 0, 1) *
-      100,
-  );
+  const volumeLevel = volume?.muted ? 0 : (volume?.level ?? 0);
+  const VolumeIcon = volumeLevel === 0 ? VolumeX : volumeLevel < 0.5 ? Volume1 : Volume2;
 
   return (
     <section
@@ -2944,63 +3160,187 @@ function MusicPlayerPanel({
         "music-player",
         hasAudioSignal ? "" : "music-player--empty",
         isPaused ? "music-player--paused" : "",
+        showLyrics ? "music-player--lyrics" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       aria-label={t.music.playerLabel}
       title={commandError ?? undefined}
     >
-      <div className="music-player__signal">
-        <div className="music-player__status">
-          <span aria-live="polite">{statusLabel}</span>
-          <strong>{peakPercent}%</strong>
+      {showLyrics ? (
+        <div className="music-lyrics">
+          <div className="music-lyrics__heading">
+            <strong>{mediaState.title ?? t.music.noMedia}</strong>
+            {mediaState.artist && <span>{mediaState.artist}</span>}
+          </div>
+          {lyrics?.status === "ready" && lyrics.lines.length > 0 ? (
+            <ol className="music-lyrics__lines" ref={lyricsListRef} aria-live="off">
+              {lyrics.lines.map((line, index) => (
+                <li
+                  key={`${line.timeMs}-${index}`}
+                  className={[
+                    "music-lyrics__line",
+                    index === activeLine ? "music-lyrics__line--active" : "",
+                    index < activeLine ? "music-lyrics__line--past" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {line.text || "♪"}
+                </li>
+              ))}
+            </ol>
+          ) : lyrics?.status === "ready" && !lyrics.instrumental ? (
+            <ol className="music-lyrics__lines music-lyrics__lines--plain" ref={lyricsListRef}>
+              {lyrics.plain.map((line, index) => (
+                <li key={index} className="music-lyrics__line">{line || " "}</li>
+              ))}
+            </ol>
+          ) : (
+            <p className="music-lyrics__empty" role="status">
+              {lyrics?.status === "loading"
+                ? t.music.loadingLyrics
+                : lyrics?.status === "error"
+                  ? t.music.lyricsError
+                  : lyrics?.status === "ready"
+                    ? t.music.instrumental
+                    : t.music.noLyrics}
+            </p>
+          )}
         </div>
-        <MusicLevelWave
-          isAvailable={hasAudioSignal}
-          isPlaying={isPlaying}
-          audioPeak={mediaState.audioPeak}
+      ) : (
+        <div className="music-player__now">
+          <div className="music-player__artwork" aria-hidden="true">
+            {artwork ? <img src={artwork} alt="" draggable={false} /> : <Music size={30} strokeWidth={1.8} />}
+          </div>
+          <div className="music-player__meta">
+            <div className="music-player__clock">
+              <span className="music-player__status-dot" aria-hidden="true" />
+              <span>{dateLabel}</span>
+              <strong>{timeLabel}</strong>
+              <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
+            </div>
+            <strong className="music-player__title">
+              {hasTrack ? mediaState.title : t.music.noMedia}
+            </strong>
+            <span className="music-player__subtitle">
+              {hasTrack ? subtitle : t.music.emptyHint}
+            </span>
+          </div>
+          <div className="music-player__mini-wave">
+            <MusicLevelWave
+              isAvailable={hasAudioSignal}
+              isPlaying={isPlaying}
+              audioPeak={mediaState.audioPeak}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className={`music-progress${hasTimeline ? "" : " music-progress--idle"}`}>
+        <span className="music-progress__time">{formatTrackTime(positionMs)}</span>
+        <input
+          className="music-progress__bar"
+          type="range"
+          min={0}
+          max={Math.max(1, durationMs)}
+          step={1000}
+          value={positionMs}
+          disabled={!hasTimeline || !mediaState.canSeek}
+          aria-label={t.music.seek}
+          aria-valuetext={`${formatTrackTime(positionMs)} / ${formatTrackTime(durationMs)}`}
+          style={{ "--progress": `${(progress * 100).toFixed(2)}%` } as CSSProperties}
+          onChange={(event) => setScrubMs(Number(event.currentTarget.value))}
+          onPointerUp={() => void commitSeek()}
+          onKeyUp={() => void commitSeek()}
+          onBlur={() => setScrubMs(null)}
         />
+        <span className="music-progress__time music-progress__time--remaining">
+          -{formatTrackTime(durationMs - positionMs)}
+        </span>
       </div>
 
       <div className="music-player__controls">
         <button
-          className="music-control-button"
+          className={`music-icon-button${showLyrics ? " music-icon-button--active" : ""}`}
           type="button"
-          title={t.music.previous}
-          aria-label={t.music.previousTrack}
-          onClick={onPrevious}
+          title={showLyrics ? t.music.hideLyrics : t.music.lyrics}
+          aria-label={showLyrics ? t.music.hideLyrics : t.music.lyrics}
+          aria-pressed={showLyrics}
+          disabled={!hasTrack}
+          onClick={() => setShowLyrics((current) => !current)}
         >
-          <SkipBack size={18} strokeWidth={2.4} />
+          <MessageSquareQuote size={18} strokeWidth={2} />
         </button>
-        <button
-          className="music-control-button music-control-button--primary"
-          type="button"
-          title={isPlaying ? t.music.pause : t.music.play}
-          aria-label={isPlaying ? t.music.pause : t.music.play}
-          aria-busy={isTrackChanging}
-          onClick={onPlayPause}
-        >
-          {isTrackChanging ? (
-            <RefreshCcw
-              className="music-control-button__track-change"
-              size={19}
-              strokeWidth={2.4}
-            />
-          ) : isPlaying ? (
-            <Pause size={20} strokeWidth={2.5} />
-          ) : (
-            <Play size={20} strokeWidth={2.5} />
-          )}
-        </button>
-        <button
-          className="music-control-button"
-          type="button"
-          title={t.music.next}
-          aria-label={t.music.nextTrack}
-          onClick={onNext}
-        >
-          <SkipForward size={18} strokeWidth={2.4} />
-        </button>
+
+        <div className="music-player__transport">
+          <button
+            className="music-control-button"
+            type="button"
+            title={t.music.previous}
+            aria-label={t.music.previousTrack}
+            onClick={onPrevious}
+          >
+            <SkipBack size={18} strokeWidth={2.4} />
+          </button>
+          <button
+            className="music-control-button music-control-button--primary"
+            type="button"
+            title={isPlaying ? t.music.pause : t.music.play}
+            aria-label={isPlaying ? t.music.pause : t.music.play}
+            aria-busy={isTrackChanging}
+            onClick={onPlayPause}
+          >
+            {isTrackChanging ? (
+              <RefreshCcw
+                className="music-control-button__track-change"
+                size={19}
+                strokeWidth={2.4}
+              />
+            ) : isPlaying ? (
+              <Pause size={20} strokeWidth={2.5} />
+            ) : (
+              <Play size={20} strokeWidth={2.5} />
+            )}
+          </button>
+          <button
+            className="music-control-button"
+            type="button"
+            title={t.music.next}
+            aria-label={t.music.nextTrack}
+            onClick={onNext}
+          >
+            <SkipForward size={18} strokeWidth={2.4} />
+          </button>
+        </div>
+
+        <div className="music-volume">
+          <button
+            className="music-icon-button"
+            type="button"
+            title={volume?.muted ? t.music.unmute : t.music.mute}
+            aria-label={volume?.muted ? t.music.unmute : t.music.mute}
+            aria-pressed={volume?.muted ?? false}
+            disabled={!volume}
+            onClick={() => volume && void changeVolume({ ...volume, muted: !volume.muted })}
+          >
+            <VolumeIcon size={18} strokeWidth={2} />
+          </button>
+          <input
+            className="music-volume__slider"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(volumeLevel * 100)}
+            disabled={!volume}
+            aria-label={t.music.volume}
+            style={{ "--progress": `${Math.round(volumeLevel * 100)}%` } as CSSProperties}
+            onChange={(event) =>
+              void changeVolume({ level: Number(event.currentTarget.value) / 100, muted: false })
+            }
+          />
+        </div>
       </div>
     </section>
   );
@@ -4195,7 +4535,14 @@ function IslandApp({
           currentState.available === nextMediaState.available &&
           currentState.playbackStatus === playbackStatus &&
           currentState.audioActive === audioActive &&
-          currentState.audioPeak === audioPeak
+          currentState.audioPeak === audioPeak &&
+          currentState.title === nextMediaState.title &&
+          currentState.artist === nextMediaState.artist &&
+          currentState.albumTitle === nextMediaState.albumTitle &&
+          currentState.durationMs === nextMediaState.durationMs &&
+          currentState.canSeek === nextMediaState.canSeek &&
+          playbackStatus !== "playing" &&
+          currentState.positionMs === nextMediaState.positionMs
         ) {
           return currentState;
         }
@@ -4242,6 +4589,11 @@ function IslandApp({
             intendedStatus === "playing" && currentState.audioActive,
           audioPeak: intendedStatus === "paused" ? 0 : currentState.audioPeak,
           playbackStatus: intendedStatus,
+          // Freeze the clock where it is, so pausing does not jump back to the last sample.
+          positionMs:
+            currentState.positionMs !== null && currentState.playbackStatus === "playing"
+              ? currentState.positionMs + Math.max(0, Date.now() - currentState.updatedAt)
+              : currentState.positionMs,
           updatedAt: Date.now(),
         }));
       }
@@ -5211,6 +5563,7 @@ function IslandApp({
             onPlayPause={() => void runMediaCommand("media_play_pause")}
             onNext={() => void runMediaCommand("media_next")}
             onPrevious={() => void runMediaCommand("media_previous")}
+            onRefresh={refreshMediaState}
           />
         )}
         {page === "clipboard" && (

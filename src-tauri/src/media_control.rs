@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde::Serialize;
 use std::{
     thread,
@@ -9,8 +10,9 @@ use windows::{
         GlobalSystemMediaTransportControlsSessionManager as MediaSessionManager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus,
     },
+    Storage::Streams::DataReader,
     Win32::{
-        Media::Audio::Endpoints::IAudioMeterInformation,
+        Media::Audio::Endpoints::{IAudioEndpointVolume, IAudioMeterInformation},
         Media::Audio::{
             eCommunications, eConsole, eMultimedia, eRender, IMMDeviceEnumerator,
             MMDeviceEnumerator,
@@ -26,6 +28,11 @@ use windows::{
 };
 
 const AUDIO_ACTIVE_THRESHOLD: f32 = 0.000015;
+/// Windows FILETIME ticks (100 ns since 1601) at the Unix epoch.
+const UNIX_EPOCH_TICKS: i64 = 116_444_736_000_000_000;
+const TICKS_PER_MILLI: i64 = 10_000;
+/// Artwork bigger than this is skipped instead of being shipped to the webview.
+const MAX_ARTWORK_BYTES: u64 = 4 * 1024 * 1024;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +42,32 @@ pub(crate) struct MediaState {
     audio_peak: f32,
     playback_status: &'static str,
     updated_at: i64,
+    title: Option<String>,
+    artist: Option<String>,
+    album_title: Option<String>,
+    source_app: Option<String>,
+    /// Playback position sampled at `updated_at`; the webview advances it while playing.
+    position_ms: Option<i64>,
+    duration_ms: Option<i64>,
+    can_seek: bool,
+}
+
+#[derive(Debug, Default)]
+struct TrackDetails {
+    title: Option<String>,
+    artist: Option<String>,
+    album_title: Option<String>,
+    source_app: Option<String>,
+    position_ms: Option<i64>,
+    duration_ms: Option<i64>,
+    can_seek: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SystemVolume {
+    level: f32,
+    muted: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +115,79 @@ pub(crate) fn run_command(command: MediaCommand) -> Result<MediaState, String> {
         thread::sleep(Duration::from_millis(80));
         read_media_state()
     })
+}
+
+/// Album art of the current session as a `data:` URL, or `None` when the player has none.
+pub(crate) fn get_artwork() -> Result<Option<String>, String> {
+    on_media_thread(|| {
+        let manager = request_manager()?;
+        let Some(session) = target_session(&manager)? else {
+            return Ok(None);
+        };
+        read_artwork(&session)
+    })
+}
+
+pub(crate) fn seek(position_ms: i64) -> Result<bool, String> {
+    on_media_thread(move || {
+        let manager = request_manager()?;
+        let Some(session) = target_session(&manager)? else {
+            return Ok(false);
+        };
+        let operation = session
+            .TryChangePlaybackPositionAsync(position_ms.max(0) * TICKS_PER_MILLI)
+            .map_err(|error| media_error("Failed to request a new playback position", error))?;
+        pollster::block_on(operation)
+            .map_err(|error| media_error("Failed to change the playback position", error))
+    })
+}
+
+pub(crate) fn get_volume() -> Result<SystemVolume, String> {
+    on_media_thread(|| {
+        let endpoint = default_endpoint_volume()?;
+        unsafe {
+            Ok(SystemVolume {
+                level: endpoint
+                    .GetMasterVolumeLevelScalar()
+                    .map_err(|error| media_error("Failed to read the system volume", error))?,
+                muted: endpoint
+                    .GetMute()
+                    .map_err(|error| media_error("Failed to read the mute state", error))?
+                    .as_bool(),
+            })
+        }
+    })
+}
+
+pub(crate) fn set_volume(level: f32, muted: bool) -> Result<SystemVolume, String> {
+    on_media_thread(move || {
+        let endpoint = default_endpoint_volume()?;
+        let level = level.clamp(0.0, 1.0);
+        unsafe {
+            endpoint
+                .SetMasterVolumeLevelScalar(level, std::ptr::null())
+                .map_err(|error| media_error("Failed to change the system volume", error))?;
+            endpoint
+                .SetMute(muted, std::ptr::null())
+                .map_err(|error| media_error("Failed to change the mute state", error))?;
+        }
+        Ok(SystemVolume { level, muted })
+    })
+}
+
+fn default_endpoint_volume() -> Result<IAudioEndpointVolume, String> {
+    unsafe {
+        let enumerator: IMMDeviceEnumerator =
+            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|error| {
+                media_error("Failed to open the Windows audio device manager", error)
+            })?;
+        let device = enumerator
+            .GetDefaultAudioEndpoint(eRender, eMultimedia)
+            .map_err(|error| media_error("No default Windows audio output was available", error))?;
+        device
+            .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
+            .map_err(|error| media_error("Failed to open the system volume control", error))
+    }
 }
 
 fn on_media_thread<T, F>(operation: F) -> Result<T, String>
@@ -221,6 +327,7 @@ fn read_media_state_from_manager(manager: &MediaSessionManager) -> Result<MediaS
         .PlaybackStatus()
         .map_err(|error| media_error("Failed to read Windows media playback status", error))?;
     let is_playing = playback_status == PlaybackStatus::Playing;
+    let details = read_track_details(&session, is_playing);
 
     Ok(MediaState {
         available: true,
@@ -228,7 +335,121 @@ fn read_media_state_from_manager(manager: &MediaSessionManager) -> Result<MediaS
         audio_peak,
         playback_status: if is_playing { "playing" } else { "paused" },
         updated_at: current_unix_millis(),
+        title: details.title,
+        artist: details.artist,
+        album_title: details.album_title,
+        source_app: details.source_app,
+        position_ms: details.position_ms,
+        duration_ms: details.duration_ms,
+        can_seek: details.can_seek,
     })
+}
+
+/// Track metadata and timeline are best effort: a player that exposes only
+/// play/pause still yields a usable state.
+fn read_track_details(session: &MediaSession, is_playing: bool) -> TrackDetails {
+    let mut details = TrackDetails {
+        source_app: session
+            .SourceAppUserModelId()
+            .ok()
+            .and_then(|id| non_empty(id.to_string())),
+        ..TrackDetails::default()
+    };
+
+    if let Ok(properties) = session
+        .TryGetMediaPropertiesAsync()
+        .and_then(pollster::block_on)
+    {
+        details.title = properties.Title().ok().and_then(|value| non_empty(value.to_string()));
+        details.artist = properties.Artist().ok().and_then(|value| non_empty(value.to_string()));
+        details.album_title = properties
+            .AlbumTitle()
+            .ok()
+            .and_then(|value| non_empty(value.to_string()));
+    }
+
+    if let Ok(timeline) = session.GetTimelineProperties() {
+        let start = timeline.StartTime().map(|value| value.Duration).unwrap_or(0);
+        let end = timeline.EndTime().map(|value| value.Duration).unwrap_or(0);
+        let position = timeline.Position().map(|value| value.Duration).unwrap_or(0);
+        let duration = end - start;
+
+        if duration > 0 {
+            let mut elapsed = position - start;
+            // Players report the position only when it jumps, so advance it by
+            // the time since that report while the track is playing.
+            if is_playing {
+                if let Ok(updated) = timeline.LastUpdatedTime() {
+                    if updated.UniversalTime > 0 {
+                        let updated_ms =
+                            (updated.UniversalTime - UNIX_EPOCH_TICKS) / TICKS_PER_MILLI;
+                        elapsed += (current_unix_millis() - updated_ms).max(0) * TICKS_PER_MILLI;
+                    }
+                }
+            }
+            details.duration_ms = Some(duration / TICKS_PER_MILLI);
+            details.position_ms = Some(elapsed.clamp(0, duration) / TICKS_PER_MILLI);
+            details.can_seek = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.Controls())
+                .and_then(|controls| controls.IsPlaybackPositionEnabled())
+                .unwrap_or(false);
+        }
+    }
+
+    details
+}
+
+fn read_artwork(session: &MediaSession) -> Result<Option<String>, String> {
+    let properties = pollster::block_on(
+        session
+            .TryGetMediaPropertiesAsync()
+            .map_err(|error| media_error("Failed to request media properties", error))?,
+    )
+    .map_err(|error| media_error("Failed to read media properties", error))?;
+    let Ok(thumbnail) = properties.Thumbnail() else {
+        return Ok(None);
+    };
+    let stream = pollster::block_on(
+        thumbnail
+            .OpenReadAsync()
+            .map_err(|error| media_error("Failed to open the album art", error))?,
+    )
+    .map_err(|error| media_error("Failed to read the album art", error))?;
+    let size = stream
+        .Size()
+        .map_err(|error| media_error("Failed to measure the album art", error))?;
+    if size == 0 || size > MAX_ARTWORK_BYTES {
+        return Ok(None);
+    }
+    let size = size as u32;
+    let content_type = stream
+        .ContentType()
+        .ok()
+        .and_then(|value| non_empty(value.to_string()))
+        .unwrap_or_else(|| "image/png".to_string());
+    let input = stream
+        .GetInputStreamAt(0)
+        .map_err(|error| media_error("Failed to open the album art stream", error))?;
+    let reader = DataReader::CreateDataReader(&input)
+        .map_err(|error| media_error("Failed to create the album art reader", error))?;
+    pollster::block_on(
+        reader
+            .LoadAsync(size)
+            .map_err(|error| media_error("Failed to request the album art bytes", error))?,
+    )
+    .map_err(|error| media_error("Failed to load the album art bytes", error))?;
+    let mut bytes = vec![0_u8; size as usize];
+    reader
+        .ReadBytes(&mut bytes)
+        .map_err(|error| media_error("Failed to copy the album art bytes", error))?;
+
+    Ok(Some(format!("data:{content_type};base64,{}", BASE64.encode(bytes))))
+}
+
+fn non_empty(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
 fn read_media_state_without_session() -> Result<MediaState, String> {
@@ -245,6 +466,13 @@ fn read_media_state_without_session() -> Result<MediaState, String> {
             "unavailable"
         },
         updated_at: current_unix_millis(),
+        title: None,
+        artist: None,
+        album_title: None,
+        source_app: None,
+        position_ms: None,
+        duration_ms: None,
+        can_seek: false,
     })
 }
 

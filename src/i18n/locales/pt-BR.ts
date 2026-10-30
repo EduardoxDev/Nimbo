@@ -128,6 +128,17 @@ const ptBR: Translations = {
     pause: "Pausar",
     next: "Próxima",
     nextTrack: "Próxima música",
+    lyrics: "Letra",
+    hideLyrics: "Voltar para a capa",
+    loadingLyrics: "Buscando a letra…",
+    noLyrics: "Letra não encontrada",
+    lyricsError: "Não deu para buscar a letra",
+    instrumental: "Música instrumental",
+    volume: "Volume",
+    mute: "Silenciar",
+    unmute: "Tirar do mudo",
+    seek: "Posição da música",
+    emptyHint: "Toque algo no Spotify, YouTube ou outro player",
   },
 
   todo: {

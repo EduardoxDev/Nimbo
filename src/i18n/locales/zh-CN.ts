@@ -131,6 +131,17 @@ const zhCN: Translations = {
     pause: "Pause",
     next: "Next",
     nextTrack: "Next track",
+    lyrics: "歌词",
+    hideLyrics: "返回封面",
+    loadingLyrics: "正在查找歌词…",
+    noLyrics: "未找到歌词",
+    lyricsError: "无法获取歌词",
+    instrumental: "纯音乐",
+    volume: "音量",
+    mute: "静音",
+    unmute: "取消静音",
+    seek: "播放进度",
+    emptyHint: "在 Spotify、YouTube 或其他播放器中播放音乐",
   },
 
   todo: {

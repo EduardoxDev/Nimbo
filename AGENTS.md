@@ -23,7 +23,7 @@ npm run dev                         # só a interface no navegador
 npm run tauri dev                   # app de verdade
 npm run build                       # checa tipos e gera a interface
 npm run tauri build -- --no-bundle  # gera o .exe
-npx tsx --test tests/               # testes
+npm test                            # testes
 ```
 
 ## Onde está cada coisa

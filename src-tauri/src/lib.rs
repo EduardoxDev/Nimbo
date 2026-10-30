@@ -1,4 +1,5 @@
 mod clipboard_history;
+mod lyrics;
 mod media_control;
 mod translation;
 
@@ -642,6 +643,34 @@ async fn media_next() -> Result<media_control::MediaState, String> {
 #[tauri::command]
 async fn media_previous() -> Result<media_control::MediaState, String> {
     run_media_command(media_control::MediaCommand::Previous).await
+}
+
+#[tauri::command]
+async fn get_media_artwork() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(media_control::get_artwork)
+        .await
+        .map_err(|error| format!("Failed to join the album art task: {error}"))?
+}
+
+#[tauri::command]
+async fn media_seek(position_ms: i64) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || media_control::seek(position_ms))
+        .await
+        .map_err(|error| format!("Failed to join the seek task: {error}"))?
+}
+
+#[tauri::command]
+async fn get_system_volume() -> Result<media_control::SystemVolume, String> {
+    tauri::async_runtime::spawn_blocking(media_control::get_volume)
+        .await
+        .map_err(|error| format!("Failed to join the volume task: {error}"))?
+}
+
+#[tauri::command]
+async fn set_system_volume(level: f32, muted: bool) -> Result<media_control::SystemVolume, String> {
+    tauri::async_runtime::spawn_blocking(move || media_control::set_volume(level, muted))
+        .await
+        .map_err(|error| format!("Failed to join the volume task: {error}"))?
 }
 
 async fn run_media_command(
@@ -1750,6 +1779,11 @@ pub fn run() {
             media_play_pause,
             media_next,
             media_previous,
+            get_media_artwork,
+            media_seek,
+            get_system_volume,
+            set_system_volume,
+            lyrics::fetch_lyrics,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,
