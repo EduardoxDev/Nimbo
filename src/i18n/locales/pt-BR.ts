@@ -139,6 +139,8 @@ const ptBR: Translations = {
     unmute: "Tirar do mudo",
     seek: "Posição da música",
     emptyHint: "Toque algo no Spotify, YouTube ou outro player",
+    previousPage: "Página anterior",
+    nextPage: "Próxima página",
   },
 
   todo: {

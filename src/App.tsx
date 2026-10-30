@@ -14,11 +14,14 @@ import {
 } from "react";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
   ClipboardList,
   Columns2,
   Copy,
   ExternalLink,
+  FastForward,
   GripVertical,
   ImageIcon,
   Keyboard,
@@ -32,11 +35,10 @@ import {
   Play,
   Plus,
   RefreshCcw,
+  Rewind,
   RotateCcw,
   Save,
   Search,
-  SkipBack,
-  SkipForward,
   Star,
   Trash2,
   Volume1,
@@ -59,6 +61,12 @@ import {
 } from "./i18n";
 import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
+import {
+  DEFAULT_ARTWORK_PALETTE,
+  extractArtworkPalette,
+  type ArtworkPalette,
+} from "./utils/artworkColors";
+import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import "./App.css";
 import "./IslandSummary.css";
 
@@ -254,7 +262,7 @@ const MIN_COLLAPSED_TEXT_UNITS = 2;
 const MAX_COLLAPSED_TEXT_UNITS = 12;
 const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
-const MUSIC_EXPANDED_ISLAND_HEIGHT = 316;
+const MUSIC_EXPANDED_ISLAND_HEIGHT = 262;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -2944,6 +2952,11 @@ type LyricsState =
   | { status: "error" }
   | { status: "ready"; lines: LyricLine[]; plain: string[]; instrumental: boolean };
 
+type IslandPageLink = {
+  id: IslandPage;
+  label: string;
+};
+
 /** Lyrics already fetched in this session, so revisiting a track never refetches. */
 const lyricsCache = new Map<string, LyricsState>();
 
@@ -2977,10 +2990,20 @@ function useTicker(isActive: boolean, intervalMs: number) {
   return now;
 }
 
+/** Shares the cover's colours with the island surface, which lives outside this panel. */
+function applyArtworkPalette(palette: ArtworkPalette) {
+  const root = document.documentElement.style;
+  root.setProperty("--music-accent", palette.accent.join(", "));
+  root.setProperty("--music-shade", palette.shade.join(", "));
+}
+
 function MusicPlayerPanel({
   mediaState,
   isTrackChanging,
   commandError,
+  pages,
+  currentPage,
+  onPageChange,
   onPlayPause,
   onNext,
   onPrevious,
@@ -2989,6 +3012,9 @@ function MusicPlayerPanel({
   mediaState: MediaState;
   isTrackChanging: boolean;
   commandError: string | null;
+  pages: IslandPageLink[];
+  currentPage: IslandPage;
+  onPageChange: (page: IslandPage) => void;
   onPlayPause: () => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -3010,19 +3036,18 @@ function MusicPlayerPanel({
 
   const durationMs = mediaState.durationMs ?? 0;
   const hasTimeline = durationMs > 0 && mediaState.positionMs !== null;
+  const elapsedMs =
+    (mediaState.positionMs ?? 0) + (isPlaying ? Math.max(0, now - mediaState.updatedAt) : 0);
   const livePositionMs = hasTimeline
-    ? clamp(
-        (mediaState.positionMs ?? 0) +
-          (isPlaying ? Math.max(0, now - mediaState.updatedAt) : 0),
-        0,
-        durationMs,
-      )
+    ? MUSIC_DEMO
+      ? elapsedMs % durationMs
+      : clamp(elapsedMs, 0, durationMs)
     : 0;
   const positionMs = scrubMs ?? livePositionMs;
   const progress = hasTimeline ? positionMs / durationMs : 0;
 
   useEffect(() => {
-    setArtwork(null);
+    setArtwork(MUSIC_DEMO ? DEMO_ARTWORK : null);
     if (!trackKey || !isTauri()) return;
 
     let didCancel = false;
@@ -3050,11 +3075,29 @@ function MusicPlayerPanel({
   }, [trackKey]);
 
   useEffect(() => {
+    if (!artwork) {
+      applyArtworkPalette(DEFAULT_ARTWORK_PALETTE);
+      return;
+    }
+    let didCancel = false;
+    void extractArtworkPalette(artwork).then((palette) => {
+      if (!didCancel) applyArtworkPalette(palette);
+    });
+    return () => {
+      didCancel = true;
+    };
+  }, [artwork]);
+
+  useEffect(() => {
     const query = mediaState.title
       ? lyricsQueryFor(mediaState.title, mediaState.artist)
       : null;
     if (!trackKey || !query) {
       setLyrics(trackKey ? { status: "missing" } : null);
+      return;
+    }
+    if (MUSIC_DEMO) {
+      setLyrics(toLyricsState({ synced: DEMO_LYRICS, plain: null, instrumental: false }));
       return;
     }
     const cached = lyricsCache.get(trackKey);
@@ -3089,6 +3132,7 @@ function MusicPlayerPanel({
   }, [trackKey]);
 
   useEffect(() => {
+    if (MUSIC_DEMO) setVolume({ level: 0.62, muted: false });
     if (!isTauri()) return;
     invoke<SystemVolume>("get_system_volume")
       .then(setVolume)
@@ -3133,17 +3177,20 @@ function MusicPlayerPanel({
     }
   };
 
+  const pageIndex = Math.max(0, pages.findIndex((link) => link.id === currentPage));
+  const previousPage = pages[(pageIndex - 1 + pages.length) % pages.length];
+  const nextPage = pages[(pageIndex + 1) % pages.length];
+
   const dateLabel = new Intl.DateTimeFormat(t.localeTag, {
     weekday: "short",
     day: "numeric",
     month: "short",
-    year: "numeric",
   }).format(now);
   const timeLabel = new Intl.DateTimeFormat(t.localeTag, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(now);
-  const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" - ");
+  const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" — ");
   const statusLabel = commandError
     ? t.music.controlFailed
     : isPaused
@@ -3157,90 +3204,117 @@ function MusicPlayerPanel({
   return (
     <section
       className={[
-        "music-player",
-        hasAudioSignal ? "" : "music-player--empty",
-        isPaused ? "music-player--paused" : "",
-        showLyrics ? "music-player--lyrics" : "",
+        "now-playing",
+        hasTrack ? "" : "now-playing--empty",
+        isPlaying ? "now-playing--playing" : "",
+        showLyrics ? "now-playing--lyrics" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       aria-label={t.music.playerLabel}
       title={commandError ?? undefined}
     >
-      {showLyrics ? (
-        <div className="music-lyrics">
-          <div className="music-lyrics__heading">
-            <strong>{mediaState.title ?? t.music.noMedia}</strong>
-            {mediaState.artist && <span>{mediaState.artist}</span>}
-          </div>
-          {lyrics?.status === "ready" && lyrics.lines.length > 0 ? (
-            <ol className="music-lyrics__lines" ref={lyricsListRef} aria-live="off">
-              {lyrics.lines.map((line, index) => (
-                <li
-                  key={`${line.timeMs}-${index}`}
-                  className={[
-                    "music-lyrics__line",
-                    index === activeLine ? "music-lyrics__line--active" : "",
-                    index < activeLine ? "music-lyrics__line--past" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {line.text || "♪"}
-                </li>
-              ))}
-            </ol>
-          ) : lyrics?.status === "ready" && !lyrics.instrumental ? (
-            <ol className="music-lyrics__lines music-lyrics__lines--plain" ref={lyricsListRef}>
-              {lyrics.plain.map((line, index) => (
-                <li key={index} className="music-lyrics__line">{line || " "}</li>
-              ))}
-            </ol>
-          ) : (
-            <p className="music-lyrics__empty" role="status">
-              {lyrics?.status === "loading"
-                ? t.music.loadingLyrics
-                : lyrics?.status === "error"
-                  ? t.music.lyricsError
-                  : lyrics?.status === "ready"
-                    ? t.music.instrumental
-                    : t.music.noLyrics}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="music-player__now">
-          <div className="music-player__artwork" aria-hidden="true">
-            {artwork ? <img src={artwork} alt="" draggable={false} /> : <Music size={30} strokeWidth={1.8} />}
-          </div>
-          <div className="music-player__meta">
-            <div className="music-player__clock">
-              <span className="music-player__status-dot" aria-hidden="true" />
-              <span>{dateLabel}</span>
-              <strong>{timeLabel}</strong>
-              <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
-            </div>
-            <strong className="music-player__title">
-              {hasTrack ? mediaState.title : t.music.noMedia}
-            </strong>
-            <span className="music-player__subtitle">
-              {hasTrack ? subtitle : t.music.emptyHint}
-            </span>
-          </div>
-          <div className="music-player__mini-wave">
-            <MusicLevelWave
-              isAvailable={hasAudioSignal}
-              isPlaying={isPlaying}
-              audioPeak={mediaState.audioPeak}
-            />
-          </div>
-        </div>
-      )}
+      <div className="np-backdrop" aria-hidden="true">
+        {artwork && (
+          <div
+            key={artwork.length}
+            className="np-backdrop__image"
+            style={{ backgroundImage: `url("${artwork}")` }}
+          />
+        )}
+      </div>
 
-      <div className={`music-progress${hasTimeline ? "" : " music-progress--idle"}`}>
-        <span className="music-progress__time">{formatTrackTime(positionMs)}</span>
+      <button
+        className="np-nav np-nav--previous"
+        type="button"
+        title={previousPage.label}
+        aria-label={`${t.music.previousPage}: ${previousPage.label}`}
+        onClick={() => onPageChange(previousPage.id)}
+      >
+        <ChevronLeft size={16} strokeWidth={2.6} />
+      </button>
+      <button
+        className="np-nav np-nav--next"
+        type="button"
+        title={nextPage.label}
+        aria-label={`${t.music.nextPage}: ${nextPage.label}`}
+        onClick={() => onPageChange(nextPage.id)}
+      >
+        <ChevronRight size={16} strokeWidth={2.6} />
+      </button>
+
+      <div className="np-stage">
+        {showLyrics ? (
+          <div className="np-lyrics">
+            {lyrics?.status === "ready" && lyrics.lines.length > 0 ? (
+              <ol className="np-lyrics__lines" ref={lyricsListRef} aria-live="off">
+                {lyrics.lines.map((line, index) => (
+                  <li
+                    key={`${line.timeMs}-${index}`}
+                    className={[
+                      "np-lyrics__line",
+                      index === activeLine ? "np-lyrics__line--active" : "",
+                      index < activeLine ? "np-lyrics__line--past" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {line.text || "♪"}
+                  </li>
+                ))}
+              </ol>
+            ) : lyrics?.status === "ready" && !lyrics.instrumental ? (
+              <ol className="np-lyrics__lines np-lyrics__lines--plain" ref={lyricsListRef}>
+                {lyrics.plain.map((line, index) => (
+                  <li key={index} className="np-lyrics__line">{line || " "}</li>
+                ))}
+              </ol>
+            ) : (
+              <p className="np-lyrics__empty" role="status">
+                {lyrics?.status === "loading"
+                  ? t.music.loadingLyrics
+                  : lyrics?.status === "error"
+                    ? t.music.lyricsError
+                    : lyrics?.status === "ready"
+                      ? t.music.instrumental
+                      : t.music.noLyrics}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="np-hero" key={trackKey ?? "empty"}>
+            <div className="np-art" aria-hidden="true">
+              {artwork ? (
+                <img src={artwork} alt="" draggable={false} />
+              ) : (
+                <Music size={34} strokeWidth={1.6} />
+              )}
+            </div>
+            <div className="np-meta">
+              <div className="np-clock">
+                <span className="np-ring" aria-hidden="true" />
+                <span>{dateLabel}</span>
+                <strong>{timeLabel}</strong>
+                <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
+              </div>
+              <strong className="np-title">{hasTrack ? mediaState.title : t.music.noMedia}</strong>
+              <span className="np-artist">{hasTrack ? subtitle : t.music.emptyHint}</span>
+            </div>
+          </div>
+        )}
+        <div className="np-eq" aria-hidden="true">
+          <MusicLevelWave
+            isAvailable={hasAudioSignal}
+            isPlaying={isPlaying}
+            audioPeak={mediaState.audioPeak}
+          />
+        </div>
+      </div>
+
+      <div className={`np-progress${hasTimeline ? "" : " np-progress--idle"}`}>
+        <span className="np-time">{formatTrackTime(positionMs)}</span>
         <input
-          className="music-progress__bar"
+          className="np-range np-range--progress"
           type="range"
           min={0}
           max={Math.max(1, durationMs)}
@@ -3255,14 +3329,14 @@ function MusicPlayerPanel({
           onKeyUp={() => void commitSeek()}
           onBlur={() => setScrubMs(null)}
         />
-        <span className="music-progress__time music-progress__time--remaining">
+        <span className="np-time np-time--remaining">
           -{formatTrackTime(durationMs - positionMs)}
         </span>
       </div>
 
-      <div className="music-player__controls">
+      <div className="np-controls">
         <button
-          className={`music-icon-button${showLyrics ? " music-icon-button--active" : ""}`}
+          className={`np-icon${showLyrics ? " np-icon--active" : ""}`}
           type="button"
           title={showLyrics ? t.music.hideLyrics : t.music.lyrics}
           aria-label={showLyrics ? t.music.hideLyrics : t.music.lyrics}
@@ -3270,53 +3344,47 @@ function MusicPlayerPanel({
           disabled={!hasTrack}
           onClick={() => setShowLyrics((current) => !current)}
         >
-          <MessageSquareQuote size={18} strokeWidth={2} />
+          <MessageSquareQuote size={19} strokeWidth={1.9} />
         </button>
 
-        <div className="music-player__transport">
+        <div className="np-transport">
           <button
-            className="music-control-button"
+            className="np-transport__button"
             type="button"
             title={t.music.previous}
             aria-label={t.music.previousTrack}
             onClick={onPrevious}
           >
-            <SkipBack size={18} strokeWidth={2.4} />
+            <Rewind size={26} fill="currentColor" strokeWidth={0} />
           </button>
           <button
-            className="music-control-button music-control-button--primary"
+            className="np-transport__button np-transport__button--main"
             type="button"
             title={isPlaying ? t.music.pause : t.music.play}
             aria-label={isPlaying ? t.music.pause : t.music.play}
             aria-busy={isTrackChanging}
             onClick={onPlayPause}
           >
-            {isTrackChanging ? (
-              <RefreshCcw
-                className="music-control-button__track-change"
-                size={19}
-                strokeWidth={2.4}
-              />
-            ) : isPlaying ? (
-              <Pause size={20} strokeWidth={2.5} />
+            {isPlaying ? (
+              <Pause size={30} fill="currentColor" strokeWidth={0} />
             ) : (
-              <Play size={20} strokeWidth={2.5} />
+              <Play size={30} fill="currentColor" strokeWidth={0} />
             )}
           </button>
           <button
-            className="music-control-button"
+            className="np-transport__button"
             type="button"
             title={t.music.next}
             aria-label={t.music.nextTrack}
             onClick={onNext}
           >
-            <SkipForward size={18} strokeWidth={2.4} />
+            <FastForward size={26} fill="currentColor" strokeWidth={0} />
           </button>
         </div>
 
-        <div className="music-volume">
+        <div className="np-volume">
           <button
-            className="music-icon-button"
+            className="np-icon"
             type="button"
             title={volume?.muted ? t.music.unmute : t.music.mute}
             aria-label={volume?.muted ? t.music.unmute : t.music.mute}
@@ -3324,10 +3392,10 @@ function MusicPlayerPanel({
             disabled={!volume}
             onClick={() => volume && void changeVolume({ ...volume, muted: !volume.muted })}
           >
-            <VolumeIcon size={18} strokeWidth={2} />
+            <VolumeIcon size={19} strokeWidth={1.9} />
           </button>
           <input
-            className="music-volume__slider"
+            className="np-range np-range--volume"
             type="range"
             min={0}
             max={100}
@@ -3342,6 +3410,20 @@ function MusicPlayerPanel({
           />
         </div>
       </div>
+
+      <nav className="np-dots" aria-label={t.island.editor}>
+        {pages.map((link) => (
+          <button
+            key={link.id}
+            className={`np-dot${link.id === currentPage ? " np-dot--active" : ""}`}
+            type="button"
+            title={link.label}
+            aria-label={link.label}
+            aria-current={link.id === currentPage ? "page" : undefined}
+            onClick={() => onPageChange(link.id)}
+          />
+        ))}
+      </nav>
     </section>
   );
 }
@@ -3991,15 +4073,31 @@ function IslandApp({
   onLocaleChange: (locale: LocaleCode) => void;
 }) {
   const t = useTranslation();
-  const [mode, setMode] = useState<IslandMode>("collapsed");
+  const [mode, setMode] = useState<IslandMode>(MUSIC_DEMO ? "expanded" : "collapsed");
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
   const [reducedMotion, setReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const [page, setPage] = useState<IslandPage>("todo");
-  const [mediaState, setMediaState] =
-    useState<MediaState>(DEFAULT_MEDIA_STATE);
+  const [page, setPage] = useState<IslandPage>(MUSIC_DEMO ? "music" : "todo");
+  const [mediaState, setMediaState] = useState<MediaState>(
+    MUSIC_DEMO
+      ? {
+          ...DEFAULT_MEDIA_STATE,
+          available: true,
+          audioActive: true,
+          audioPeak: 0.3,
+          playbackStatus: "playing",
+          updatedAt: DEMO_TRACK.startedAt,
+          title: DEMO_TRACK.title,
+          artist: DEMO_TRACK.artist,
+          albumTitle: DEMO_TRACK.albumTitle,
+          positionMs: DEMO_TRACK.positionMs,
+          durationMs: DEMO_TRACK.durationMs,
+          canSeek: true,
+        }
+      : DEFAULT_MEDIA_STATE,
+  );
   const [isMediaTrackChanging, setIsMediaTrackChanging] = useState(false);
   const [mediaCommandError, setMediaCommandError] = useState<string | null>(
     null,
@@ -4503,7 +4601,7 @@ function IslandApp({
   }, [setIslandMode]);
 
   const refreshMediaState = useCallback(async () => {
-    if (isRefreshingMediaState.current) {
+    if (MUSIC_DEMO || isRefreshingMediaState.current) {
       return;
     }
 
@@ -5456,6 +5554,8 @@ function IslandApp({
   ]);
 
   useEffect(() => {
+    // Outside the desktop shell (browser preview) there is no window to watch.
+    if (!isTauri()) return;
     let didCancel = false;
     let unlisten: (() => void) | null = null;
 
@@ -5564,6 +5664,14 @@ function IslandApp({
             onNext={() => void runMediaCommand("media_next")}
             onPrevious={() => void runMediaCommand("media_previous")}
             onRefresh={refreshMediaState}
+            pages={[
+              { id: "todo", label: t.island.todoList },
+              { id: "music", label: t.island.music },
+              { id: "clipboard", label: t.island.clipboardHistory },
+              { id: "layout", label: t.island.layoutEditor },
+            ]}
+            currentPage={page}
+            onPageChange={openIslandPage}
           />
         )}
         {page === "clipboard" && (

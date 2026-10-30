@@ -141,6 +141,8 @@ export type Translations = {
     unmute: string;
     seek: string;
     emptyHint: string;
+    previousPage: string;
+    nextPage: string;
   };
 
   todo: {

@@ -142,6 +142,8 @@ const zhCN: Translations = {
     unmute: "取消静音",
     seek: "播放进度",
     emptyHint: "在 Spotify、YouTube 或其他播放器中播放音乐",
+    previousPage: "上一页",
+    nextPage: "下一页",
   },
 
   todo: {

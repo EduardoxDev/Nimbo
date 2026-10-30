@@ -139,6 +139,8 @@ const en: Translations = {
     unmute: "Unmute",
     seek: "Track position",
     emptyHint: "Play something in Spotify, YouTube or another player",
+    previousPage: "Previous page",
+    nextPage: "Next page",
   },
 
   todo: {
