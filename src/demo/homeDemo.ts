@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import type { HomeEntity, HomeServiceCall } from "../home/homeStore";
+import type { BroadlinkDevice, HomeEntity, HomeServiceCall, IrBrand, IrStatus } from "../home/homeStore";
 
 /**
  * Design preview for the Home page: open the Vite dev server with `?demo=home`
@@ -76,6 +76,42 @@ export function createDemoHome() {
         }
         return entity;
       });
+    },
+  };
+}
+
+/** Pretend Broadlink RM4 Mini with an Elgin model, for the settings preview. */
+export function createDemoInfrared() {
+  const device: BroadlinkDevice = { host: "192.168.0.42", mac: "e8:16:56:aa:bb:cc", devtype: 0x6539, name: "RM4 Mini" };
+  let status: IrStatus = { device: null, model: null, state: null };
+  const brands: IrBrand[] = [
+    { brand: "Elgin", models: [{ code: 2800, models: "HVQI18B2IA" }, { code: 2801, models: "HVQI12B2FB" }] },
+    { brand: "Gree", models: [{ code: 1180, models: "YAC1FB, YBOF2" }] },
+    { brand: "Springer", models: [{ code: 2780, models: "Midea Springer 42MACA" }] },
+  ];
+  return {
+    status: () => status,
+    discover: () => [device],
+    selectDevice: (chosen: BroadlinkDevice) => (status = { ...status, device: chosen }),
+    forget: () => (status = { device: null, model: null, state: null }),
+    catalog: () => brands,
+    selectModel: (code: number, label: string) =>
+      (status = {
+        ...status,
+        model: { code, label, minTemperature: 17, maxTemperature: 30, precision: 1, operationModes: ["cool", "heat", "fan_only"], fanModes: ["low", "high", "auto"] },
+        state: { mode: "off", lastMode: "cool", temperature: 23, fan: "auto" },
+      }),
+    apply: (service: string, value: number | string | null) => {
+      if (!status.state) return status;
+      const state = { ...status.state };
+      if (service === "set_hvac_mode" && typeof value === "string") {
+        state.mode = value;
+        if (value !== "off") state.lastMode = value;
+      }
+      if (service === "set_temperature" && typeof value === "number") state.temperature = value;
+      if (service === "turn_on") state.mode = state.lastMode;
+      if (service === "turn_off") state.mode = "off";
+      return (status = { ...status, state });
     },
   };
 }

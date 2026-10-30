@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AirVent, Check, Fan, Lightbulb, Lock, Plug } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { Row, Section } from "../settings/controls";
+import { InfraredSettings } from "./InfraredSettings";
 import {
   homeApi,
   loadHomeFavorites,
@@ -89,6 +90,8 @@ export function HomeSettingsPage() {
 
   return (
     <>
+      <InfraredSettings />
+
       <Section title={copy.section}>
         {status?.configured ? (
           <Row title={copy.connected} hint={status.url ?? undefined}>

@@ -219,6 +219,7 @@ export type Translations = {
     on: string;
     off: string;
     actionFailed: string;
+    infrared: string;
     modes: {
       off: string;
       cool: string;
@@ -337,6 +338,31 @@ export type Translations = {
         switch: string;
         fan: string;
       };
+    };
+    ir: {
+      section: string;
+      hint: string;
+      search: string;
+      searching: string;
+      searchAddress: string;
+      addressPlaceholder: string;
+      noneFound: string;
+      use: string;
+      device: string;
+      change: string;
+      brand: string;
+      chooseBrand: string;
+      model: string;
+      useModel: string;
+      loadingCatalog: string;
+      downloading: string;
+      modelLabel: string;
+      testOn: string;
+      testOff: string;
+      testHint: string;
+      forget: string;
+      step1: string;
+      step2: string;
     };
     about: {
       tagline: string;

@@ -29,6 +29,8 @@ npm run tauri build -- --no-bundle
 - Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
   [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.
+- Ar-condicionado só de controle remoto: com um Broadlink RM4 Mini na mesma rede, o Nimbo
+  fala direto com ele (sem nuvem) e usa os códigos do modelo escolhido na biblioteca SmartIR.
 - Janela de configurações (bandeja > Configurações… ou engrenagem na ilha).
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
@@ -39,3 +41,6 @@ npm run tauri build -- --no-bundle
 
 O Nimbo começou como um fork do [fly-island](https://github.com/flyl1u/fly-island) (licença MIT),
 de flyl1u e colaboradores. Removemos as integrações de QQ, WeChat e QQ Mail.
+
+Os códigos infravermelhos de ar-condicionado vêm do [SmartIR](https://github.com/smartHomeHub/SmartIR)
+(licença MIT) e são baixados só quando você escolhe o seu modelo.

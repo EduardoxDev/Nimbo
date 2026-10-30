@@ -1,5 +1,7 @@
+mod broadlink;
 mod clipboard_history;
 mod home_assistant;
+mod ir_climate;
 mod lyrics;
 mod media_control;
 mod translation;
@@ -1811,6 +1813,14 @@ pub fn run() {
             home_assistant::disconnect_home_assistant,
             home_assistant::home_assistant_entities,
             home_assistant::home_assistant_call,
+            ir_climate::ir_status,
+            ir_climate::ir_discover,
+            ir_climate::ir_select_device,
+            ir_climate::ir_forget,
+            ir_climate::ir_catalog,
+            ir_climate::ir_select_model,
+            ir_climate::ir_apply,
+            ir_climate::ir_learn,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,

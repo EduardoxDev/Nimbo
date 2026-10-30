@@ -94,12 +94,12 @@ export function HomePanel<Page extends string>({
 
   const refresh = useCallback(async () => {
     try {
-      const status = await homeApi.status();
-      if (!status.configured) {
+      const home = await homeApi.island();
+      if (!home.configured) {
         setLoadState("unconfigured");
         return;
       }
-      setEntities(await homeApi.entities());
+      setEntities(home.entities);
       setLoadState("ready");
       setErrorMessage(null);
     } catch (error) {
@@ -246,7 +246,9 @@ export function HomePanel<Page extends string>({
                   {climate.name}
                 </strong>
                 <span>
-                  {t.home.room} {formatTemperature(climate.currentTemperature, t.localeTag)}
+                  {climate.currentTemperature === null
+                    ? t.home.infrared
+                    : `${t.home.room} ${formatTemperature(climate.currentTemperature, t.localeTag)}`}
                   {climate.hvacAction && ` · ${t.home.actions[climate.hvacAction as keyof typeof t.home.actions] ?? climate.hvacAction}`}
                 </span>
               </div>
