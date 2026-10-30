@@ -61,11 +61,6 @@ import {
 } from "./i18n";
 import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
-import {
-  DEFAULT_ARTWORK_PALETTE,
-  extractArtworkPalette,
-  type ArtworkPalette,
-} from "./utils/artworkColors";
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import "./App.css";
 import "./IslandSummary.css";
@@ -246,6 +241,7 @@ type IslandShellProps = {
 const STORAGE_KEY = "nimbo-settings";
 const COLLAPSED_TEXT_DEFAULT_MIGRATION_KEY =
   "nimbo-collapsed-text-default-v1";
+const FLOATING_DEFAULT_MIGRATION_KEY = "nimbo-floating-default-v1";
 const SETTINGS_PRESETS_STORAGE_KEY = "nimbo-setting-presets";
 const TODOS_STORAGE_KEY = "nimbo-todos";
 const ACTIVE_TODO_STORAGE_KEY = "nimbo-active-todo";
@@ -262,7 +258,7 @@ const MIN_COLLAPSED_TEXT_UNITS = 2;
 const MAX_COLLAPSED_TEXT_UNITS = 12;
 const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
-const MUSIC_EXPANDED_ISLAND_HEIGHT = 262;
+const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -319,7 +315,7 @@ const DEFAULT_SETTINGS: IslandSettings = {
   opacity: 95,
   collapsedScale: 0.89,
   expandedScale: 0.91,
-  marginY: 0,
+  marginY: 10,
   taskTextColor: DEFAULT_TASK_TEXT_COLOR,
   pulseColor: "#3ae489",
   pulseBrightness: 100,
@@ -718,6 +714,7 @@ function loadSettings(): IslandSettings {
 
   if (!stored) {
     window.localStorage.setItem(COLLAPSED_TEXT_DEFAULT_MIGRATION_KEY, "1");
+    window.localStorage.setItem(FLOATING_DEFAULT_MIGRATION_KEY, "1");
     return DEFAULT_SETTINGS;
   }
 
@@ -734,6 +731,16 @@ function loadSettings(): IslandSettings {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
       window.localStorage.setItem(COLLAPSED_TEXT_DEFAULT_MIGRATION_KEY, "1");
       return migrated;
+    }
+
+    // Islands still glued to the top edge move to the new floating default once.
+    if (window.localStorage.getItem(FLOATING_DEFAULT_MIGRATION_KEY) !== "1") {
+      window.localStorage.setItem(FLOATING_DEFAULT_MIGRATION_KEY, "1");
+      if (normalized.marginY === 0) {
+        const migrated = { ...normalized, marginY: DEFAULT_SETTINGS.marginY };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        return migrated;
+      }
     }
 
     return normalized;
@@ -2990,13 +2997,6 @@ function useTicker(isActive: boolean, intervalMs: number) {
   return now;
 }
 
-/** Shares the cover's colours with the island surface, which lives outside this panel. */
-function applyArtworkPalette(palette: ArtworkPalette) {
-  const root = document.documentElement.style;
-  root.setProperty("--music-accent", palette.accent.join(", "));
-  root.setProperty("--music-shade", palette.shade.join(", "));
-}
-
 function MusicPlayerPanel({
   mediaState,
   isTrackChanging,
@@ -3024,7 +3024,6 @@ function MusicPlayerPanel({
   const isPlaying = mediaState.playbackStatus === "playing";
   const isPaused = mediaState.playbackStatus === "paused";
   const hasTrack = Boolean(mediaState.title);
-  const hasAudioSignal = mediaState.available || mediaState.audioActive;
   const trackKey = trackKeyOf(mediaState);
   const now = useTicker(true, isPlaying ? 250 : 1000);
   const [artwork, setArtwork] = useState<string | null>(null);
@@ -3073,20 +3072,6 @@ function MusicPlayerPanel({
       window.clearTimeout(retry);
     };
   }, [trackKey]);
-
-  useEffect(() => {
-    if (!artwork) {
-      applyArtworkPalette(DEFAULT_ARTWORK_PALETTE);
-      return;
-    }
-    let didCancel = false;
-    void extractArtworkPalette(artwork).then((palette) => {
-      if (!didCancel) applyArtworkPalette(palette);
-    });
-    return () => {
-      didCancel = true;
-    };
-  }, [artwork]);
 
   useEffect(() => {
     const query = mediaState.title
@@ -3181,16 +3166,22 @@ function MusicPlayerPanel({
   const previousPage = pages[(pageIndex - 1 + pages.length) % pages.length];
   const nextPage = pages[(pageIndex + 1) % pages.length];
 
+  // "qui 29 out 2026": the parts without the locale's commas, dots and "de".
   const dateLabel = new Intl.DateTimeFormat(t.localeTag, {
     weekday: "short",
     day: "numeric",
     month: "short",
-  }).format(now);
+    year: "numeric",
+  })
+    .formatToParts(now)
+    .filter((part) => part.type !== "literal")
+    .map((part) => part.value.replace(/\.$/, ""))
+    .join(" ");
   const timeLabel = new Intl.DateTimeFormat(t.localeTag, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(now);
-  const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" — ");
+  const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" - ");
   const statusLabel = commandError
     ? t.music.controlFailed
     : isPaused
@@ -3214,15 +3205,20 @@ function MusicPlayerPanel({
       aria-label={t.music.playerLabel}
       title={commandError ?? undefined}
     >
-      <div className="np-backdrop" aria-hidden="true">
-        {artwork && (
-          <div
-            key={artwork.length}
-            className="np-backdrop__image"
-            style={{ backgroundImage: `url("${artwork}")` }}
-          />
-        )}
+      <div className="np-clock">
+        <PlaybackRing progress={progress} isPlaying={isPlaying} />
+        <span>{dateLabel}</span>
+        <strong>{timeLabel}</strong>
+        <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
       </div>
+
+      <span className={`np-bars${isPlaying ? " np-bars--live" : ""}`} aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </span>
 
       <button
         className="np-nav np-nav--previous"
@@ -3231,7 +3227,7 @@ function MusicPlayerPanel({
         aria-label={`${t.music.previousPage}: ${previousPage.label}`}
         onClick={() => onPageChange(previousPage.id)}
       >
-        <ChevronLeft size={16} strokeWidth={2.6} />
+        <ChevronLeft size={15} strokeWidth={2.8} />
       </button>
       <button
         className="np-nav np-nav--next"
@@ -3240,78 +3236,63 @@ function MusicPlayerPanel({
         aria-label={`${t.music.nextPage}: ${nextPage.label}`}
         onClick={() => onPageChange(nextPage.id)}
       >
-        <ChevronRight size={16} strokeWidth={2.6} />
+        <ChevronRight size={15} strokeWidth={2.8} />
       </button>
 
-      <div className="np-stage">
-        {showLyrics ? (
-          <div className="np-lyrics">
-            {lyrics?.status === "ready" && lyrics.lines.length > 0 ? (
-              <ol className="np-lyrics__lines" ref={lyricsListRef} aria-live="off">
-                {lyrics.lines.map((line, index) => (
-                  <li
-                    key={`${line.timeMs}-${index}`}
-                    className={[
-                      "np-lyrics__line",
-                      index === activeLine ? "np-lyrics__line--active" : "",
-                      index < activeLine ? "np-lyrics__line--past" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {line.text || "♪"}
-                  </li>
-                ))}
-              </ol>
-            ) : lyrics?.status === "ready" && !lyrics.instrumental ? (
-              <ol className="np-lyrics__lines np-lyrics__lines--plain" ref={lyricsListRef}>
-                {lyrics.plain.map((line, index) => (
-                  <li key={index} className="np-lyrics__line">{line || " "}</li>
-                ))}
-              </ol>
+      {showLyrics ? (
+        <div className="np-lyrics">
+          {lyrics?.status === "ready" && lyrics.lines.length > 0 ? (
+            <ol className="np-lyrics__lines" ref={lyricsListRef} aria-live="off">
+              {lyrics.lines.map((line, index) => (
+                <li
+                  key={`${line.timeMs}-${index}`}
+                  className={[
+                    "np-lyrics__line",
+                    index === activeLine ? "np-lyrics__line--active" : "",
+                    index < activeLine ? "np-lyrics__line--past" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {line.text || "♪"}
+                </li>
+              ))}
+            </ol>
+          ) : lyrics?.status === "ready" && !lyrics.instrumental ? (
+            <ol className="np-lyrics__lines np-lyrics__lines--plain" ref={lyricsListRef}>
+              {lyrics.plain.map((line, index) => (
+                <li key={index} className="np-lyrics__line">{line || " "}</li>
+              ))}
+            </ol>
+          ) : (
+            <p className="np-lyrics__empty" role="status">
+              {lyrics?.status === "loading"
+                ? t.music.loadingLyrics
+                : lyrics?.status === "error"
+                  ? t.music.lyricsError
+                  : lyrics?.status === "ready"
+                    ? t.music.instrumental
+                    : t.music.noLyrics}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="np-hero" key={trackKey ?? "empty"}>
+          <div className="np-art" aria-hidden="true">
+            {artwork ? (
+              <img src={artwork} alt="" draggable={false} />
             ) : (
-              <p className="np-lyrics__empty" role="status">
-                {lyrics?.status === "loading"
-                  ? t.music.loadingLyrics
-                  : lyrics?.status === "error"
-                    ? t.music.lyricsError
-                    : lyrics?.status === "ready"
-                      ? t.music.instrumental
-                      : t.music.noLyrics}
-              </p>
+              <Music size={28} strokeWidth={1.7} />
             )}
           </div>
-        ) : (
-          <div className="np-hero" key={trackKey ?? "empty"}>
-            <div className="np-art" aria-hidden="true">
-              {artwork ? (
-                <img src={artwork} alt="" draggable={false} />
-              ) : (
-                <Music size={34} strokeWidth={1.6} />
-              )}
-            </div>
-            <div className="np-meta">
-              <div className="np-clock">
-                <span className="np-ring" aria-hidden="true" />
-                <span>{dateLabel}</span>
-                <strong>{timeLabel}</strong>
-                <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
-              </div>
-              <strong className="np-title">{hasTrack ? mediaState.title : t.music.noMedia}</strong>
-              <span className="np-artist">{hasTrack ? subtitle : t.music.emptyHint}</span>
-            </div>
+          <div className="np-meta">
+            <strong className="np-title">{hasTrack ? mediaState.title : t.music.noMedia}</strong>
+            <span className="np-artist">{hasTrack ? subtitle : t.music.emptyHint}</span>
           </div>
-        )}
-        <div className="np-eq" aria-hidden="true">
-          <MusicLevelWave
-            isAvailable={hasAudioSignal}
-            isPlaying={isPlaying}
-            audioPeak={mediaState.audioPeak}
-          />
         </div>
-      </div>
+      )}
 
-      <div className={`np-progress${hasTimeline ? "" : " np-progress--idle"}`}>
+      <div className={`np-deck${hasTimeline ? "" : " np-deck--idle"}`}>
         <span className="np-time">{formatTrackTime(positionMs)}</span>
         <input
           className="np-range np-range--progress"
@@ -3332,11 +3313,9 @@ function MusicPlayerPanel({
         <span className="np-time np-time--remaining">
           -{formatTrackTime(durationMs - positionMs)}
         </span>
-      </div>
 
-      <div className="np-controls">
         <button
-          className={`np-icon${showLyrics ? " np-icon--active" : ""}`}
+          className={`np-icon np-icon--lyrics${showLyrics ? " np-icon--active" : ""}`}
           type="button"
           title={showLyrics ? t.music.hideLyrics : t.music.lyrics}
           aria-label={showLyrics ? t.music.hideLyrics : t.music.lyrics}
@@ -3344,7 +3323,7 @@ function MusicPlayerPanel({
           disabled={!hasTrack}
           onClick={() => setShowLyrics((current) => !current)}
         >
-          <MessageSquareQuote size={19} strokeWidth={1.9} />
+          <MessageSquareQuote size={21} strokeWidth={1.9} />
         </button>
 
         <div className="np-transport">
@@ -3366,9 +3345,9 @@ function MusicPlayerPanel({
             onClick={onPlayPause}
           >
             {isPlaying ? (
-              <Pause size={30} fill="currentColor" strokeWidth={0} />
+              <Pause size={26} fill="currentColor" strokeWidth={0} />
             ) : (
-              <Play size={30} fill="currentColor" strokeWidth={0} />
+              <Play size={26} fill="currentColor" strokeWidth={0} />
             )}
           </button>
           <button
@@ -3383,17 +3362,6 @@ function MusicPlayerPanel({
         </div>
 
         <div className="np-volume">
-          <button
-            className="np-icon"
-            type="button"
-            title={volume?.muted ? t.music.unmute : t.music.mute}
-            aria-label={volume?.muted ? t.music.unmute : t.music.mute}
-            aria-pressed={volume?.muted ?? false}
-            disabled={!volume}
-            onClick={() => volume && void changeVolume({ ...volume, muted: !volume.muted })}
-          >
-            <VolumeIcon size={19} strokeWidth={1.9} />
-          </button>
           <input
             className="np-range np-range--volume"
             type="range"
@@ -3408,93 +3376,61 @@ function MusicPlayerPanel({
               void changeVolume({ level: Number(event.currentTarget.value) / 100, muted: false })
             }
           />
-        </div>
-      </div>
-
-      <nav className="np-dots" aria-label={t.island.editor}>
-        {pages.map((link) => (
           <button
-            key={link.id}
-            className={`np-dot${link.id === currentPage ? " np-dot--active" : ""}`}
+            className="np-icon"
             type="button"
-            title={link.label}
-            aria-label={link.label}
-            aria-current={link.id === currentPage ? "page" : undefined}
-            onClick={() => onPageChange(link.id)}
-          />
-        ))}
-      </nav>
+            title={volume?.muted ? t.music.unmute : t.music.mute}
+            aria-label={volume?.muted ? t.music.unmute : t.music.mute}
+            aria-pressed={volume?.muted ?? false}
+            disabled={!volume}
+            onClick={() => volume && void changeVolume({ ...volume, muted: !volume.muted })}
+          >
+            <VolumeIcon size={17} fill="currentColor" strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <nav className="np-dots" aria-label={t.island.editor}>
+          {pages.map((link) => (
+            <button
+              key={link.id}
+              className={`np-dot${link.id === currentPage ? " np-dot--active" : ""}`}
+              type="button"
+              title={link.label}
+              aria-label={link.label}
+              aria-current={link.id === currentPage ? "page" : undefined}
+              onClick={() => onPageChange(link.id)}
+            />
+          ))}
+        </nav>
+      </div>
     </section>
   );
 }
 
-function MusicLevelWave({
-  isAvailable,
-  isPlaying,
-  audioPeak,
-}: {
-  isAvailable: boolean;
-  isPlaying: boolean;
-  audioPeak: number;
-}) {
-  const [phase, setPhase] = useState(0);
-  const prefersReducedMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    if (!isPlaying) {
-      setPhase(0);
-      return;
-    }
-
-    const interval = window.setInterval(
-      () => {
-        setPhase(performance.now() / (isPlaying ? 210 : 760));
-      },
-      prefersReducedMotion ? 460 : isPlaying ? 58 : 150,
-    );
-
-    return () => window.clearInterval(interval);
-  }, [isAvailable, isPlaying, prefersReducedMotion]);
-
-  const liftedPeak = isPlaying
-    ? clamp(Math.log1p(clamp(audioPeak, 0, 1) * 185) / Math.log1p(185), 0, 1)
-    : 0;
-  const bars = [0.22, 0.48, 0.78, 0.54, 0.92, 0.68, 0.4, 0.72, 0.34].map(
-    (bar, index) => {
-      if (!isPlaying) {
-        return 0.2;
-      }
-
-      const floor = isAvailable ? 0.2 : 0.14 + bar * 0.2;
-      const breath =
-        isAvailable && !prefersReducedMotion
-          ? 0.06 + Math.sin(phase + index * 0.72) * 0.045
-          : 0;
-      const movement =
-        liftedPeak *
-        (0.34 + bar * 1.06) *
-        (0.78 + Math.sin(phase * (1.05 + index * 0.05) + index * 1.35) * 0.28);
-
-      return clamp(floor + breath + movement, 0.14, 1.08);
-    },
-  );
+/** Small ring next to the clock that fills as the track plays. */
+function PlaybackRing({ progress, isPlaying }: { progress: number; isPlaying: boolean }) {
+  const radius = 6;
+  const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="music-player__wave" aria-hidden="true">
-      {bars.map((scale, index) => (
-        <span
-          key={index}
-          style={
-            {
-              "--wave-scale": scale.toFixed(3),
-              "--wave-opacity": (0.46 + scale * 0.46).toFixed(3),
-            } as CSSProperties
-          }
-        />
-      ))}
-    </div>
+    <svg
+      className={`np-ring${isPlaying ? " np-ring--playing" : ""}`}
+      width="17"
+      height="17"
+      viewBox="0 0 17 17"
+      aria-hidden="true"
+    >
+      <circle className="np-ring__track" cx="8.5" cy="8.5" r={radius} />
+      <circle
+        className="np-ring__value"
+        cx="8.5"
+        cy="8.5"
+        r={radius}
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference * (1 - clamp(progress, 0, 1))}
+      />
+      <circle className="np-ring__dot" cx="8.5" cy="8.5" r="2" />
+    </svg>
   );
 }
 
