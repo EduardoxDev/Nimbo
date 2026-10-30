@@ -64,11 +64,18 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis"
+    ],
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico",
-        "uninstallerIcon": "icons/icon.ico"
+        "installMode": "currentUser",
+        "languages": [
+          "PortugueseBR",
+          "English"
+        ],
+        "displayLanguageSelector": false
       }
     },
     "icon": [
@@ -77,6 +84,11 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "EduardoxDev",
+    "copyright": "© 2026 EduardoxDev. Baseado no fly-island (MIT).",
+    "category": "Utility",
+    "shortDescription": "Uma ilha flutuante no topo do Windows",
+    "longDescription": "Nimbo: música, tarefas, foco, água, casa e agentes de IA numa ilha flutuante no topo da tela."
   }
 }

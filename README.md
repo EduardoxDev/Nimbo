@@ -5,7 +5,16 @@ controle de apps, do sistema e da casa (ar-condicionado, luzes).
 
 O plano completo está em [PLANO.md](PLANO.md).
 
-## Rodar
+## Instalar
+
+Rode `npm run tauri build`. O instalador sai em
+`src-tauri/target/release/bundle/nsis/Nimbo_<versão>_x64-setup.exe`. Ele instala só para o seu
+usuário, sem pedir administrador.
+
+Como o instalador ainda não é assinado, o Windows mostra o aviso do SmartScreen na primeira vez:
+clique em "Mais informações" e depois em "Executar assim mesmo".
+
+## Rodar em desenvolvimento
 
 Precisa de Node 20+ e Rust (stable).
 

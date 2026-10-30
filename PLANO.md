@@ -101,7 +101,7 @@ Depois: conexão direta com Tuya e SmartThings para quem não tem Home Assistant
 6. ✅ **Casa** — Home Assistant: ar-condicionado e luzes.
 7. ✅ (parcial: foco e água) **Produtividade** — agenda, to-do, Pomodoro, prateleira de arquivos.
 8. **Plugins e temas**.
-9. **Distribuição** — instalador assinado, atualização automática.
+9. ✅ (parcial: instalador sem assinatura) **Distribuição** — instalador assinado, atualização automática.
 
 ## 5. Riscos
 - Contas de fabricante (LG, Samsung) mudam API sem aviso → por isso Home Assistant primeiro.

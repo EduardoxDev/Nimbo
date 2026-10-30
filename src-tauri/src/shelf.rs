@@ -195,8 +195,10 @@ pub(crate) fn shelf_reveal(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 pub(crate) fn shelf_drag_icon(app: AppHandle) -> Result<String, String> {
     let path = data_path(&app, DRAG_ICON_FILE)?;
-    if !path.exists() {
-        fs::write(&path, include_bytes!("../icons/32x32.png")).map_err(|error| error.to_string())?;
+    let icon: &[u8] = include_bytes!("../icons/32x32.png");
+    // Rewritten when the app icon changes between versions.
+    if fs::read(&path).ok().as_deref() != Some(icon) {
+        fs::write(&path, icon).map_err(|error| error.to_string())?;
     }
     Ok(path.to_string_lossy().to_string())
 }
