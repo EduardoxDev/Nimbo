@@ -187,7 +187,7 @@ pub(crate) async fn assistant_step(messages: Vec<Value>) -> Result<Value, String
         200 => {}
         401 | 403 => return Err("The Anthropic API key was refused. Check it in settings.".to_string()),
         429 => return Err("Too many requests right now. Wait a moment and try again.".to_string()),
-        529 | 500..=599 => return Err("Claude is busy right now. Try again in a moment.".to_string()),
+        500..=599 => return Err("Claude is busy right now. Try again in a moment.".to_string()),
         _ => {
             let detail = payload.pointer("/error/message").and_then(Value::as_str).unwrap_or("unknown error");
             return Err(format!("Claude returned an error ({status}): {detail}"));
