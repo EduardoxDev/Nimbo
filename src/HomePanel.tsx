@@ -32,6 +32,8 @@ import {
   type HomeEntity,
   type HomeServiceCall,
 } from "./home/homeStore";
+import { IslandTabs } from "./IslandTabs";
+import { AirConditioner3D, airModeOf } from "./home/AirConditioner3D";
 import "./HomePanel.css";
 
 export type HomePageLink<Page extends string> = {
@@ -225,17 +227,24 @@ export function HomePanel<Page extends string>({
           {climate && (
             <div className={`home-ac home-ac--${climate.state}`}>
               <button
-                className="home-ac__tile"
+                className="home-ac__unit"
                 type="button"
                 title={climates.length > 1 ? t.home.switchClimate : climate.name}
                 aria-label={climates.length > 1 ? t.home.switchClimate : climate.name}
                 disabled={climates.length < 2}
                 onClick={() => setClimateIndex((index) => index + 1)}
               >
-                <ClimateIcon size={22} strokeWidth={2.2} />
+                <AirConditioner3D
+                  mode={airModeOf(climate.state)}
+                  display={formatTemperature(climate.targetTemperature, t.localeTag)}
+                  label={climate.name}
+                />
               </button>
               <div className="home-ac__info">
-                <strong>{climate.name}</strong>
+                <strong>
+                  <ClimateIcon className="home-ac__mode-icon" size={15} strokeWidth={2.4} aria-hidden="true" />
+                  {climate.name}
+                </strong>
                 <span>
                   {t.home.room} {formatTemperature(climate.currentTemperature, t.localeTag)}
                   {climate.hvacAction && ` · ${t.home.actions[climate.hvacAction as keyof typeof t.home.actions] ?? climate.hvacAction}`}
@@ -282,7 +291,7 @@ export function HomePanel<Page extends string>({
                       }
                     >
                       <ModeIcon size={14} strokeWidth={2.3} aria-hidden="true" />
-                      {mode !== "off" && <span>{label}</span>}
+                      {climate.state === mode && mode !== "off" && <span>{label}</span>}
                     </button>
                   );
                 })}
@@ -347,24 +356,16 @@ export function HomePanel<Page extends string>({
         </div>
       )}
 
-      <nav
-        className={`np-dots home-panel__dots${showPageIcons ? " np-dots--icons" : ""}`}
-        aria-label={t.island.editor}
-      >
-        {pages.map(({ id, label, icon: PageIcon }) => (
-          <button
-            key={id}
-            className={`np-dot${id === currentPage ? " np-dot--active" : ""}`}
-            type="button"
-            title={label}
-            aria-label={label}
-            aria-current={id === currentPage ? "page" : undefined}
-            onClick={() => onPageChange(id)}
-          >
-            {showPageIcons && <PageIcon size={12} strokeWidth={2.2} aria-hidden="true" />}
-          </button>
-        ))}
-      </nav>
+      <div className="home-panel__dots">
+        <IslandTabs
+          tabs={pages}
+          current={currentPage}
+          label={t.island.editor}
+          variant="compact"
+          revealIcons={showPageIcons}
+          onChange={onPageChange}
+        />
+      </div>
     </section>
   );
 }

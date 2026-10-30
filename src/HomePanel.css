@@ -22,15 +22,149 @@
 /* ---------- Air conditioner ---------- */
 .home-ac {
   position: absolute;
-  top: 56px;
-  left: 56px;
-  right: 64px;
+  top: 52px;
+  left: 44px;
+  right: 56px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: 48px 40px;
-  column-gap: 14px;
-  row-gap: 12px;
+  grid-template-columns: 144px minmax(0, 1fr) auto;
+  grid-template-rows: 50px 38px;
+  column-gap: 16px;
+  row-gap: 10px;
   align-items: center;
+}
+
+/* The 3D unit spans both rows; its air flow spills below. */
+.home-ac__unit {
+  grid-row: 1 / span 2;
+  align-self: start;
+  width: 144px;
+  height: 90px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  overflow: visible;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-ac__unit:not(:disabled) {
+  cursor: pointer;
+}
+
+.home-ac__unit:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.home-ac__unit:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.home-ac__mode-icon {
+  flex: 0 0 auto;
+  color: rgb(var(--home-cool));
+}
+
+.home-ac--heat .home-ac__mode-icon {
+  color: rgb(var(--home-heat));
+}
+
+.home-ac--off .home-ac__mode-icon {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---------- 3D unit ---------- */
+.ac3d {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.ac3d__brand {
+  fill: #9aa3b5;
+  font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.ac3d__display {
+  fill: rgb(var(--home-cool));
+  font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.ac3d--heat .ac3d__display { fill: rgb(var(--home-heat)); }
+.ac3d--fan .ac3d__display { fill: #e9edf5; }
+.ac3d--off .ac3d__display { fill: #4a5162; }
+
+.ac3d__led { fill: #4a5162; }
+.ac3d--cool .ac3d__led { fill: rgb(var(--home-cool)); }
+.ac3d--heat .ac3d__led { fill: rgb(var(--home-heat)); }
+.ac3d--fan .ac3d__led { fill: #30d158; }
+
+/* Flap: closed when off, swung open and gently swaying when on. */
+.ac3d__flap {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ac3d:not(.ac3d--off) .ac3d__flap {
+  transform: translateY(5px) scaleY(0.55);
+  animation: ac3d-sway 4s ease-in-out infinite;
+}
+
+@keyframes ac3d-sway {
+  0%, 100% { transform: translateY(5px) scaleY(0.55); }
+  50% { transform: translateY(7px) scaleY(0.4); }
+}
+
+.ac3d__flow path {
+  fill: none;
+  stroke: rgb(var(--home-cool));
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 7 11;
+  opacity: 0.75;
+  animation: ac3d-flow 1.3s linear infinite;
+}
+
+.ac3d__flow path:nth-child(2) { animation-delay: -0.4s; }
+.ac3d__flow path:nth-child(3) { animation-delay: -0.8s; }
+.ac3d__flow path:nth-child(4) { animation-delay: -1.1s; }
+
+.ac3d--heat .ac3d__flow path {
+  stroke: rgb(var(--home-heat));
+  stroke-dasharray: 4 6;
+  animation-duration: 1.8s;
+}
+
+.ac3d--fan .ac3d__flow path {
+  stroke: #e9edf5;
+  opacity: 0.5;
+}
+
+@keyframes ac3d-flow {
+  to { stroke-dashoffset: -36; }
+}
+
+.ac3d__flake {
+  fill: #ffffff;
+  animation: ac3d-snow 2.4s linear infinite;
+}
+
+.ac3d__flake:nth-of-type(2) { animation-delay: -0.6s; }
+.ac3d__flake:nth-of-type(3) { animation-delay: -1.2s; }
+.ac3d__flake:nth-of-type(4) { animation-delay: -1.8s; }
+.ac3d__flake:nth-of-type(5) { animation-delay: -0.9s; }
+.ac3d__flake:nth-of-type(6) { animation-delay: -2.1s; }
+
+@keyframes ac3d-snow {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(-4px, 44px); opacity: 0; }
 }
 
 .home-ac__tile {
@@ -87,6 +221,9 @@
 }
 
 .home-ac__info strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -100,13 +237,13 @@
 .home-ac__target {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .home-ac__target output {
-  min-width: 74px;
+  min-width: 62px;
   text-align: center;
-  font-size: 40px;
+  font-size: 36px;
   font-weight: 300;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -118,8 +255,8 @@
 }
 
 .home-ac__target button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -147,7 +284,7 @@
 }
 
 .home-ac__modes {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   display: flex;
   gap: 6px;
 }
@@ -344,7 +481,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-ac__tile,
+  .ac3d__flap,
+  .ac3d__flow path {
+    animation: none !important;
+  }
+
+  /* Still snowflakes would read as dots; keep only the static air lines. */
+  .ac3d__flake {
+    display: none;
+  }
+
+  .home-ac__unit,
   .home-chip,
   .home-device,
   .home-ac__target button {

@@ -1,0 +1,136 @@
+/* Page tabs: a glass capsule; the active page is a bright pill. */
+.island-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.island-tab {
+  height: 28px;
+  min-width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 160ms ease,
+    padding 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.island-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.island-tab--active,
+.island-tab--active:hover {
+  padding: 0 12px 0 10px;
+  color: #101218;
+  background: linear-gradient(180deg, #ffffff, #e9ecf2);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+}
+
+.island-tab__label {
+  animation: island-tab-label-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes island-tab-label-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+.island-tab:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* Compact capsule under the player: dots that open into icons on hover. */
+.island-tabs--compact {
+  gap: 4px;
+  padding: 3px 5px;
+  background: rgba(255, 255, 255, 0.06);
+  transition:
+    gap 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 200ms ease;
+}
+
+.island-tabs--compact .island-tab {
+  width: 5px;
+  min-width: 0;
+  height: 5px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.4);
+  transition:
+    width 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 200ms ease;
+}
+
+.island-tabs--compact .island-tab--active {
+  width: 16px;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.island-tabs--compact .island-tab__icon {
+  display: none;
+}
+
+.island-tabs--compact.island-tabs--reveal:hover {
+  gap: 3px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.island-tabs--compact.island-tabs--reveal:hover .island-tab {
+  width: 24px;
+  height: 22px;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+}
+
+.island-tabs--compact.island-tabs--reveal:hover .island-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.island-tabs--compact.island-tabs--reveal:hover .island-tab--active {
+  color: #101218;
+  background: #ffffff;
+}
+
+.island-tabs--compact.island-tabs--reveal:hover .island-tab__icon {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-tab,
+  .island-tabs--compact,
+  .island-tabs--compact .island-tab,
+  .island-tab__label {
+    animation: none;
+    transition: none;
+  }
+}

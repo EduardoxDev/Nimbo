@@ -4281,3 +4281,203 @@ input,
 .stage--fast .island__collapsed {
   transition-delay: 60ms, 0s;
 }
+
+/* ======================================================================
+   Navigation refresh: black island, tab header, quiet chevrons.
+   Kept at the end so it wins over the older island styles above.
+   ====================================================================== */
+
+/* ---- Collapsed island: true black, like a hardware notch ---- */
+.island--collapsed,
+.island--appearance-liquidGlass.island--collapsed {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 45%),
+    #050507;
+  background-size: 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.island--detached.island--collapsed {
+  border-radius: 999px;
+}
+
+.island--collapsed:hover,
+.island--collapsed:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 10px 26px rgba(0, 0, 0, 0.34);
+}
+
+.island--collapsed .island__glass {
+  opacity: 0;
+}
+
+/* Status: a small ring instead of a flat dot. */
+.island__collapsed .island__pulse {
+  width: 12px;
+  height: 12px;
+  background: transparent;
+  border: 2.4px solid #35e985;
+  box-shadow: 0 0 10px rgba(53, 233, 133, 0.55);
+  filter: none;
+}
+
+.island__collapsed .island__pulse--agent-running {
+  border-color: #ff4d5e;
+  box-shadow: 0 0 10px rgba(255, 77, 94, 0.6);
+  animation: island-ring-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes island-ring-pulse {
+  50% {
+    transform: scale(0.82);
+    opacity: 0.7;
+  }
+}
+
+.island__collapsed :is(.island__todo-count, .island__active-task, .island__brand) {
+  color: #ffffff;
+  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.island__clock {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hide-to-edge control: invisible until the island is hovered. */
+.island__collapsed .island__quiet-button {
+  width: 8px;
+  height: 8px;
+  margin-left: 2px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 0;
+  box-shadow: none;
+  opacity: 0;
+  transition: opacity 160ms ease, background 160ms ease;
+}
+
+.island--collapsed:hover .island__quiet-button,
+.island__collapsed .island__quiet-button:focus-visible {
+  opacity: 1;
+}
+
+.island__collapsed .island__quiet-button:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* ---- Every open page sits on the same dark glass ---- */
+.island--expanded {
+  background:
+    radial-gradient(120% 160% at 50% -30%, rgba(120, 140, 180, 0.22), transparent 60%),
+    linear-gradient(180deg, rgba(50, 57, 74, 0.9), rgba(30, 34, 46, 0.93) 55%, rgba(22, 25, 35, 0.95)),
+    linear-gradient(rgba(6, 7, 10, calc(var(--glass-tint, 0.2) * 0.9)), rgba(6, 7, 10, calc(var(--glass-tint, 0.2) * 0.9))),
+    rgba(22, 25, 35, 0.9);
+  background-size: 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 50px rgba(0, 0, 0, 0.32);
+}
+
+.island--detached.island--expanded {
+  border-radius: 30px;
+}
+
+.island--expanded .island__glass {
+  opacity: 0;
+}
+
+/* ---- Header: tabs on the left, quiet round buttons on the right ---- */
+.island__header {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.island__header .island__title svg {
+  color: #35e985;
+}
+
+.island__header .window-actions {
+  gap: 2px;
+}
+
+.island__header .icon-button {
+  width: 30px;
+  height: 30px;
+  color: rgba(255, 255, 255, 0.66);
+  background: transparent;
+}
+
+.island__header .icon-button:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* "Back to the top" only matters after the island was dragged away. */
+.island__header .island-reset-button:not(.island-reset-button--available) {
+  display: none;
+}
+
+/* ---- Chevrons: no discs, only a faint arrow near the edge on hover ---- */
+.np-nav {
+  width: 22px;
+  height: 44px;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border-radius: 10px;
+  opacity: 0;
+  transition:
+    opacity 200ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.np-nav--previous {
+  left: 10px;
+}
+
+.np-nav--next {
+  right: 10px;
+  top: 87px;
+}
+
+.island--expanded:hover .np-nav,
+.np-nav:focus-visible {
+  opacity: 0.55;
+}
+
+.np-nav:hover,
+.np-nav:focus-visible {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Compact tabs replace the dots: centred under the transport. */
+.np-dots {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-panel__dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island__collapsed .island__pulse--agent-running {
+    animation: none;
+  }
+}

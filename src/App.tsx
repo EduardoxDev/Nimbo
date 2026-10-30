@@ -69,6 +69,7 @@ import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type Lyric
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import { HOME_DEMO } from "./demo/homeDemo";
 import { HomePanel } from "./HomePanel";
+import { IslandTabs } from "./IslandTabs";
 import "./App.css";
 import "./IslandSummary.css";
 
@@ -251,6 +252,9 @@ type IslandShellProps = {
   onReveal: () => void;
   onPageChange: (page: IslandPage) => void;
   openOnHover: boolean;
+  pageTabs: IslandPageLink[];
+  /** True only after the island was dragged away from its usual spot. */
+  canResetPosition: boolean;
   children: ReactNode;
 };
 
@@ -1017,6 +1021,8 @@ export function IslandShell({
   onReveal,
   onPageChange,
   openOnHover,
+  pageTabs,
+  canResetPosition,
   children,
 }: IslandShellProps) {
   const t = useTranslation();
@@ -1030,6 +1036,7 @@ export function IslandShell({
   const isExpanded = mode === "expanded";
   const [isPreparing, setIsPreparing] = useState(isTauri);
   const isLiquidGlass = appearanceMode === "liquidGlass";
+  const collapsedTime = useClockLabel(t.localeTag);
   const isMusicPlaying = mediaState.playbackStatus === "playing";
   const className = [
     "island",
@@ -1287,13 +1294,17 @@ export function IslandShell({
               </span>
             </span>
           </button>
-          <MusicWaveButton
-            isAvailable={mediaState.available || mediaState.audioActive}
-            isPlaying={isMusicPlaying}
-            audioPeak={mediaState.audioPeak}
-            label={t.island.openMusic}
-            onClick={() => onOpenPage("music")}
-          />
+          {mediaState.available || mediaState.audioActive ? (
+            <MusicWaveButton
+              isAvailable
+              isPlaying={isMusicPlaying}
+              audioPeak={mediaState.audioPeak}
+              label={t.island.openMusic}
+              onClick={() => onOpenPage("music")}
+            />
+          ) : (
+            <span className="island__clock" aria-hidden="true">{collapsedTime}</span>
+          )}
           <button
             className="island__quiet-button"
             type="button"
@@ -1323,71 +1334,13 @@ export function IslandShell({
               {showTitle && <span>Nimbo</span>}
             </div>
 
-            <div
-              className="editor-dots"
-              aria-label={t.island.editor}
-            >
-              <button
-                className={`dot-button dot-button--todo ${
-                  page === "todo" ? "dot-button--active" : ""
-                }`}
-                type="button"
-                title={t.island.todoList}
-                aria-label={t.island.todoList}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPageChange("todo");
-                }}
-              />
-              <button
-                className={`dot-button dot-button--music ${
-                  page === "music" ? "dot-button--active" : ""
-                }`}
-                type="button"
-                title={t.island.music}
-                aria-label={t.island.music}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPageChange("music");
-                }}
-              />
-              <button
-                className={`dot-button dot-button--home ${
-                  page === "home" ? "dot-button--active" : ""
-                }`}
-                type="button"
-                title={t.home.title}
-                aria-label={t.home.title}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPageChange("home");
-                }}
-              />
-              <button
-                className={`dot-button dot-button--clipboard ${
-                  page === "clipboard" ? "dot-button--active" : ""
-                }`}
-                type="button"
-                title={t.island.clipboardHistory}
-                aria-label={t.island.clipboardHistory}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPageChange("clipboard");
-                }}
-              />
-              <button
-                className={`dot-button dot-button--layout ${
-                  page === "layout" ? "dot-button--active" : ""
-                }`}
-                type="button"
-                title={t.island.layoutEditor}
-                aria-label={t.island.layoutEditor}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPageChange("layout");
-                }}
-              />
-            </div>
+            <IslandTabs
+              tabs={pageTabs}
+              current={page}
+              label={t.island.editor}
+              variant="header"
+              onChange={onPageChange}
+            />
 
             <button
               className="island__collapse-target"
@@ -1426,7 +1379,7 @@ export function IslandShell({
               </button>
               <button
                 className={`icon-button island-reset-button${
-                  isDetached ? " island-reset-button--available" : ""
+                  canResetPosition ? " island-reset-button--available" : ""
                 }`}
                 type="button"
                 title={t.island.resetPositionLabel}
@@ -1457,6 +1410,20 @@ export function IslandShell({
       </div>
     </section>
   );
+}
+
+/** "09:41", refreshed every few seconds so the minute flips on time. */
+function useClockLabel(localeTag: string) {
+  const format = () =>
+    new Intl.DateTimeFormat(localeTag, { hour: "2-digit", minute: "2-digit" }).format(new Date());
+  const [label, setLabel] = useState(format);
+  useEffect(() => {
+    setLabel(format());
+    const interval = window.setInterval(() => setLabel(format()), 5_000);
+    return () => window.clearInterval(interval);
+    // `format` only depends on the locale.
+  }, [localeTag]);
+  return label;
 }
 
 function MusicWaveButton({
@@ -3471,24 +3438,16 @@ function MusicPlayerPanel({
           </button>
         </div>
 
-        <nav
-          className={`np-dots${showPageIcons ? " np-dots--icons" : ""}`}
-          aria-label={t.island.editor}
-        >
-          {pages.map(({ id, label, icon: PageIcon }) => (
-            <button
-              key={id}
-              className={`np-dot${id === currentPage ? " np-dot--active" : ""}`}
-              type="button"
-              title={label}
-              aria-label={label}
-              aria-current={id === currentPage ? "page" : undefined}
-              onClick={() => onPageChange(id)}
-            >
-              {showPageIcons && <PageIcon size={12} strokeWidth={2.2} aria-hidden="true" />}
-            </button>
-          ))}
-        </nav>
+        <div className="np-dots">
+          <IslandTabs
+            tabs={pages}
+            current={currentPage}
+            label={t.island.editor}
+            variant="compact"
+            revealIcons={showPageIcons}
+            onChange={onPageChange}
+          />
+        </div>
       </div>
     </section>
   );
@@ -5686,6 +5645,8 @@ function IslandApp({
         onReveal={revealIsland}
         onPageChange={setPage}
         openOnHover={settings.openMode === "hover"}
+        pageTabs={islandPageLinks}
+        canResetPosition={isPositionDetached}
       >
         {page === "layout" && (
           <LayoutEditor
