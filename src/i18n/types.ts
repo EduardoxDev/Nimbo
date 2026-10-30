@@ -199,6 +199,43 @@ export type Translations = {
     noteFallback: string;
   };
 
+  home: {
+    title: string;
+    connectTitle: string;
+    connectHint: string;
+    openSettings: string;
+    loading: string;
+    error: string;
+    noDevices: string;
+    noDevicesHint: string;
+    room: string;
+    targetLabel: string;
+    decrease: string;
+    increase: string;
+    switchClimate: string;
+    on: string;
+    off: string;
+    actionFailed: string;
+    modes: {
+      off: string;
+      cool: string;
+      heat: string;
+      heat_cool: string;
+      auto: string;
+      dry: string;
+      fan_only: string;
+    };
+    actions: {
+      off: string;
+      cooling: string;
+      heating: string;
+      idle: string;
+      fan: string;
+      drying: string;
+      preheating: string;
+      defrosting: string;
+    };
+  };
   prefs: {
     windowTitle: string;
     close: string;
@@ -275,6 +312,28 @@ export type Translations = {
       section: string;
       carryOver: string;
       reorder: string;
+    };
+    home: {
+      section: string;
+      address: string;
+      addressPlaceholder: string;
+      token: string;
+      tokenPlaceholder: string;
+      tokenHint: string;
+      connect: string;
+      connecting: string;
+      connected: string;
+      disconnect: string;
+      devices: string;
+      devicesHint: string;
+      noDevices: string;
+      privacy: string;
+      domains: {
+        climate: string;
+        light: string;
+        switch: string;
+        fan: string;
+      };
     };
     about: {
       tagline: string;

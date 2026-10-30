@@ -96,9 +96,9 @@ Depois: conexão direta com Tuya e SmartThings para quem não tem Home Assistant
 1. ✅ **Base** — fork do `fly-island`, renomear, limpar o que é da China (QQ, WeChat, QQ Mail).
 2. **Ilha** — estilos Clássico e Flutuante, vidro com tint, abrir ao passar o mouse ou clicar.
 3. ✅ **Música** — player igual ao do print + letras sincronizadas (LRCLIB).
-4. **Configurações** — janela com barra lateral e cartões.
+4. ✅ **Configurações** — janela com barra lateral e cartões.
 5. **Sistema** — volume por app, brilho, Wi-Fi, Bluetooth, modo escuro.
-6. **Casa** — Home Assistant: ar-condicionado e luzes.
+6. ✅ **Casa** — Home Assistant: ar-condicionado e luzes.
 7. **Produtividade** — agenda, to-do, Pomodoro, prateleira de arquivos.
 8. **Plugins e temas**.
 9. **Distribuição** — instalador assinado, atualização automática.

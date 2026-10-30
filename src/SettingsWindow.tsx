@@ -11,10 +11,8 @@ import {
   ExternalLink,
   House,
   Info,
-  Minus,
   Monitor,
   Music,
-  Plus,
   Settings,
   Timer,
 } from "lucide-react";
@@ -29,6 +27,9 @@ import {
   type IslandSettings,
 } from "./App";
 import { LOCALE_CODES, TRANSLATIONS, useLocale, useTranslation } from "./i18n";
+import { HomeSettingsPage } from "./home/HomeSettingsPage";
+import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
+import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
 
 type PageId =
@@ -46,7 +47,7 @@ type PageId =
   | "hud"
   | "about";
 
-type SoonPage = "statusRing" | "calendar" | "pomodoro" | "water" | "home" | "shelf" | "hud";
+type SoonPage = "statusRing" | "calendar" | "pomodoro" | "water" | "shelf" | "hud";
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -64,10 +65,10 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "hud", icon: Bell, color: "#0a84ff" },
 ];
 
-const SOON_PAGES = new Set<PageId>(["statusRing", "calendar", "pomodoro", "water", "home", "shelf", "hud"]);
+const SOON_PAGES = new Set<PageId>(["statusRing", "calendar", "pomodoro", "water", "shelf", "hud"]);
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
-const PAGE_STORAGE_KEY = "nimbo-settings-page";
+const PAGE_STORAGE_KEY = SETTINGS_PAGE_STORAGE_KEY;
 
 function loadPage(): PageId {
   try {
@@ -131,6 +132,15 @@ export default function SettingsWindow() {
     }
   }, [page]);
 
+  // The island can ask for a page (e.g. "Home" from its empty state).
+  useEffect(() => {
+    const follow = (event: StorageEvent) => {
+      if (event.key === PAGE_STORAGE_KEY) setPage(loadPage());
+    };
+    window.addEventListener("storage", follow);
+    return () => window.removeEventListener("storage", follow);
+  }, []);
+
   const closeWindow = () => {
     if (isTauri()) void getCurrentWindow().hide();
   };
@@ -180,6 +190,7 @@ export default function SettingsWindow() {
           {page === "display" && <DisplayPage settings={settings} update={update} />}
           {page === "music" && <MusicPage />}
           {page === "todo" && <TodoPage settings={settings} update={update} />}
+          {page === "home" && <HomeSettingsPage />}
           {page === "about" && <AboutPage />}
           {SOON_PAGES.has(page) && <SoonPageView page={page as SoonPage} />}
         </div>
@@ -536,124 +547,6 @@ function AboutPage() {
       >
         {copy.github}
         <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="prefs-section">
-      <h2>{title}</h2>
-      <div className="prefs-card">{children}</div>
-    </section>
-  );
-}
-
-function Row({ title, hint, children }: { title: string; hint?: string; children?: ReactNode }) {
-  return (
-    <div className="prefs-row">
-      <div className="prefs-row__text">
-        <span className="prefs-row__title">{title}</span>
-        {hint && <span className="prefs-row__hint">{hint}</span>}
-      </div>
-      {children && <div className="prefs-row__control">{children}</div>}
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  disabled = false,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <button
-      className={`prefs-toggle${checked ? " prefs-toggle--on" : ""}`}
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-    >
-      <span className="prefs-toggle__knob" />
-    </button>
-  );
-}
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="prefs-segmented" role="radiogroup" aria-label={label}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          className={`prefs-segmented__option${option.value === value ? " prefs-segmented__option--active" : ""}`}
-          type="button"
-          role="radio"
-          aria-checked={option.value === value}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Stepper({
-  value,
-  min,
-  max,
-  step,
-  format,
-  decreaseLabel,
-  increaseLabel,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  format: (value: number) => string;
-  decreaseLabel: string;
-  increaseLabel: string;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="prefs-stepper">
-      <button
-        type="button"
-        aria-label={decreaseLabel}
-        disabled={value <= min}
-        onClick={() => onChange(Math.max(min, value - step))}
-      >
-        <Minus size={13} strokeWidth={3} />
-      </button>
-      <output aria-live="polite">{format(value)}</output>
-      <button
-        type="button"
-        aria-label={increaseLabel}
-        disabled={value >= max}
-        onClick={() => onChange(Math.min(max, value + step))}
-      >
-        <Plus size={13} strokeWidth={3} />
       </button>
     </div>
   );

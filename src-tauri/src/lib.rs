@@ -1,4 +1,5 @@
 mod clipboard_history;
+mod home_assistant;
 mod lyrics;
 mod media_control;
 mod translation;
@@ -1805,6 +1806,11 @@ pub fn run() {
             get_system_volume,
             set_system_volume,
             lyrics::fetch_lyrics,
+            home_assistant::home_assistant_status,
+            home_assistant::connect_home_assistant,
+            home_assistant::disconnect_home_assistant,
+            home_assistant::home_assistant_entities,
+            home_assistant::home_assistant_call,
             clipboard_history::get_clipboard_history,
             clipboard_history::set_clipboard_history_settings,
             clipboard_history::copy_clipboard_history_item,

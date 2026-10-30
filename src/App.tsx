@@ -22,6 +22,7 @@ import {
   Columns2,
   Copy,
   ExternalLink,
+  House,
   FastForward,
   GripVertical,
   ImageIcon,
@@ -66,12 +67,14 @@ import {
 import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
+import { HOME_DEMO } from "./demo/homeDemo";
+import { HomePanel } from "./HomePanel";
 import "./App.css";
 import "./IslandSummary.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "music" | "clipboard" | "layout";
+type IslandPage = "todo" | "music" | "home" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -272,6 +275,7 @@ const MAX_COLLAPSED_TEXT_UNITS = 12;
 const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
 const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
+const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
 const TODO_ROW_HEIGHT = 46;
@@ -1345,6 +1349,18 @@ export function IslandShell({
                 onClick={(event) => {
                   event.stopPropagation();
                   onPageChange("music");
+                }}
+              />
+              <button
+                className={`dot-button dot-button--home ${
+                  page === "home" ? "dot-button--active" : ""
+                }`}
+                type="button"
+                title={t.home.title}
+                aria-label={t.home.title}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPageChange("home");
                 }}
               />
               <button
@@ -4080,13 +4096,17 @@ function IslandApp({
   onLocaleChange: (locale: LocaleCode) => void;
 }) {
   const t = useTranslation();
-  const [mode, setMode] = useState<IslandMode>(MUSIC_DEMO ? "expanded" : "collapsed");
+  const [mode, setMode] = useState<IslandMode>(
+    MUSIC_DEMO || HOME_DEMO ? "expanded" : "collapsed",
+  );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
   const [reducedMotion, setReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const [page, setPage] = useState<IslandPage>(MUSIC_DEMO ? "music" : "todo");
+  const [page, setPage] = useState<IslandPage>(
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : "todo",
+  );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
       ? {
@@ -4209,7 +4229,9 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "clipboard"
+        : page === "home"
+          ? HOME_EXPANDED_ISLAND_HEIGHT
+          : page === "clipboard"
           ? CLIPBOARD_EXPANDED_ISLAND_HEIGHT
           : EDITOR_EXPANDED_ISLAND_HEIGHT;
   const layoutSync = useRef<{
@@ -4572,6 +4594,14 @@ function IslandApp({
   const revealIsland = useCallback(() => {
     setIsTucked(false);
   }, []);
+
+  const islandPageLinks: IslandPageLink[] = [
+    { id: "todo", label: t.island.todoList, icon: ListTodo },
+    { id: "music", label: t.island.music, icon: Music },
+    { id: "home", label: t.home.title, icon: House },
+    { id: "clipboard", label: t.island.clipboardHistory, icon: Clipboard },
+    { id: "layout", label: t.island.layoutEditor, icon: LayoutGrid },
+  ];
 
   const openIslandPage = useCallback((nextPage: IslandPage) => {
     setPage(nextPage);
@@ -5698,12 +5728,15 @@ function IslandApp({
             onNext={() => void runMediaCommand("media_next")}
             onPrevious={() => void runMediaCommand("media_previous")}
             onRefresh={refreshMediaState}
-            pages={[
-              { id: "todo", label: t.island.todoList, icon: ListTodo },
-              { id: "music", label: t.island.music, icon: Music },
-              { id: "clipboard", label: t.island.clipboardHistory, icon: Clipboard },
-              { id: "layout", label: t.island.layoutEditor, icon: LayoutGrid },
-            ]}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "home" && (
+          <HomePanel
+            pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}

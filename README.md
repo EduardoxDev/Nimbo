@@ -26,6 +26,10 @@ npm run tauri build -- --no-bundle
 - Player de música do Windows (qualquer app que apareça no controle de mídia: Spotify, YouTube no navegador…):
   capa, título, artista e álbum, barra de progresso (clique para pular), volume do sistema e
   letras sincronizadas do [LRCLIB](https://lrclib.net) (só título, artista, álbum e duração saem do PC).
+- Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
+  [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
+  do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.
+- Janela de configurações (bandeja > Configurações… ou engrenagem na ilha).
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
 - Tradução rápida (DeepSeek, com chave do próprio usuário).
