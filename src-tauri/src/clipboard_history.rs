@@ -667,7 +667,7 @@ fn read_clipboard_capture(capture_images: bool) -> Result<Option<ClipboardCaptur
     Ok(None)
 }
 
-fn write_clipboard_text(text: &str) -> Result<(), String> {
+pub(crate) fn write_clipboard_text(text: &str) -> Result<(), String> {
     retry_clipboard_write("set clipboard text", || {
         Clipboard::new()
             .map_err(|error| format!("Failed to open clipboard: {error}"))?

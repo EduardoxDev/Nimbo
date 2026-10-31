@@ -132,6 +132,8 @@ import {
 import "./App.css";
 import { recordStat, useStats } from "./stats/useStats";
 import { useReminders } from "./reminders/useReminders";
+import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
+import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
 import { getWeather, subscribeWeather } from "./weather/weather";
@@ -3714,6 +3716,7 @@ function ClipboardHistoryPanel({
   onUpdateNote,
   onDeleteItem,
   onClear,
+  onAddTodo,
 }: {
   snapshot: ClipboardHistorySnapshot;
   onCopyItem: (id: string) => Promise<boolean> | boolean;
@@ -3721,6 +3724,7 @@ function ClipboardHistoryPanel({
   onUpdateNote: (id: string, note: string) => Promise<boolean> | boolean;
   onDeleteItem: (id: string) => Promise<void> | void;
   onClear: () => Promise<void> | void;
+  onAddTodo: (title: string) => void;
 }) {
   const t = useTranslation();
   const [query, setQuery] = useState("");
@@ -4201,6 +4205,7 @@ function ClipboardHistoryPanel({
                 )}
               </div>
               <div className="clipboard-item__actions">
+                {item.kind === "text" && item.text && <ClipboardAiButton text={item.text} onAddTodo={onAddTodo} />}
                 <button
                   className={[
                     "clipboard-favorite-button",
@@ -5365,6 +5370,12 @@ function IslandApp({
       window.clearInterval(interval);
     };
   }, [isPageVisible]);
+
+  const addTodoTitled = useCallback((title: string) => {
+    const clean = title.trim();
+    if (!clean) return;
+    setTodos((currentTodos) => [{ id: createTodoId(), title: clean, completed: false, createdAt: Date.now() }, ...currentTodos]);
+  }, []);
 
   const addTodo = useCallback(() => {
     const title = draftTodo.trim();
@@ -6543,6 +6554,7 @@ function IslandApp({
             onUpdateNote={updateClipboardHistoryItemNote}
             onDeleteItem={(id) => void deleteClipboardHistoryItem(id)}
             onClear={() => void clearClipboardHistoryItems()}
+            onAddTodo={addTodoTitled}
           />
         )}
         {page === "todo" && (

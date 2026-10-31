@@ -76,7 +76,7 @@ fn locate() -> Option<PathBuf> {
         .max_by_key(|path| fs::metadata(path).and_then(|meta| meta.modified()).unwrap_or(SystemTime::UNIX_EPOCH))
 }
 
-fn executable() -> Option<PathBuf> {
+pub(crate) fn executable() -> Option<PathBuf> {
     EXECUTABLE.get_or_init(locate).clone()
 }
 

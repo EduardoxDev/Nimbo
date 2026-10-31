@@ -162,6 +162,14 @@ const ptBR: Translations = {
   },
 
   clipboard: {
+    aiMenu: "Ações de IA",
+    aiWorking: "O Claude está trabalhando…",
+    aiSummarize: "Resumir",
+    aiTranslate: "Traduzir",
+    aiTodo: "Virar tarefa",
+    aiSummaryDone: "Resumo copiado",
+    aiTranslationDone: "Tradução copiada",
+    aiTodoDone: "Tarefa criada",
     title: "Histórico de copiados",
     favoriteCount: (count) => (count === 1 ? "1 favorito" : `${count} favoritos`),
     expandShortcut: "Atalho para abrir",

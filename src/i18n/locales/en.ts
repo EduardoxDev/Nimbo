@@ -162,6 +162,14 @@ const en: Translations = {
   },
 
   clipboard: {
+    aiMenu: "AI actions",
+    aiWorking: "Claude is working…",
+    aiSummarize: "Summarize",
+    aiTranslate: "Translate",
+    aiTodo: "Make it a task",
+    aiSummaryDone: "Summary copied",
+    aiTranslationDone: "Translation copied",
+    aiTodoDone: "Task created",
     title: "Clipboard history",
     favoriteCount: (count) => (count === 1 ? "1 favorite" : `${count} favorites`),
     expandShortcut: "Expand shortcut",

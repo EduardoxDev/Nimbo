@@ -165,6 +165,14 @@ const zhCN: Translations = {
   },
 
   clipboard: {
+    aiMenu: "AI 操作",
+    aiWorking: "Claude 正在处理…",
+    aiSummarize: "总结",
+    aiTranslate: "翻译",
+    aiTodo: "转为待办",
+    aiSummaryDone: "摘要已复制",
+    aiTranslationDone: "译文已复制",
+    aiTodoDone: "已创建待办",
     title: "剪贴板历史",
     favoriteCount: (count) => `${count} 条收藏`,
     expandShortcut: "展开快捷键",

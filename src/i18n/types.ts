@@ -165,6 +165,14 @@ export type Translations = {
   };
 
   clipboard: {
+    aiMenu: string;
+    aiWorking: string;
+    aiSummarize: string;
+    aiTranslate: string;
+    aiTodo: string;
+    aiSummaryDone: string;
+    aiTranslationDone: string;
+    aiTodoDone: string;
     title: string;
     favoriteCount: (count: number) => string;
     expandShortcut: string;

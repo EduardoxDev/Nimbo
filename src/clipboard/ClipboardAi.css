@@ -1,0 +1,92 @@
+.clipboard-ai {
+  position: relative;
+  display: inline-flex;
+}
+
+.clipboard-ai__button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: #bf8cff;
+  background: rgba(191, 140, 255, 0.1);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.clipboard-ai__button:hover:not(:disabled) {
+  background: rgba(191, 140, 255, 0.2);
+}
+
+.clipboard-ai__button:disabled {
+  cursor: progress;
+}
+
+.clipboard-ai__spin {
+  animation: clipboard-ai-spin 0.9s linear infinite;
+}
+
+@keyframes clipboard-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.clipboard-ai__menu {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 150px;
+  padding: 5px;
+  background: linear-gradient(180deg, #202126, #17181b);
+}
+
+.clipboard-ai__menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  color: var(--g-text, #fff);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.clipboard-ai__menu button:hover,
+.clipboard-ai__menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.clipboard-ai__status {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 6px);
+  right: 0;
+  max-width: 220px;
+  padding: 5px 9px;
+  color: #35e985;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  background: #17181b;
+  border-radius: 8px;
+}
+
+.clipboard-ai__status--failed {
+  color: #ff6961;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clipboard-ai__spin {
+    animation: none;
+  }
+}
