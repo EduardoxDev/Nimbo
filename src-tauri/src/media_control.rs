@@ -215,6 +215,14 @@ fn media_worker() -> Result<mpsc::Sender<MediaJob>, String> {
     worker.lock().map(|sender| sender.clone()).map_err(|error| error.to_string())
 }
 
+pub(crate) fn run_on_media_thread<T, F>(operation: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    on_media_thread(operation)
+}
+
 fn on_media_thread<T, F>(operation: F) -> Result<T, String>
 where
     T: Send + 'static,

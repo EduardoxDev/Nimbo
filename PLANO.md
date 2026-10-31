@@ -97,7 +97,7 @@ Depois: conexão direta com Tuya e SmartThings para quem não tem Home Assistant
 2. **Ilha** — estilos Clássico e Flutuante, vidro com tint, abrir ao passar o mouse ou clicar.
 3. ✅ **Música** — player igual ao do print + letras sincronizadas (LRCLIB).
 4. ✅ **Configurações** — janela com barra lateral e cartões.
-5. **Sistema** — volume por app, brilho, Wi-Fi, Bluetooth, modo escuro.
+5. ✅ **Sistema** — volume por app, brilho, Wi-Fi, Bluetooth, modo escuro.
 6. ✅ **Casa** — Home Assistant: ar-condicionado e luzes.
 7. ✅ (parcial: foco e água) **Produtividade** — agenda, to-do, Pomodoro, prateleira de arquivos.
 8. **Plugins e temas**.
@@ -134,7 +134,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 |---|---|---|---|
 | B1 | ✅ **Agenda**: ler calendários por link ICS (Google/Outlook, sem login), próximos eventos e aviso na ilha minutos antes | Única página ainda "Em breve" | M |
 | B2 | ✅ **Tradução**: trocar o DeepSeek (herdado do fly-island) pelo Claude, com a mesma chave do assistente, ou remover | Hoje exige uma segunda chave de outro provedor | P |
-| B3 | **Sistema** (etapa 5): volume por app, Wi-Fi, Bluetooth, modo escuro, luz noturna, bateria, CPU/RAM | Etapa do plano original ainda não feita | G |
+| B3 | ✅ **Sistema** (etapa 5): volume por app, Wi-Fi, Bluetooth, modo escuro, bateria, CPU/RAM (luz noturna fica de fora: o Windows não tem API pública para ela) | Etapa do plano original ainda não feita | G |
 | B4 | **Testes ao vivo pendentes**: assistente com chave real, Broadlink quando chegar, brilho, volume pela roda do mouse | Funcionam nos testes, mas nunca foram vistos no uso real | P |
 | B5 | ✅ **Primeira abertura (onboarding)**: 3 telas curtas mostrando abrir a ilha, trocar página e Configurações | Quem instala hoje não sabe o que a ilha faz | P |
 

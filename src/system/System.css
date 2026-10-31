@@ -1,0 +1,145 @@
+.system-panel__body {
+  position: absolute;
+  top: 46px;
+  left: 48px;
+  right: 48px;
+  bottom: 30px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 10px 16px;
+  align-content: center;
+}
+
+.system-panel__meters {
+  grid-row: span 2;
+  display: flex;
+  gap: 12px;
+}
+
+.system-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 64px;
+}
+
+.system-meter strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.system-meter__label {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.system-meter__detail {
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.system-panel__toggles {
+  display: flex;
+  gap: 6px;
+}
+
+.system-toggle {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  color: rgba(235, 238, 245, 0.75);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.07);
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.system-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-toggle--on {
+  color: #ffffff;
+  background: #0a84ff;
+}
+
+.system-toggle:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.system-panel__apps {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.system-app {
+  display: grid;
+  grid-template-columns: 24px 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.system-app__mute {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: rgba(235, 238, 245, 0.8);
+  background: rgba(255, 255, 255, 0.07);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.system-app__name {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-app input[type="range"] {
+  width: 100%;
+  accent-color: #0a84ff;
+}
+
+.system-panel__empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 12px;
+}
+
+.system-panel__error {
+  grid-column: 1 / -1;
+  color: #ff6961;
+  font-size: 11.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-toggle {
+    transition: none;
+  }
+}

@@ -36,6 +36,7 @@ import {
   ListTodo,
   MessageSquareQuote,
   CalendarDays,
+  Gauge,
   Minus,
   Music,
   NotebookPen,
@@ -99,6 +100,10 @@ import "./weather/Weather.css";
 import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
 import { LauncherPanel } from "./launcher/LauncherPanel";
+import { SystemPanel } from "./system/SystemPanel";
+import { useSystem } from "./system/useSystem";
+import { SYSTEM_DEMO } from "./demo/systemDemo";
+import "./system/System.css";
 import { LAUNCHER_DEMO } from "./demo/launcherDemo";
 import "./launcher/Launcher.css";
 import { minutesUntil } from "./calendar/calendar";
@@ -127,7 +132,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "assistant" | "launcher" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -4314,7 +4319,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO || LAUNCHER_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO || LAUNCHER_DEMO || SYSTEM_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4322,7 +4327,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : LAUNCHER_DEMO ? "launcher" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : LAUNCHER_DEMO ? "launcher" : SYSTEM_DEMO ? "system" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4616,7 +4621,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher"
+        : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher" || page === "system"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
@@ -4989,10 +4994,13 @@ function IslandApp({
     setIsTucked(false);
   }, []);
 
+  const system = useSystem(mode === "expanded" && page === "system" && isPageVisible);
+
   const islandPageLinks: IslandPageLink[] = [
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "assistant", label: t.assistant.title, icon: Sparkles },
     { id: "launcher", label: t.launcher.title, icon: Rocket },
+    { id: "system", label: t.system.title, icon: Gauge },
     { id: "music", label: t.island.music, icon: Music },
     { id: "calendar", label: t.calendar.title, icon: CalendarDays },
     { id: "home", label: t.home.title, icon: House },
@@ -6299,6 +6307,15 @@ function IslandApp({
           <FocusPanel
             timer={focusTimer}
             rounds={settings.focusRounds}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "system" && (
+          <SystemPanel
+            system={system}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

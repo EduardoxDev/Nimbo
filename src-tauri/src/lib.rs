@@ -12,6 +12,7 @@ mod launcher;
 mod lyrics;
 mod shelf;
 mod shortcuts;
+mod system;
 mod media_control;
 mod monitors;
 mod translation;
@@ -1865,6 +1866,12 @@ pub fn run() {
             shortcuts::set_global_shortcuts,
             launcher::launcher_apps,
             monitors::list_monitors,
+            system::system_stats,
+            system::system_toggles,
+            system::system_set_radio,
+            system::system_set_dark_mode,
+            system::system_app_volumes,
+            system::system_set_app_volume,
             monitors::set_island_monitor,
             launcher::launcher_open,
             diagnostics::diagnostics_log,

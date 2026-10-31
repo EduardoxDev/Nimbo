@@ -310,6 +310,23 @@ export type Translations = {
     next: string;
     start: string;
   };
+  system: {
+    title: string;
+    cpu: string;
+    processor: string;
+    memory: string;
+    memoryDetail: (used: number, total: number) => string;
+    battery: string;
+    charging: string;
+    onBattery: string;
+    wifi: string;
+    bluetooth: string;
+    darkMode: string;
+    noApps: string;
+    mute: (app: string) => string;
+    unmute: (app: string) => string;
+    volumeOf: (app: string) => string;
+  };
   launcher: {
     title: string;
     placeholder: string;
