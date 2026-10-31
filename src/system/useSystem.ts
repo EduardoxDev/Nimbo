@@ -32,7 +32,10 @@ export function useSystem(active: boolean) {
 
   useEffect(() => {
     if (!active || !isTauri()) return;
-    const readStats = () => void invoke<SystemStats>("system_stats").then(setStats).catch(() => {});
+    const readStats = () =>
+      void invoke<SystemStats>("system_stats")
+        .then((next) => setStats((previous) => ({ ...next, cpu: next.cpu ?? previous?.cpu ?? null })))
+        .catch(() => {});
     readStats();
     refreshSlow();
     const fast = window.setInterval(readStats, STATS_MS);
