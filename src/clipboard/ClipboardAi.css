@@ -34,7 +34,7 @@
   }
 }
 
-.clipboard-ai__menu {
+.clipboard-ai__menu.g-card {
   position: absolute;
   z-index: 6;
   top: calc(100% + 6px);

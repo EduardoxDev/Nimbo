@@ -331,10 +331,10 @@ const ptBR: Translations = {
   week: {
     title: "Sua semana",
     days: "Dia a dia",
-    water: "meta de água",
+    water: "água",
     focus: "focos",
     todos: "tarefas",
-    agents: "pedidos ao Claude",
+    agents: "pedidos",
   },
   waterMeter: {
     today: "Hoje",

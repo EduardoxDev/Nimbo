@@ -331,10 +331,10 @@ const en: Translations = {
   week: {
     title: "Your week",
     days: "Day by day",
-    water: "water goal",
-    focus: "focus rounds",
+    water: "water",
+    focus: "focus",
     todos: "tasks",
-    agents: "Claude requests",
+    agents: "requests",
   },
   waterMeter: {
     today: "Today",

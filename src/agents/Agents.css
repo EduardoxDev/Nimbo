@@ -273,7 +273,7 @@
   -webkit-box-orient: vertical;
 }
 
-.claude-changes {
+.claude-changes.g-card {
   position: absolute;
   z-index: 4;
   left: 22px;

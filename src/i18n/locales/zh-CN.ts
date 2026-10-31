@@ -334,10 +334,10 @@ const zhCN: Translations = {
   week: {
     title: "本周",
     days: "每日",
-    water: "喝水达标",
+    water: "喝水",
     focus: "专注",
     todos: "任务",
-    agents: "Claude 请求",
+    agents: "请求",
   },
   waterMeter: {
     today: "今天",
