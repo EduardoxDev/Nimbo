@@ -32,6 +32,7 @@ pub(crate) struct SessionSnapshot {
     pub(crate) steps: Vec<String>,
     pub(crate) last_text: Option<String>,
     pub(crate) waiting_for_tool: bool,
+    pub(crate) headless: bool,
 }
 
 pub(crate) fn ignore_session(id: &str) {
@@ -76,6 +77,9 @@ pub(crate) fn summarize(lines: &str) -> SessionSnapshot {
         let Ok(entry) = serde_json::from_str::<Value>(line) else { continue };
         if entry.get("isSidechain").and_then(Value::as_bool) == Some(true) {
             continue;
+        }
+        if entry.get("entrypoint").and_then(Value::as_str) == Some("sdk-cli") {
+            snapshot.headless = true;
         }
         if let Some(cwd) = entry.get("cwd").and_then(Value::as_str) {
             snapshot.folder = Some(cwd.to_string());
@@ -177,7 +181,7 @@ fn tick(app: &AppHandle, last: &mut HashMap<PathBuf, (String, SessionSnapshot)>)
         }
         let Some(lines) = read_tail(&path) else { continue };
         let snapshot = summarize(&lines);
-        if snapshot.prompt.is_none() && snapshot.steps.is_empty() {
+        if snapshot.headless || (snapshot.prompt.is_none() && snapshot.steps.is_empty()) {
             continue;
         }
         let working = age <= WORKING_WITHIN;
@@ -249,6 +253,14 @@ mod tests {
         let after = summarize(&next);
         assert_eq!(after.prompt.as_deref(), Some("agora roda tudo"));
         assert!(after.steps.is_empty());
+    }
+
+    #[test]
+    fn headless_runs_are_marked() {
+        let text = lines(&[json!({ "type": "user", "entrypoint": "sdk-cli", "message": { "content": "2+2" } })]);
+        assert!(summarize(&text).headless);
+        let desktop = lines(&[json!({ "type": "user", "entrypoint": "claude-desktop", "message": { "content": "oi" } })]);
+        assert!(!summarize(&desktop).headless);
     }
 
     #[test]
