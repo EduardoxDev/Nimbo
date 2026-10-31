@@ -1928,6 +1928,8 @@ pub fn run() {
             buddy::buddy_hide,
             buddy::buddy_set_hitbox,
             buddy::buddy_scene,
+            buddy::buddy_move_monitor,
+            buddy::foreground_window,
             speech::speech_listen,
             speech::speech_cancel,
             claude_task::claude_task_forget,

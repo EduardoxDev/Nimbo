@@ -8,6 +8,8 @@ import type { MascotAccessory } from "../mascot/accessories";
 import type { MascotMood, MascotShape } from "../mascot/engine";
 import { NIMBO_COLOR, STATUS_COLORS } from "../mascot/nimboMood";
 import type { BuddyMode } from "../buddy/mode";
+import type { Vital } from "../buddy/channel";
+import { auraOf } from "../buddy/pet";
 import "./Hub.css";
 
 export type HubLine = { key: string; icon: LucideIcon; text: string };
@@ -29,6 +31,7 @@ export function HubPanel<Page extends string>({
   accessory,
   evolution,
   buddyMode,
+  vital,
   onBuddyMode,
   pages,
   currentPage,
@@ -43,6 +46,7 @@ export function HubPanel<Page extends string>({
   accessory: MascotAccessory | null;
   evolution: { level: number; points: number; nextAt: number | null };
   buddyMode: BuddyMode;
+  vital: Vital;
   onBuddyMode: (mode: BuddyMode) => void;
   pages: IslandTab<Page>[];
   currentPage: Page;
@@ -70,7 +74,7 @@ export function HubPanel<Page extends string>({
         <Mascot mood="sleeping" shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} showDot={false} />
       </span>
     ) : (
-      <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" accessory={accessory} />
+      <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" accessory={accessory} aura={auraOf(evolution.level)} />
     );
 
   const side = (
@@ -116,7 +120,7 @@ export function HubPanel<Page extends string>({
             {mascot(64, mood === "idle" ? "greeting" : mood)}
             <div className="hub__greeting">
               <strong>{away ? copy.away : copy.greeting}</strong>
-              <span>{away ? copy.awayHint : copy.calm}</span>
+              <span>{away ? copy.awayHint : vital ? copy.vitals[vital] : copy.calm}</span>
               <button className="g-pill hub__buddy" type="button" onClick={() => onBuddyMode(away ? "off" : "free")}>
                 {away ? copy.callBack : copy.release}
               </button>

@@ -135,6 +135,8 @@ import { recordStat, useStats } from "./stats/useStats";
 import { useReminders } from "./reminders/useReminders";
 import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
 import { WeekPanel } from "./week/WeekPanel";
+import { IslandWeather } from "./island/IslandWeather";
+import { useBuddyDirector } from "./buddy/useBuddyDirector";
 import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
@@ -1262,9 +1264,11 @@ export function IslandShell({
     isDetached ? "island--detached" : "island--docked",
     isLiquidGlass ? `island--glass-${nativeGlassState}` : "",
     showTitle ? "" : "island--title-hidden",
+    isMusicPlaying ? "island--beat" : "",
   ]
     .filter(Boolean)
     .join(" ");
+  const beat = isMusicPlaying ? Math.log1p(Math.min(1, Math.max(0, mediaState.audioPeak)) * 150) / Math.log1p(150) : 0;
   const pulseClassName = [
     "island__pulse",
     `island__pulse--agent-${agentVisualState}`,
@@ -1442,6 +1446,7 @@ export function IslandShell({
   return (
     <section
       className={className}
+      style={{ "--beat": beat.toFixed(2) } as CSSProperties}
       aria-label={collapsedLabel}
       onClick={(event) => {
         if (!isExpanded && event.target === event.currentTarget) {
@@ -1459,6 +1464,7 @@ export function IslandShell({
       }}
     >
       <div className="island__surface">
+        <IslandWeather />
         {isLiquidGlass && (
           <div className="island__glass" aria-hidden="true">
             <span className="island__glass-refraction" />
@@ -4446,7 +4452,10 @@ function IslandApp({
     autoStart: settings.focusAutoStart,
     sound: settings.focusSound,
     onPhaseEnd: (ended) => {
-      if (ended === "focus") recordStat("focus");
+      if (ended === "focus") {
+        recordStat("focus");
+        focusDoneRef.current();
+      }
       setFocusNotice({ text: t.focus.ended[ended], until: Date.now() + 12_000 });
     },
   });
@@ -4466,6 +4475,8 @@ function IslandApp({
   const water = useWater(waterSettings);
   const reminders = useReminders();
   const [voiceToken, setVoiceToken] = useState(0);
+  const focusDoneRef = useRef<() => void>(() => {});
+  const islandPageIdsRef = useRef<string[]>([]);
   const buddyOutRef = useRef(false);
   useEffect(() => {
     if (!isTauri()) return;
@@ -4512,6 +4523,19 @@ function IslandApp({
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const approval = pendingApproval(agentBoard.board);
+  const director = useBuddyDirector({
+    mode: settings.buddyMode,
+    level: evolution.level,
+    waterProgress: water.progress,
+    waterReminderDue: water.reminderDue,
+    reminder: reminders.due ? { id: reminders.due.id, text: t.launcher.reminderDue(reminders.due.text) } : null,
+    approvalPending: Boolean(approval),
+    copy: t.buddy,
+    onOpenPage: (target) => {
+      if (islandPageIdsRef.current.includes(target)) openIslandPageRef.current?.(target as IslandPage);
+    },
+  });
+  focusDoneRef.current = director.focusDone;
   const islandAgents = islandAgentsOf(agentBoard.board, Date.now());
   const claudeTask = useClaudeTask(settings.claudeFolder, settings.claudeMode);
   useEffect(() => {
@@ -5084,6 +5108,7 @@ function IslandApp({
   ];
 
   const openIslandPageRef = useRef<((page: IslandPage) => void) | null>(null);
+  islandPageIdsRef.current = islandPageLinks.map((link) => link.id);
   const openIslandPage = useCallback((nextPage: IslandPage) => {
     setPage(nextPage);
     setMode("expanded");
@@ -6462,6 +6487,7 @@ function IslandApp({
             accessory={nimboAccessory}
             evolution={evolution}
             buddyMode={settings.buddyMode}
+            vital={director.vital}
             onBuddyMode={(buddyMode) => setSettings((current) => ({ ...current, buddyMode }))}
             agents={islandAgents.map((agent) => {
               const entry = agentBoard.board.agents.find((item) => item.id === agent.id);

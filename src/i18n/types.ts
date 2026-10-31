@@ -338,6 +338,17 @@ export type Translations = {
     free: string;
     cursor: string;
     hints: Record<"off" | "free" | "cursor", string>;
+    missedYou: string;
+    found: string;
+    ate: (count: number) => string;
+    cantEat: string;
+    goalDone: string;
+    levelUp: (level: number) => string;
+    focusDone: string;
+    thirsty: string;
+    lateNight: string;
+    claudeDone: (text: string) => string;
+    claudeFailed: string;
   };
   voice: {
     start: string;
@@ -370,6 +381,7 @@ export type Translations = {
     awayHint: string;
     callBack: string;
     release: string;
+    vitals: Record<"sleepy" | "thirsty" | "happy", string>;
     dizzy: string;
     nothingPlaying: string;
     freeCalendar: string;

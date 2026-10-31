@@ -16,7 +16,7 @@ use windows::{
         System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION},
         UI::WindowsAndMessaging::{
             EnumWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextLengthW,
-            GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetWindowLongPtrW, SystemParametersInfoW,
+            GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetWindowLongPtrW, SystemParametersInfoW,
             GWL_EXSTYLE, SPI_GETWORKAREA, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
         },
     },
@@ -52,6 +52,15 @@ pub(crate) struct Scene {
     floor: i32,
     platforms: Vec<Platform>,
     app: String,
+    has_left: bool,
+    has_right: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub(crate) struct ForegroundWindow {
+    app: String,
+    path: String,
+    title: String,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -166,28 +175,51 @@ fn work_area() -> Option<Rect> {
     Some(Rect { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom })
 }
 
-fn foreground_app() -> String {
+fn process_path(process_id: u32) -> Option<String> {
     unsafe {
-        let window = GetForegroundWindow();
-        let process_id = process_of(window);
-        if window.is_invalid() || process_id == std::process::id() {
-            return LAST_APP.lock().map(|app| app.clone()).unwrap_or_default();
-        }
-        let Ok(process) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id) else { return String::new() };
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()?;
         let mut buffer = [0u16; 512];
         let mut length = buffer.len() as u32;
         let ok = QueryFullProcessImageNameW(process, PROCESS_NAME_FORMAT(0), windows::core::PWSTR(buffer.as_mut_ptr()), &mut length).is_ok();
         let _ = CloseHandle(process);
-        if !ok {
-            return String::new();
-        }
-        let path = String::from_utf16_lossy(&buffer[..length as usize]);
-        let name = path.rsplit('\\').next().unwrap_or("").to_lowercase();
-        if let Ok(mut last) = LAST_APP.lock() {
-            *last = name.clone();
-        }
-        name
+        ok.then(|| String::from_utf16_lossy(&buffer[..length as usize]))
     }
+}
+
+fn window_title(window: HWND) -> String {
+    let mut buffer = [0u16; 256];
+    let length = unsafe { GetWindowTextW(window, &mut buffer) };
+    String::from_utf16_lossy(&buffer[..length.max(0) as usize])
+}
+
+pub(crate) fn foreground() -> Option<ForegroundWindow> {
+    let window = unsafe { GetForegroundWindow() };
+    let process_id = process_of(window);
+    if window.is_invalid() || process_id == std::process::id() {
+        return None;
+    }
+    let path = process_path(process_id)?;
+    let app = path.rsplit('\\').next().unwrap_or("").to_lowercase();
+    Some(ForegroundWindow { app, path, title: window_title(window) })
+}
+
+fn foreground_app() -> String {
+    match foreground() {
+        Some(window) => {
+            if let Ok(mut last) = LAST_APP.lock() {
+                *last = window.app.clone();
+            }
+            window.app
+        }
+        None => LAST_APP.lock().map(|app| app.clone()).unwrap_or_default(),
+    }
+}
+
+fn neighbors(window: &WebviewWindow, bounds: Rect) -> (bool, bool) {
+    let monitors = window.available_monitors().unwrap_or_default();
+    let left = monitors.iter().any(|monitor| monitor.position().x + monitor.size().width as i32 == bounds.left);
+    let right = monitors.iter().any(|monitor| monitor.position().x == bounds.right);
+    (left, right)
 }
 
 fn bounds_of(window: &WebviewWindow) -> Option<Rect> {
@@ -298,6 +330,7 @@ pub(crate) fn buddy_set_hitbox(x: f64, y: f64, width: f64, height: f64, capture:
 pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
     let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
     let bounds = bounds_of(&window).ok_or("Sem tamanho de tela.")?;
+    let (has_left, has_right) = neighbors(&window, bounds);
     let floor = work_area().map(|area| area.bottom.min(bounds.bottom) - bounds.top).unwrap_or(bounds.bottom - bounds.top);
     Ok(Scene {
         width: bounds.right - bounds.left,
@@ -305,7 +338,31 @@ pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
         floor,
         platforms: visible_platforms(&top_windows(), bounds).into_iter().filter(|platform| platform.top < floor - 40).collect(),
         app: foreground_app(),
+        has_left,
+        has_right,
     })
+}
+
+#[tauri::command]
+pub(crate) async fn buddy_move_monitor(app: AppHandle, direction: String) -> Result<bool, String> {
+    let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
+    let bounds = bounds_of(&window).ok_or("Sem tamanho de tela.")?;
+    let target = window.available_monitors().map_err(|error| error.to_string())?.into_iter().find(|monitor| {
+        if direction == "left" {
+            monitor.position().x + monitor.size().width as i32 == bounds.left
+        } else {
+            monitor.position().x == bounds.right
+        }
+    });
+    let Some(monitor) = target else { return Ok(false) };
+    window.set_position(PhysicalPosition::new(monitor.position().x, monitor.position().y)).map_err(|error| error.to_string())?;
+    window.set_size(PhysicalSize::new(monitor.size().width, monitor.size().height)).map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub(crate) fn foreground_window() -> Option<ForegroundWindow> {
+    foreground()
 }
 
 #[cfg(test)]

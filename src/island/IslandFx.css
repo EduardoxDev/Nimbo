@@ -1,0 +1,185 @@
+.island-weather {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+
+.island--expanded .island-weather {
+  opacity: 0;
+}
+
+.island-weather i {
+  position: absolute;
+  display: block;
+}
+
+.island-weather--rain i {
+  top: -12px;
+  width: 1px;
+  height: 9px;
+  background: linear-gradient(180deg, transparent, rgba(140, 200, 255, 0.85));
+  animation: island-rain 0.9s linear infinite;
+}
+
+.island-weather--storm::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(220, 230, 255, 0.5);
+  opacity: 0;
+  animation: island-flash 7s steps(1) infinite;
+}
+
+.island-weather--snow i {
+  top: -6px;
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: island-snow 3.2s linear infinite;
+}
+
+.island-weather--stars i {
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  border-radius: 50%;
+  animation: island-twinkle 3s ease-in-out infinite;
+}
+
+.island-weather--sun::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 214, 120, 0.22), transparent);
+  animation: island-glint 6s ease-in-out infinite;
+}
+
+.island-weather--fog::before,
+.island-weather--fog::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: -50%;
+  width: 200%;
+  height: 60%;
+  background: radial-gradient(ellipse at center, rgba(220, 225, 235, 0.25), transparent 65%);
+  animation: island-fog 9s linear infinite;
+}
+
+.island-weather--fog::after {
+  top: 45%;
+  animation-duration: 13s;
+  animation-direction: reverse;
+}
+
+@keyframes island-rain {
+  to {
+    transform: translateY(60px);
+  }
+}
+
+@keyframes island-snow {
+  to {
+    transform: translate(6px, 60px);
+  }
+}
+
+@keyframes island-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes island-glint {
+  0% {
+    left: -40%;
+  }
+  60%,
+  100% {
+    left: 110%;
+  }
+}
+
+@keyframes island-fog {
+  to {
+    transform: translateX(25%);
+  }
+}
+
+@keyframes island-flash {
+  0%,
+  96% {
+    opacity: 0;
+  }
+  97% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0;
+  }
+  99% {
+    opacity: 0.7;
+  }
+}
+
+.island--beat .island__surface {
+  box-shadow: inset 0 0 0 1px rgba(255, 55, 95, calc(var(--beat, 0) * 0.55)), 0 0 calc(var(--beat, 0) * 18px) rgba(255, 55, 95, calc(var(--beat, 0) * 0.45));
+  transition: box-shadow 0.12s linear;
+}
+
+.island--expanded .island__surface {
+  animation: island-jelly-open 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.island--collapsed .island__surface {
+  animation: island-jelly-close 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes island-jelly-open {
+  0% {
+    transform: scale(0.96, 1.04);
+  }
+  45% {
+    transform: scale(1.025, 0.975);
+  }
+  75% {
+    transform: scale(0.995, 1.005);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes island-jelly-close {
+  0% {
+    transform: scale(1.08, 0.9);
+  }
+  55% {
+    transform: scale(0.97, 1.04);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-weather i,
+  .island-weather::before,
+  .island-weather::after,
+  .island--expanded .island__surface,
+  .island--collapsed .island__surface {
+    animation: none;
+  }
+}

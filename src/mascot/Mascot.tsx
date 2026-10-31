@@ -53,6 +53,7 @@ export function Mascot({
   onReaction,
   label,
   accessory = null,
+  aura = null,
 }: {
   mood: MascotMood;
   shape: MascotShape;
@@ -65,6 +66,7 @@ export function Mascot({
   onReaction?: (reaction: "dizzy" | "annoyed") => void;
   label?: string;
   accessory?: MascotAccessory | null;
+  aura?: "sparkle" | "wings" | null;
 }) {
   const maskId = `mascot-${useId().replace(/:/g, "")}`;
   const ref = useRef<SVGSVGElement>(null);
@@ -185,6 +187,19 @@ export function Mascot({
           )}
         </mask>
       </defs>
+      {aura === "wings" && (
+        <g className="mascot__wings" transform={`translate(0 ${current.offsetY})`} fill="#ffffff" fillOpacity="0.85">
+          <path d={`M22 50 Q${2 - Math.sin(time * 9) * 6} ${34 - Math.sin(time * 9) * 8} ${6 - Math.sin(time * 9) * 4} 58 Q14 60 22 58 Z`} />
+          <path d={`M78 50 Q${98 + Math.sin(time * 9) * 6} ${34 - Math.sin(time * 9) * 8} ${94 + Math.sin(time * 9) * 4} 58 Q86 60 78 58 Z`} />
+        </g>
+      )}
+      {aura && (
+        <g className="mascot__sparkles" fill="#ffd60a">
+          <path d="M12 18 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 Z" />
+          <path d="M86 70 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 Z" />
+          <path d="M90 14 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1 Z" />
+        </g>
+      )}
       {glow && <circle className="mascot__glow" cx="50" cy="52" r="58" fill={`url(#${maskId}-glow)`} />}
       <g transform={`translate(0 ${current.offsetY}) rotate(${current.rotation} 50 50) translate(50 50) scale(${current.scale}) translate(-50 -50)`}>
         <path d={current.body} fill={color} mask={`url(#${maskId})`} />
