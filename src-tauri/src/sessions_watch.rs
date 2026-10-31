@@ -17,6 +17,7 @@ use tauri::AppHandle;
 
 const POLL: Duration = Duration::from_secs(3);
 const WORKING_WITHIN: Duration = Duration::from_secs(25);
+const STUCK_AFTER: Duration = Duration::from_secs(20);
 const VISIBLE_WITHIN: Duration = Duration::from_secs(10 * 60);
 const TAIL_BYTES: u64 = 96 * 1024;
 const MAX_STEPS: usize = 6;
@@ -162,6 +163,16 @@ fn recent_transcripts(now: SystemTime) -> Vec<(PathBuf, Duration)> {
     found
 }
 
+fn session_state(snapshot: &SessionSnapshot, age: Duration) -> &'static str {
+    if snapshot.waiting_for_tool && age > STUCK_AFTER {
+        "waiting"
+    } else if age <= WORKING_WITHIN {
+        "working"
+    } else {
+        "done"
+    }
+}
+
 fn agent_name(snapshot: &SessionSnapshot) -> String {
     let folder = snapshot
         .folder
@@ -184,8 +195,8 @@ fn tick(app: &AppHandle, last: &mut HashMap<PathBuf, (String, SessionSnapshot)>)
         if snapshot.headless || (snapshot.prompt.is_none() && snapshot.steps.is_empty()) {
             continue;
         }
-        let working = age <= WORKING_WITHIN;
-        let state = if working { "working" } else { "done" };
+        let state = session_state(&snapshot, age);
+        let working = state != "done";
         let unchanged = last.get(&path).is_some_and(|(previous_state, previous)| previous_state == state && previous == &snapshot);
         if unchanged {
             continue;
@@ -201,7 +212,10 @@ fn tick(app: &AppHandle, last: &mut HashMap<PathBuf, (String, SessionSnapshot)>)
             .collect();
         let goal = snapshot.title.clone().or_else(|| snapshot.prompt.as_deref().map(|prompt| short(prompt, 120)));
         let message = if working { snapshot.last_text.as_deref().map(|text| short(text, 200)) } else { snapshot.last_text.as_deref().map(|text| short(text, 600)) };
-        report_external(app, &agent_name(&snapshot), goal, steps, state, message, None);
+        let was_waiting = last.get(&path).is_some_and(|(previous_state, _)| previous_state == "waiting");
+        let notice = (state == "waiting" && !was_waiting).then(|| ("Parece estar esperando você responder no Claude.".to_string(), "warning"));
+        let message = if state == "waiting" { Some("Parado esperando você. Abra o Claude para responder.".to_string()) } else { message };
+        report_external(app, &agent_name(&snapshot), goal, steps, state, message, notice);
         last.insert(path, (state.to_string(), snapshot));
     }
 }
@@ -253,6 +267,16 @@ mod tests {
         let after = summarize(&next);
         assert_eq!(after.prompt.as_deref(), Some("agora roda tudo"));
         assert!(after.steps.is_empty());
+    }
+
+    #[test]
+    fn a_quiet_pending_tool_means_waiting() {
+        let pending = SessionSnapshot { waiting_for_tool: true, ..Default::default() };
+        assert_eq!(session_state(&pending, Duration::from_secs(5)), "working");
+        assert_eq!(session_state(&pending, Duration::from_secs(40)), "waiting");
+        let idle = SessionSnapshot::default();
+        assert_eq!(session_state(&idle, Duration::from_secs(10)), "working");
+        assert_eq!(session_state(&idle, Duration::from_secs(40)), "done");
     }
 
     #[test]

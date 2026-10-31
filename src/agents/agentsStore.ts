@@ -16,7 +16,7 @@ export type AgentEntry = {
   name: string;
   goal: string | null;
   steps: AgentStep[];
-  state: "working" | "done" | "error";
+  state: "working" | "waiting" | "done" | "error";
   message: string | null;
   updatedAt: number;
 };
@@ -117,7 +117,7 @@ export function currentStepOf(agent: AgentEntry) {
 export function activeAgentOf(board: AgentBoard, now: number) {
   return (
     board.agents
-      .filter((agent) => agent.state === "working" && now - agent.updatedAt < AGENT_STALE_MS)
+      .filter((agent) => (agent.state === "working" || agent.state === "waiting") && now - agent.updatedAt < AGENT_STALE_MS)
       .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null
   );
 }

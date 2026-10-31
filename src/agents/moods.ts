@@ -19,6 +19,7 @@ export function agentMood(agent: AgentEntry, board: AgentBoard, now: number): Ma
   if ((board.approvals ?? []).some((approval) => approval.status === "pending" && approval.agent === agent.name)) {
     return "waiting";
   }
+  if (agent.state === "waiting") return "waiting";
   if (agent.state === "error") return "error";
   if (agent.state === "done") return "done";
   if (now - agent.updatedAt > AGENT_STALE_MS) return "sleeping";
