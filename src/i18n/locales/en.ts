@@ -314,6 +314,18 @@ const en: Translations = {
     next: "Next",
     start: "Get started",
   },
+  themes: {
+    section: "Themes",
+    presets: { graphite: "Graphite", midnight: "Midnight", ocean: "Ocean", plum: "Plum", forest: "Forest", ember: "Ember" },
+    importLabel: "Import a theme",
+    importPlaceholder: "Paste a theme someone shared",
+    copy: "Copy my theme",
+    apply: "Apply theme",
+    copied: "Theme copied. Paste it anywhere to share.",
+    copyFailed: "Couldn't copy right now.",
+    applied: "Theme applied.",
+    invalid: "That text is not a Nimbo theme.",
+  },
   system: {
     title: "System",
     cpu: "CPU",

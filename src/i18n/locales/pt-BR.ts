@@ -314,6 +314,18 @@ const ptBR: Translations = {
     next: "Próximo",
     start: "Começar",
   },
+  themes: {
+    section: "Temas",
+    presets: { graphite: "Grafite", midnight: "Meia-noite", ocean: "Oceano", plum: "Ameixa", forest: "Floresta", ember: "Brasa" },
+    importLabel: "Importar um tema",
+    importPlaceholder: "Cole aqui o tema que alguém compartilhou",
+    copy: "Copiar meu tema",
+    apply: "Aplicar tema",
+    copied: "Tema copiado. Cole onde quiser para compartilhar.",
+    copyFailed: "Não deu para copiar agora.",
+    applied: "Tema aplicado.",
+    invalid: "Esse texto não é um tema do Nimbo.",
+  },
   system: {
     title: "Sistema",
     cpu: "CPU",

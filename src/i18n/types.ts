@@ -313,6 +313,18 @@ export type Translations = {
     next: string;
     start: string;
   };
+  themes: {
+    section: string;
+    presets: Record<"graphite" | "midnight" | "ocean" | "plum" | "forest" | "ember", string>;
+    importLabel: string;
+    importPlaceholder: string;
+    copy: string;
+    apply: string;
+    copied: string;
+    copyFailed: string;
+    applied: string;
+    invalid: string;
+  };
   system: {
     title: string;
     cpu: string;

@@ -317,6 +317,18 @@ const zhCN: Translations = {
     next: "下一步",
     start: "开始使用",
   },
+  themes: {
+    section: "主题",
+    presets: { graphite: "石墨", midnight: "午夜", ocean: "海洋", plum: "梅紫", forest: "森林", ember: "余烬" },
+    importLabel: "导入主题",
+    importPlaceholder: "粘贴别人分享的主题",
+    copy: "复制我的主题",
+    apply: "应用主题",
+    copied: "主题已复制，可粘贴分享。",
+    copyFailed: "暂时无法复制。",
+    applied: "主题已应用。",
+    invalid: "这不是 Nimbo 主题。",
+  },
   system: {
     title: "系统",
     cpu: "CPU",

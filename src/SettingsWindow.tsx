@@ -37,6 +37,7 @@ import { CalendarSettingsPage } from "./calendar/CalendarSettings";
 import { WelcomeSheet } from "./welcome/WelcomeSheet";
 import { WeatherSettings } from "./weather/WeatherSettings";
 import { ShortcutsSettings } from "./settings/ShortcutsSettings";
+import { ThemesSettings } from "./settings/ThemesSettings";
 import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
@@ -330,6 +331,7 @@ function AppearancePage({ settings, update }: PageProps) {
           />
         </Row>
       </Section>
+      <ThemesSettings settings={settings} update={update} />
     </>
   );
 }
