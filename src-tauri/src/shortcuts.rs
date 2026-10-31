@@ -119,7 +119,10 @@ fn apply(hwnd: HWND, requests: Vec<ShortcutRequest>) -> Vec<ShortcutResult> {
                             }
                             None
                         }
-                        Err(_) => Some("Another app is already using this shortcut.".to_string()),
+                        Err(_) => {
+                            crate::diagnostics::log("shortcuts", &format!("{} is taken by another app", request.shortcut));
+                            Some("Another app is already using this shortcut.".to_string())
+                        }
                     }
                 }
                 Err(error) => Some(error),

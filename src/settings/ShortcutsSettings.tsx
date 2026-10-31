@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import { Row, Section } from "./controls";
@@ -22,13 +22,21 @@ export function ShortcutsSettings({
   const [recording, setRecording] = useState<ShortcutAction | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ShortcutAction, string>>>({});
 
+  const showResults = (results: ShortcutResult[]) =>
+    setErrors(Object.fromEntries(results.filter((result) => result.error).map((result) => [result.action, result.error ?? ""])));
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke<ShortcutResult[]>("set_global_shortcuts", { shortcuts: shortcutRequests(shortcuts) })
+      .then(showResults)
+      .catch(() => {});
+  }, []);
+
   const save = (next: Shortcuts) => {
     onChange(next);
     if (!isTauri()) return;
     void invoke<ShortcutResult[]>("set_global_shortcuts", { shortcuts: shortcutRequests(next) })
-      .then((results) =>
-        setErrors(Object.fromEntries(results.filter((result) => result.error).map((result) => [result.action, result.error ?? ""]))),
-      )
+      .then(showResults)
       .catch((failure) => console.error("Failed to register shortcuts", failure));
   };
 

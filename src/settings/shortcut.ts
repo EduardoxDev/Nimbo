@@ -6,15 +6,20 @@ export type Shortcuts = Record<ShortcutAction, string>;
 export type ShortcutResult = { action: ShortcutAction; shortcut: string; error: string | null };
 
 export const DEFAULT_SHORTCUTS: Shortcuts = {
-  toggle: "Ctrl+Alt+Space",
+  toggle: "Alt+Shift+N",
   launcher: "Alt+Shift+Space",
   playPause: "",
   nextPage: "",
   settings: "",
 };
 
+const RETIRED_DEFAULTS: Partial<Shortcuts> = { toggle: "Ctrl+Alt+Space" };
+
 export function normalizeShortcuts(value: unknown): Shortcuts {
-  const stored = value && typeof value === "object" ? (value as Partial<Shortcuts>) : {};
+  const raw = value && typeof value === "object" ? (value as Partial<Shortcuts>) : {};
+  const stored = Object.fromEntries(
+    Object.entries(raw).filter(([action, shortcut]) => RETIRED_DEFAULTS[action as ShortcutAction] !== shortcut),
+  ) as Partial<Shortcuts>;
   return Object.fromEntries(
     SHORTCUT_ACTIONS.map((action) => [
       action,
