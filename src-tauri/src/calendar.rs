@@ -176,7 +176,7 @@ pub(crate) async fn calendar_events(days: u32) -> Result<CalendarResult, String>
                     .map(|event| CalendarEvent { calendar: source.name.clone(), ..event }),
             ),
             Err(error) => {
-                eprintln!("calendar {} failed: {error}", source.name);
+                crate::diagnostics::log("calendar", &format!("{} failed: {error}", source.name));
                 failed.push(source.name);
             }
         }

@@ -4,6 +4,9 @@ import App from "./App";
 import TranslationWindow from "./TranslationWindow";
 import SettingsWindow from "./SettingsWindow";
 import { I18nProvider } from "./i18n";
+import { installDiagnostics } from "./diagnostics";
+
+installDiagnostics();
 
 window.addEventListener(
   "pointerdown",

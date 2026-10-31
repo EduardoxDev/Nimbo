@@ -698,6 +698,17 @@ function AboutPage() {
   const updates = t.updates;
   const updater = useUpdater({ background: false });
   const [version, setVersion] = useState("");
+  const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+
+  const copyDiagnostics = async () => {
+    if (!isTauri()) return;
+    try {
+      await navigator.clipboard.writeText(await invoke<string>("diagnostics_report"));
+      setDiagnosticsCopied(true);
+    } catch (error) {
+      console.error("Failed to copy diagnostics", error);
+    }
+  };
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -748,6 +759,14 @@ function AboutPage() {
       {statusText && (
         <span className="prefs-about__meta" role="status">
           {statusText}
+        </span>
+      )}
+      <button className="prefs-button prefs-button--quiet" type="button" onClick={() => void copyDiagnostics()}>
+        {copy.copyDiagnostics}
+      </button>
+      {diagnosticsCopied && (
+        <span className="prefs-about__meta" role="status">
+          {copy.diagnosticsCopied}
         </span>
       )}
     </div>

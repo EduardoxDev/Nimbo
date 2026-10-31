@@ -572,6 +572,8 @@ const ptBR: Translations = {
       cleared: "Prateleira vazia",
     },
     about: {
+      copyDiagnostics: "Copiar diagnóstico",
+      diagnosticsCopied: "Diagnóstico copiado. Cole na mensagem de suporte.",
       tagline: "Seu Windows no topo da tela.",
       version: "Versão",
       basedOn: "Começou como um fork do fly-island (licença MIT).",

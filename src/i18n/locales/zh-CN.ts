@@ -575,6 +575,8 @@ const zhCN: Translations = {
       cleared: "已清空",
     },
     about: {
+      copyDiagnostics: "复制诊断信息",
+      diagnosticsCopied: "已复制诊断信息，可粘贴到反馈中。",
       tagline: "把 Windows 放在屏幕顶部。",
       version: "版本",
       basedOn: "最初基于 fly-island（MIT 许可）分支开发。",

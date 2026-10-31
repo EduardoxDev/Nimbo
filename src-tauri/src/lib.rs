@@ -3,6 +3,7 @@ mod assistant;
 mod broadlink;
 mod calendar;
 mod clipboard_history;
+mod diagnostics;
 mod fullscreen;
 mod home_assistant;
 mod hud;
@@ -1804,9 +1805,10 @@ pub fn run() {
             // changes. Liquid glass is rendered inside the island element.
         })
         .setup(|app| {
+            diagnostics::init(app.handle());
             build_tray(app)?;
             if let Err(error) = clipboard_history::init(app.handle()) {
-                eprintln!("failed to initialize clipboard history: {error}");
+                diagnostics::log("clipboard", &format!("failed to initialize: {error}"));
             }
             translation::init(app.handle());
             agents::init(app.handle());
@@ -1815,7 +1817,7 @@ pub fn run() {
             keep_launch_at_startup_current(app.handle().clone());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
-                    eprintln!("failed to size and position island window: {error}");
+                    diagnostics::log("window", &format!("failed to size and position island: {error}"));
                 }
                 start_cursor_passthrough_loop(window);
             }
@@ -1834,6 +1836,8 @@ pub fn run() {
             get_launch_at_startup,
             set_launch_at_startup,
             fullscreen::set_hide_in_fullscreen,
+            diagnostics::diagnostics_log,
+            diagnostics::diagnostics_report,
             get_agent_status,
             clear_agent_status,
             install_agent_status_hooks,

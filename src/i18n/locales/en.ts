@@ -572,6 +572,8 @@ const en: Translations = {
       cleared: "Shelf emptied",
     },
     about: {
+      copyDiagnostics: "Copy diagnostics",
+      diagnosticsCopied: "Diagnostics copied. Paste them into your support message.",
       tagline: "Your Windows, at the top of the screen.",
       version: "Version",
       basedOn: "Started as a fork of fly-island (MIT license).",

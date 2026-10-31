@@ -45,7 +45,7 @@ pub fn init(app: &AppHandle) {
     if APP.set(app.clone()).is_ok() {
         thread::spawn(|| {
             if let Err(error) = run_hotkey_loop() {
-                eprintln!("failed to initialize translation shortcut: {error}");
+                crate::diagnostics::log("translation", &format!("failed to register shortcut: {error}"));
             }
         });
     }

@@ -125,7 +125,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | A4 | **Vários monitores**: escolher o monitor, ou seguir o monitor do mouse; testar DPI 100/125/150% | Risco já anotado na seção 5 e nunca testado | M |
 | A5 | **Leveza**: medir CPU/RAM parado, pausar animações e consultas quando a ilha está fechada ou oculta | App de fundo tem que ser quase invisível no Gerenciador de Tarefas | M |
 | A6 | **Quebrar arquivos gigantes**: `App.tsx` (6.265 linhas), `App.css` (4.483), `lib.rs` (1.866) em módulos por página | Cada mudança fica mais lenta e arriscada; facilita plugins depois | G |
-| A7 | **Registro de erros local** + botão "Copiar diagnóstico" em Sobre | Hoje, quando algo falha no PC de alguém, não há como saber o quê | P |
+| A7 | ✅ **Registro de erros local** + botão "Copiar diagnóstico" em Sobre | Hoje, quando algo falha no PC de alguém, não há como saber o quê | P |
 | A8 | ✅ **CI no GitHub Actions**: testes, `cargo clippy`, tipos e instalador a cada push | Garante que nada quebra sem perceber e já gera o instalador | M |
 | A9 | **Assinatura de código** do instalador | Tira o aviso do SmartScreen; tem custo anual, fazer quando for distribuir para outras pessoas | M |
 

@@ -571,6 +571,8 @@ export type Translations = {
       cleared: string;
     };
     about: {
+      copyDiagnostics: string;
+      diagnosticsCopied: string;
       tagline: string;
       version: string;
       basedOn: string;
