@@ -117,7 +117,7 @@ pub(crate) fn step_title(tool: &str, input: &Value) -> String {
         "Read" => format!("Lendo {}", file_name(input, "file_path")),
         "Edit" | "MultiEdit" => format!("Editando {}", file_name(input, "file_path")),
         "Write" => format!("Criando {}", file_name(input, "file_path")),
-        "Bash" => format!(
+        "Bash" | "PowerShell" => format!(
             "Rodando {}",
             short(input.get("description").or_else(|| input.get("command")).and_then(Value::as_str).unwrap_or(""), 40)
         ),

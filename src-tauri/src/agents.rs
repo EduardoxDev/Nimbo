@@ -486,7 +486,7 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
 pub(crate) fn permission_question(tool: &str, input: &Value) -> String {
     let detail = |key: &str| input.get(key).and_then(Value::as_str).map(|text| text.split_whitespace().collect::<Vec<_>>().join(" "));
     let text = match tool {
-        "Bash" => format!("Rodar: {}", detail("command").unwrap_or_default()),
+        "Bash" | "PowerShell" => format!("Rodar: {}", detail("command").unwrap_or_default()),
         "Edit" | "MultiEdit" | "Write" => format!("Mudar o arquivo {}", detail("file_path").unwrap_or_default()),
         "WebFetch" => format!("Abrir {}", detail("url").unwrap_or_default()),
         other => format!("Usar {other}"),
