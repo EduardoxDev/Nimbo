@@ -932,3 +932,37 @@
   outline: 2px solid var(--prefs-blue);
   outline-offset: 1px;
 }
+
+.prefs-automation {
+  display: flex;
+  gap: 12px;
+}
+
+.prefs-automation .prefs-field {
+  flex: 1;
+}
+
+.prefs-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.prefs-day {
+  min-width: 46px;
+  padding: 6px 8px;
+  color: var(--prefs-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-transform: capitalize;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.prefs-day--on {
+  color: #ffffff;
+  background: var(--prefs-blue);
+  border-color: transparent;
+}

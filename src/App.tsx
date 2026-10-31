@@ -102,6 +102,7 @@ import { CalendarPanel } from "./calendar/CalendarPanel";
 import { LauncherPanel } from "./launcher/LauncherPanel";
 import { SystemPanel } from "./system/SystemPanel";
 import { useSystem } from "./system/useSystem";
+import { useHomeAutomations } from "./home/useHomeAutomations";
 import { SYSTEM_DEMO } from "./demo/systemDemo";
 import "./system/System.css";
 import { LAUNCHER_DEMO } from "./demo/launcherDemo";
@@ -4508,6 +4509,14 @@ function IslandApp({
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
   useWeather(settings.weatherPlace);
+  useHomeAutomations((automation, failed) =>
+    setAgentNotice({
+      text: failed
+        ? t.prefs.automations.failed(automation.entityName)
+        : t.prefs.automations.ran(automation.entityName, automation.action === "on"),
+      until: Date.now() + 8_000,
+    }),
+  );
   const shelf = useShelf({
     onDragEnter: () => openIslandPageRef.current?.("shelf"),
     onAdded: (count) => setAgentNotice({ text: t.shelf.added(count), until: Date.now() + 5_000 }),

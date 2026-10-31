@@ -3,6 +3,7 @@ import { AirVent, Check, Fan, Lightbulb, Lock, Plug } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { Row, Section } from "../settings/controls";
 import { InfraredSettings } from "./InfraredSettings";
+import { AutomationsSettings } from "./AutomationsSettings";
 import {
   homeApi,
   loadHomeFavorites,
@@ -177,6 +178,8 @@ export function HomeSettingsPage() {
           )}
         </Section>
       )}
+
+      <AutomationsSettings />
 
       <p className="prefs-note">
         <Lock size={13} strokeWidth={2.2} aria-hidden="true" />

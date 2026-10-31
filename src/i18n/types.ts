@@ -598,6 +598,26 @@ export type Translations = {
       wheelHint: string;
       note: string;
     };
+    automations: {
+      section: string;
+      empty: string;
+      noClimate: string;
+      time: string;
+      device: string;
+      days: string;
+      everyDay: string;
+      action: string;
+      turnOn: string;
+      turnOff: string;
+      temperature: string;
+      add: string;
+      remove: string;
+      enabled: string;
+      turnOnDescription: (name: string, temperature: number | null) => string;
+      turnOffDescription: (name: string) => string;
+      ran: (name: string, on: boolean) => string;
+      failed: (name: string) => string;
+    };
     calendarPrefs: {
       section: string;
       hint: string;
