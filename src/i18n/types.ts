@@ -331,6 +331,14 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  buddy: {
+    section: string;
+    mode: string;
+    off: string;
+    free: string;
+    cursor: string;
+    hints: Record<"off" | "free" | "cursor", string>;
+  };
   voice: {
     start: string;
     stop: string;
@@ -358,6 +366,10 @@ export type Translations = {
     level: (level: number) => string;
     points: (points: number) => string;
     levelHint: string;
+    away: string;
+    awayHint: string;
+    callBack: string;
+    release: string;
     dizzy: string;
     nothingPlaying: string;
     freeCalendar: string;

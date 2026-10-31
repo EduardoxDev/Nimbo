@@ -1,0 +1,55 @@
+html.buddy-root,
+html.buddy-root body,
+html.buddy-root #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.buddy-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.buddy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.buddy:active {
+  cursor: grabbing;
+}
+
+.buddy--cursor {
+  pointer-events: none;
+}
+
+.buddy--walking .mascot {
+  animation: buddy-step 0.42s ease-in-out infinite;
+}
+
+@keyframes buddy-step {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buddy--walking .mascot {
+    animation: none;
+  }
+}

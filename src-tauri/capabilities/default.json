@@ -5,7 +5,8 @@
   "windows": [
     "main",
     "translation",
-    "settings"
+    "settings",
+    "buddy"
   ],
   "permissions": [
     "core:default",

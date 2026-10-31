@@ -1,6 +1,7 @@
 mod agents;
 mod assistant;
 mod broadlink;
+mod buddy;
 mod calendar;
 mod claude_task;
 mod clipboard_history;
@@ -1923,6 +1924,10 @@ pub fn run() {
             claude_task::claude_task_start,
             claude_task::claude_task_stop,
             quick_action::clipboard_ai_action,
+            buddy::buddy_show,
+            buddy::buddy_hide,
+            buddy::buddy_set_hitbox,
+            buddy::buddy_scene,
             speech::speech_listen,
             speech::speech_cancel,
             claude_task::claude_task_forget,

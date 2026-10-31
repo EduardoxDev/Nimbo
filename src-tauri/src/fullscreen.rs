@@ -56,6 +56,10 @@ fn tick(window: &WebviewWindow) {
     }
 }
 
+pub(crate) fn screen_is_covered(window: &WebviewWindow) -> bool {
+    island_screen_is_covered(window)
+}
+
 fn island_screen_is_covered(window: &WebviewWindow) -> bool {
     let Ok(island) = window.hwnd() else {
         return false;

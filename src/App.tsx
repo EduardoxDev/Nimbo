@@ -64,7 +64,7 @@ import {
   X,
 } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
@@ -135,6 +135,7 @@ import { recordStat, useStats } from "./stats/useStats";
 import { useReminders } from "./reminders/useReminders";
 import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
 import { WeekPanel } from "./week/WeekPanel";
+import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
@@ -284,6 +285,7 @@ export type IslandSettings = {
   showIdleTodoCount: boolean;
   hideInFullscreen: boolean;
   meetingMode: boolean;
+  buddyMode: BuddyMode;
   carryOverIncompleteTodos: boolean;
   enableTodoReorder: boolean;
   openMode: IslandOpenMode;
@@ -467,6 +469,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   showIdleTodoCount: true,
   hideInFullscreen: true,
   meetingMode: true,
+  buddyMode: "off",
   carryOverIncompleteTodos: false,
   enableTodoReorder: false,
   openMode: "hover",
@@ -822,6 +825,7 @@ export function normalizeSettings(
       typeof settings?.meetingMode === "boolean"
         ? settings.meetingMode
         : DEFAULT_SETTINGS.meetingMode,
+    buddyMode: isBuddyMode(settings?.buddyMode) ? settings.buddyMode : DEFAULT_SETTINGS.buddyMode,
     showIdleTodoCount:
       typeof settings?.showIdleTodoCount === "boolean"
         ? settings.showIdleTodoCount
@@ -4462,6 +4466,20 @@ function IslandApp({
   const water = useWater(waterSettings);
   const reminders = useReminders();
   const [voiceToken, setVoiceToken] = useState(0);
+  const buddyOutRef = useRef(false);
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (settings.buddyMode !== "off") {
+      buddyOutRef.current = true;
+      void invoke("buddy_show").catch((error) => console.error("Failed to free Nimbo", error));
+      return;
+    }
+    if (!buddyOutRef.current) return;
+    buddyOutRef.current = false;
+    void emitTo("buddy", "buddy-leave").catch(() => {});
+    const timer = window.setTimeout(() => void invoke("buddy_hide").catch(() => {}), 1_800);
+    return () => window.clearTimeout(timer);
+  }, [settings.buddyMode]);
   const statsHistory = useStats();
   const evolution = useMemo(() => evolutionOf(statsHistory, water.daysMet), [statsHistory, water.daysMet]);
   const currentWeather = useSyncExternalStore(subscribeWeather, getWeather, getWeather);
@@ -6443,6 +6461,8 @@ function IslandApp({
             pills={hubPills}
             accessory={nimboAccessory}
             evolution={evolution}
+            buddyMode={settings.buddyMode}
+            onBuddyMode={(buddyMode) => setSettings((current) => ({ ...current, buddyMode }))}
             agents={islandAgents.map((agent) => {
               const entry = agentBoard.board.agents.find((item) => item.id === agent.id);
               const step = entry ? currentStepOf(entry)?.title ?? entry.message ?? entry.goal ?? agent.name : agent.name;

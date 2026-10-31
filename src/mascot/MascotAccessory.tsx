@@ -48,6 +48,24 @@ export function AccessoryShape({ accessory, eyes }: { accessory: MascotAccessory
         </g>
       );
     }
+    case "glasses": {
+      if (eyes.length < 2) return null;
+      const [left, right] = eyes[0].cx < eyes[1].cx ? [eyes[0], eyes[1]] : [eyes[1], eyes[0]];
+      return (
+        <g className="mascot__accessory" fill="none" stroke={INK} strokeWidth="2.6">
+          <circle cx={left.cx} cy={left.cy} r="8" />
+          <circle cx={right.cx} cy={right.cy} r="8" />
+          <path d={`M${left.cx + 8} ${left.cy} Q50 ${Math.min(left.cy, right.cy) - 4} ${right.cx - 8} ${right.cy}`} />
+        </g>
+      );
+    }
+    case "beret":
+      return (
+        <g className="mascot__accessory">
+          <path d="M26 24 Q30 6 54 7 Q78 8 76 22 Q62 28 26 24 Z" fill="#ff453a" />
+          <rect x="49" y="2" width="4" height="6" rx="2" fill="#ff453a" />
+        </g>
+      );
     case "umbrella":
       return (
         <g className="mascot__accessory">

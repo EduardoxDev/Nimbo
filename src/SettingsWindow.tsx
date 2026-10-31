@@ -445,6 +445,20 @@ function GeneralPage({ settings, update }: PageProps) {
         />
       </Row>
     </Section>
+    <Section title={t.buddy.section}>
+      <Row title={t.buddy.mode} hint={t.buddy.hints[settings.buddyMode]}>
+        <Segmented
+          label={t.buddy.mode}
+          value={settings.buddyMode}
+          options={[
+            { value: "off", label: t.buddy.off },
+            { value: "free", label: t.buddy.free },
+            { value: "cursor", label: t.buddy.cursor },
+          ]}
+          onChange={(buddyMode) => update({ buddyMode })}
+        />
+      </Row>
+    </Section>
     <WeatherSettings place={settings.weatherPlace} onChange={(weatherPlace) => update({ weatherPlace })} />
     <ShortcutsSettings shortcuts={settings.shortcuts} onChange={(shortcuts) => update({ shortcuts })} />
     </>

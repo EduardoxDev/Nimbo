@@ -7,6 +7,7 @@ import { Mascot } from "../mascot/Mascot";
 import type { MascotAccessory } from "../mascot/accessories";
 import type { MascotMood, MascotShape } from "../mascot/engine";
 import { NIMBO_COLOR, STATUS_COLORS } from "../mascot/nimboMood";
+import type { BuddyMode } from "../buddy/mode";
 import "./Hub.css";
 
 export type HubLine = { key: string; icon: LucideIcon; text: string };
@@ -27,6 +28,8 @@ export function HubPanel<Page extends string>({
   progress,
   accessory,
   evolution,
+  buddyMode,
+  onBuddyMode,
   pages,
   currentPage,
   onPageChange,
@@ -39,6 +42,8 @@ export function HubPanel<Page extends string>({
   progress: HubProgress;
   accessory: MascotAccessory | null;
   evolution: { level: number; points: number; nextAt: number | null };
+  buddyMode: BuddyMode;
+  onBuddyMode: (mode: BuddyMode) => void;
   pages: IslandTab<Page>[];
   currentPage: Page;
   onPageChange: (page: Page) => void;
@@ -58,9 +63,15 @@ export function HubPanel<Page extends string>({
     window.setTimeout(() => setDizzy(false), 4_500);
   };
 
-  const mascot = (size: number, shownMood: MascotMood) => (
-    <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" accessory={accessory} />
-  );
+  const away = buddyMode !== "off";
+  const mascot = (size: number, shownMood: MascotMood) =>
+    away ? (
+      <span className="hub__seat" style={{ width: size, height: size }} aria-hidden="true">
+        <Mascot mood="sleeping" shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} showDot={false} />
+      </span>
+    ) : (
+      <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" accessory={accessory} />
+    );
 
   const side = (
     <div className="hub__column g-card" aria-hidden="true">
@@ -104,8 +115,11 @@ export function HubPanel<Page extends string>({
           <div className="hub__card hub__card--greeting g-card">
             {mascot(64, mood === "idle" ? "greeting" : mood)}
             <div className="hub__greeting">
-              <strong>{copy.greeting}</strong>
-              <span>{copy.calm}</span>
+              <strong>{away ? copy.away : copy.greeting}</strong>
+              <span>{away ? copy.awayHint : copy.calm}</span>
+              <button className="g-pill hub__buddy" type="button" onClick={() => onBuddyMode(away ? "off" : "free")}>
+                {away ? copy.callBack : copy.release}
+              </button>
               <span className="hub__level" title={copy.levelHint}>
                 {copy.level(evolution.level)}
                 {evolution.nextAt !== null && (
