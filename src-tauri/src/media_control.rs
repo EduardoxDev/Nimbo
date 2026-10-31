@@ -1,8 +1,10 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde::Serialize;
 use std::{
+    cell::RefCell,
+    sync::{mpsc, Mutex, OnceLock},
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use windows::{
     Media::Control::{
@@ -17,9 +19,7 @@ use windows::{
             eCommunications, eConsole, eMultimedia, eRender, IMMDeviceEnumerator,
             MMDeviceEnumerator,
         },
-        System::Com::{
-            CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_MULTITHREADED,
-        },
+        System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED},
         UI::Input::KeyboardAndMouse::{
             keybd_event, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_MEDIA_NEXT_TRACK,
             VK_MEDIA_PLAY_PAUSE, VK_MEDIA_PREV_TRACK,
@@ -28,6 +28,17 @@ use windows::{
 };
 
 const AUDIO_ACTIVE_THRESHOLD: f32 = 0.000015;
+const MEDIA_JOB_TIMEOUT: Duration = Duration::from_secs(6);
+const METER_REFRESH: Duration = Duration::from_secs(5);
+
+type MediaJob = Box<dyn FnOnce() + Send>;
+
+static MEDIA_WORKER: OnceLock<Mutex<mpsc::Sender<MediaJob>>> = OnceLock::new();
+
+thread_local! {
+    static MANAGER: RefCell<Option<MediaSessionManager>> = const { RefCell::new(None) };
+    static METERS: RefCell<Option<(Instant, Vec<IAudioMeterInformation>)>> = const { RefCell::new(None) };
+}
 /// Windows FILETIME ticks (100 ns since 1601) at the Unix epoch.
 const UNIX_EPOCH_TICKS: i64 = 116_444_736_000_000_000;
 const TICKS_PER_MILLI: i64 = 10_000;
@@ -190,31 +201,47 @@ pub(crate) fn default_endpoint_volume() -> Result<IAudioEndpointVolume, String> 
     }
 }
 
+fn media_worker() -> Result<mpsc::Sender<MediaJob>, String> {
+    let worker = MEDIA_WORKER.get_or_init(|| {
+        let (sender, receiver) = mpsc::channel::<MediaJob>();
+        thread::spawn(move || {
+            let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+            for job in receiver {
+                job();
+            }
+        });
+        Mutex::new(sender)
+    });
+    worker.lock().map(|sender| sender.clone()).map_err(|error| error.to_string())
+}
+
 fn on_media_thread<T, F>(operation: F) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce() -> Result<T, String> + Send + 'static,
 {
-    thread::spawn(move || {
-        let initialize_result = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
-        initialize_result
-            .ok()
-            .map_err(|error| media_error("Failed to initialize the media COM thread", error))?;
-
-        let result = operation();
-        unsafe { CoUninitialize() };
-        result
-    })
-    .join()
-    .map_err(|_| "The Windows media control thread panicked.".to_string())?
+    let (sender, receiver) = mpsc::channel();
+    media_worker()?
+        .send(Box::new(move || {
+            let _ = sender.send(operation());
+        }))
+        .map_err(|_| "The Windows media thread stopped.".to_string())?;
+    receiver
+        .recv_timeout(MEDIA_JOB_TIMEOUT)
+        .map_err(|_| "The Windows media thread did not answer in time.".to_string())?
 }
 
 fn request_manager() -> Result<MediaSessionManager, String> {
+    if let Some(manager) = MANAGER.with(|cache| cache.borrow().clone()) {
+        return Ok(manager);
+    }
     let operation = MediaSessionManager::RequestAsync().map_err(|error| {
         media_error("Failed to request the Windows media session manager", error)
     })?;
-    pollster::block_on(operation)
-        .map_err(|error| media_error("Failed to open the Windows media session manager", error))
+    let manager = pollster::block_on(operation)
+        .map_err(|error| media_error("Failed to open the Windows media session manager", error))?;
+    MANAGER.with(|cache| *cache.borrow_mut() = Some(manager.clone()));
+    Ok(manager)
 }
 
 fn target_session(manager: &MediaSessionManager) -> Result<Option<MediaSession>, String> {
@@ -476,32 +503,52 @@ fn read_media_state_without_session() -> Result<MediaState, String> {
     })
 }
 
-fn read_system_audio_peak() -> Result<f32, String> {
+fn open_meters() -> Result<Vec<IAudioMeterInformation>, String> {
     unsafe {
         let enumerator: IMMDeviceEnumerator =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|error| {
                 media_error("Failed to open the Windows audio device manager", error)
             })?;
-        let mut peak = 0.0_f32;
-        let mut found_meter = false;
+        Ok([eMultimedia, eConsole, eCommunications]
+            .into_iter()
+            .filter_map(|role| enumerator.GetDefaultAudioEndpoint(eRender, role).ok())
+            .filter_map(|device| device.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok())
+            .collect())
+    }
+}
 
-        for role in [eMultimedia, eConsole, eCommunications] {
-            if let Ok(device) = enumerator.GetDefaultAudioEndpoint(eRender, role) {
-                if let Ok(meter) = device.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None) {
-                    found_meter = true;
-                    if let Ok(value) = meter.GetPeakValue() {
-                        peak = peak.max(value);
-                    }
-                }
-            }
+fn read_system_audio_peak() -> Result<f32, String> {
+    let cached = METERS.with(|cache| {
+        cache
+            .borrow()
+            .as_ref()
+            .filter(|(opened_at, meters)| opened_at.elapsed() < METER_REFRESH && !meters.is_empty())
+            .map(|(_, meters)| meters.clone())
+    });
+    let meters = match cached {
+        Some(meters) => meters,
+        None => {
+            let meters = open_meters()?;
+            METERS.with(|cache| *cache.borrow_mut() = Some((Instant::now(), meters.clone())));
+            meters
         }
-
-        if found_meter {
-            Ok(peak.clamp(0.0, 1.0))
-        } else {
-            Err("No default Windows audio output was available.".to_string())
+    };
+    if meters.is_empty() {
+        return Err("No default Windows audio output was available.".to_string());
+    }
+    let mut peak = 0.0_f32;
+    let mut read_any = false;
+    for meter in &meters {
+        if let Ok(value) = unsafe { meter.GetPeakValue() } {
+            read_any = true;
+            peak = peak.max(value);
         }
     }
+    if !read_any {
+        METERS.with(|cache| *cache.borrow_mut() = None);
+        return Err("The Windows audio meter stopped answering.".to_string());
+    }
+    Ok(peak.clamp(0.0, 1.0))
 }
 
 fn media_error(context: &str, error: windows::core::Error) -> String {

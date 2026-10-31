@@ -151,7 +151,7 @@ export default function SettingsWindow() {
   }, []);
 
   const closeWindow = () => {
-    if (isTauri()) void getCurrentWindow().hide();
+    if (isTauri()) void getCurrentWindow().close();
   };
 
   const [showWelcome, setShowWelcome] = useState(welcomePending);

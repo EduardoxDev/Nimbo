@@ -35,7 +35,7 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     App, AppHandle, Emitter, LogicalSize, Manager, Monitor, PhysicalPosition, Position, Size,
-    WebviewWindow, WindowEvent,
+    WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use windows::Win32::{
     Foundation::{POINT, RECT},
@@ -1722,12 +1722,23 @@ mod tests {
 
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 
-/// Shows the settings window (it is created hidden and only hidden again on close).
 #[tauri::command]
 fn open_settings_window(app: AppHandle) -> Result<(), String> {
-    let window = app
-        .get_webview_window(SETTINGS_WINDOW_LABEL)
-        .ok_or_else(|| "Settings window was not found.".to_string())?;
+    let window = match app.get_webview_window(SETTINGS_WINDOW_LABEL) {
+        Some(window) => window,
+        None => WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, WebviewUrl::App("index.html?window=settings".into()))
+            .title("Nimbo")
+            .inner_size(780.0, 560.0)
+            .min_inner_size(680.0, 480.0)
+            .center()
+            .decorations(false)
+            .transparent(true)
+            .resizable(true)
+            .shadow(true)
+            .visible(false)
+            .build()
+            .map_err(|error| error.to_string())?,
+    };
     if window.is_minimized().unwrap_or(false) {
         window.unminimize().map_err(|error| error.to_string())?;
     }
@@ -1794,7 +1805,10 @@ pub fn run() {
         .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| {
-            if window.label() == "translation" || window.label() == SETTINGS_WINDOW_LABEL {
+            if window.label() == SETTINGS_WINDOW_LABEL {
+                return;
+            }
+            if window.label() == "translation" {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();

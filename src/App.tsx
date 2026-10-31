@@ -3278,6 +3278,16 @@ function toLyricsState(answer: LyricsAnswer | null): LyricsState {
   return { status: "ready", lines, plain, instrumental: answer.instrumental };
 }
 
+function usePageVisible() {
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
+}
+
 function useTicker(isActive: boolean, intervalMs: number) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -4347,6 +4357,7 @@ function IslandApp({
     expiresAt: number;
   } | null>(null);
   const [settings, setSettings] = useState<IslandSettings>(loadSettings);
+  const isPageVisible = usePageVisible();
 
   useEffect(() => {
     if (!isTauri() || !welcomeOpeningDue()) return;
@@ -5270,6 +5281,12 @@ function IslandApp({
       }
     };
 
+    if (!isPageVisible) {
+      return () => {
+        didCancel = true;
+      };
+    }
+
     void refreshAudioLevel();
 
     const interval = window.setInterval(() => {
@@ -5280,7 +5297,7 @@ function IslandApp({
       didCancel = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isPageVisible]);
 
   const addTodo = useCallback(() => {
     const title = draftTodo.trim();
@@ -5714,6 +5731,7 @@ function IslandApp({
   ]);
 
   useEffect(() => {
+    if (!isPageVisible) return;
     void refreshMediaState();
 
     const interval = window.setInterval(() => {
@@ -5721,17 +5739,17 @@ function IslandApp({
     }, 1500);
 
     return () => window.clearInterval(interval);
-  }, [refreshMediaState]);
+  }, [isPageVisible, refreshMediaState]);
 
   useEffect(() => {
     void refreshAgentStatus();
 
     const interval = window.setInterval(() => {
       void refreshAgentStatus();
-    }, 200);
+    }, isPageVisible ? 1000 : 5000);
 
     return () => window.clearInterval(interval);
-  }, [refreshAgentStatus]);
+  }, [isPageVisible, refreshAgentStatus]);
 
   useEffect(() => {
     if (
