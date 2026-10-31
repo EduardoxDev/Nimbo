@@ -1,23 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { Rocket, Search } from "lucide-react";
+import { AlarmClock, Rocket, Search, X } from "lucide-react";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import { LAUNCHER_DEMO_APPS } from "../demo/launcherDemo";
 import { searchApps, type LauncherApp } from "./launcher";
+import { parseReminder } from "../reminders/reminders";
+import type { Reminders } from "../reminders/useReminders";
+
+function whenOf(at: number) {
+  const date = new Date(at);
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return date.toDateString() === new Date().toDateString() ? time : `${date.toLocaleDateString([], { weekday: "short" })} ${time}`;
+}
 
 export function LauncherPanel<Page extends string>({
   pages,
   currentPage,
   showPageIcons,
   onPageChange,
+  reminders,
   onDone,
 }: {
   pages: IslandTab<Page>[];
   currentPage: Page;
   showPageIcons: boolean;
   onPageChange: (page: Page) => void;
+  reminders: Reminders;
   onDone: () => void;
 }) {
   const copy = useTranslation().launcher;
@@ -26,7 +36,15 @@ export function LauncherPanel<Page extends string>({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const [error, setError] = useState("");
-  const results = searchApps(apps, query);
+  const reminder = parseReminder(query, Date.now());
+  const results = reminder ? [] : searchApps(apps, query);
+
+  const saveReminder = () => {
+    if (!reminder) return;
+    reminders.add(reminder.text, reminder.at);
+    setQuery("");
+    onDone();
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -89,7 +107,8 @@ export function LauncherPanel<Page extends string>({
                 setSelected((index) => Math.max(0, index - 1));
               } else if (event.key === "Enter") {
                 event.preventDefault();
-                open(results[selected]);
+                if (reminder) saveReminder();
+                else open(results[selected]);
               } else if (event.key === "Escape") {
                 setQuery("");
                 onDone();
@@ -97,8 +116,36 @@ export function LauncherPanel<Page extends string>({
             }}
           />
         </label>
-        {!query.trim() ? (
-          <span className="launcher-panel__hint">{copy.hint}</span>
+        {reminder ? (
+          <ul className="launcher-results" role="listbox" aria-label={copy.title}>
+            <li role="option" aria-selected="true">
+              <button className="launcher-result launcher-result--selected" type="button" tabIndex={-1} onClick={saveReminder}>
+                <span className="launcher-result__avatar launcher-result__avatar--reminder" aria-hidden="true">
+                  <AlarmClock size={14} strokeWidth={2.4} />
+                </span>
+                <span className="launcher-result__name">{copy.reminderRow(reminder.text, whenOf(reminder.at))}</span>
+                <kbd>Enter</kbd>
+              </button>
+            </li>
+          </ul>
+        ) : !query.trim() ? (
+          <>
+            <span className="launcher-panel__hint">{copy.hint}</span>
+            {reminders.reminders.length > 0 && (
+              <ul className="launcher-reminders" aria-label={copy.upcoming}>
+                {reminders.reminders.slice(0, 3).map((item) => (
+                  <li key={item.id}>
+                    <AlarmClock size={12} strokeWidth={2.4} aria-hidden="true" />
+                    <span className="launcher-reminders__text">{item.text}</span>
+                    <span className="launcher-reminders__when">{whenOf(item.at)}</span>
+                    <button type="button" title={copy.removeReminder} aria-label={copy.removeReminder} onClick={() => reminders.remove(item.id)}>
+                      <X size={11} strokeWidth={2.6} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         ) : results.length === 0 ? (
           <span className="launcher-panel__hint">{copy.noResults}</span>
         ) : (

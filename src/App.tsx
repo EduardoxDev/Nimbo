@@ -131,6 +131,7 @@ import {
   type AgentNotice, answerApproval, islandAgentsOf, pendingApproval, type IslandAgent } from "./agents/agentsStore";
 import "./App.css";
 import { recordStat, useStats } from "./stats/useStats";
+import { useReminders } from "./reminders/useReminders";
 import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
 import { getWeather, subscribeWeather } from "./weather/weather";
@@ -4446,6 +4447,7 @@ function IslandApp({
     [settings.waterGoalMl, settings.waterCupMl, settings.waterReminderMinutes],
   );
   const water = useWater(waterSettings);
+  const reminders = useReminders();
   const statsHistory = useStats();
   const evolution = useMemo(() => evolutionOf(statsHistory, water.daysMet), [statsHistory, water.daysMet]);
   const currentWeather = useSyncExternalStore(subscribeWeather, getWeather, getWeather);
@@ -4531,6 +4533,16 @@ function IslandApp({
           actions: [
             { label: t.agents.approve, primary: true, onClick: () => void answerApproval(approval.id, true) },
             { label: t.agents.deny, onClick: () => void answerApproval(approval.id, false) },
+          ],
+        }
+      : reminders.due
+      ? {
+          text: t.launcher.reminderDue(reminders.due.text),
+          color: "#ffd60a",
+          page,
+          actions: [
+            { label: t.launcher.reminderDone, primary: true, onClick: () => reminders.remove(reminders.due!.id) },
+            { label: t.launcher.reminderSnooze, onClick: () => reminders.snooze(reminders.due!.id, 10) },
           ],
         }
       : agentNotice
@@ -6400,6 +6412,7 @@ function IslandApp({
             currentPage={page}
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
+            reminders={reminders}
             onDone={() => setMode("collapsed")}
           />
         )}

@@ -106,3 +106,62 @@
   color: #ff6961;
   font-size: 12px;
 }
+
+.launcher-result__avatar--reminder {
+  color: #ffd60a;
+}
+
+.launcher-reminders {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.launcher-reminders li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  color: var(--g-text-2, rgba(255, 255, 255, 0.62));
+  font-size: 11.5px;
+  background: var(--g-pill, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+}
+
+.launcher-reminders li > svg {
+  flex: none;
+  color: #ffd60a;
+}
+
+.launcher-reminders__text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--g-text, #fff);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launcher-reminders__when {
+  font-variant-numeric: tabular-nums;
+}
+
+.launcher-reminders button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.launcher-reminders button:hover {
+  color: var(--g-text, #fff);
+  background: rgba(255, 255, 255, 0.1);
+}

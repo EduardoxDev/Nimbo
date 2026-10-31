@@ -390,6 +390,12 @@ export type Translations = {
     loading: string;
     hint: string;
     noResults: string;
+    reminderRow: (text: string, when: string) => string;
+    upcoming: string;
+    removeReminder: string;
+    reminderDue: (text: string) => string;
+    reminderDone: string;
+    reminderSnooze: string;
   };
   shortcuts: {
     section: string;
