@@ -132,7 +132,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 ### Fase B — Terminar o que está pela metade
 | # | Melhoria | Por quê | Tam. |
 |---|---|---|---|
-| B1 | **Agenda**: ler calendários por link ICS (Google/Outlook, sem login), próximos eventos e aviso na ilha minutos antes | Única página ainda "Em breve" | M |
+| B1 | ✅ **Agenda**: ler calendários por link ICS (Google/Outlook, sem login), próximos eventos e aviso na ilha minutos antes | Única página ainda "Em breve" | M |
 | B2 | ✅ **Tradução**: trocar o DeepSeek (herdado do fly-island) pelo Claude, com a mesma chave do assistente, ou remover | Hoje exige uma segunda chave de outro provedor | P |
 | B3 | **Sistema** (etapa 5): volume por app, Wi-Fi, Bluetooth, modo escuro, luz noturna, bateria, CPU/RAM | Etapa do plano original ainda não feita | G |
 | B4 | **Testes ao vivo pendentes**: assistente com chave real, Broadlink quando chegar, brilho, volume pela roda do mouse | Funcionam nos testes, mas nunca foram vistos no uso real | P |
@@ -162,7 +162,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 ### Ordem sugerida
 1. ✅ **A1 + A3** — liga sozinho na primeira abertura, o desinstalador limpa o registro; a ilha some em tela cheia no mesmo monitor (Configurações → Tela).
 2. ✅ **A2 + A8** — atualizador assinado (testado de 0.1.0 para 0.1.1 no PC), fluxos `CI` e `Release`; falta criar o repositório público e o segredo da chave no GitHub.
-3. **B1 Agenda** e **B2 Tradução** (fecha as pontas soltas).
+3. ✅ **B1 Agenda** e **B2 Tradução** — agenda por link ICS (Google/Outlook) guardado no Gerenciador de Credenciais, repetições e fusos via `rrule`, aviso na ilha antes do compromisso; tradução pelo Claude Haiku com a chave do assistente.
 4. **A6** (organizar o código antes das features grandes).
 5. **C1 Atividades ao vivo** e **C3 Lançador** (os maiores "uau").
 6. Fase D quando for abrir para outras pessoas.

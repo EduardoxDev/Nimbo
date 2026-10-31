@@ -40,4 +40,7 @@ windows = { version = "0.61", features = ["ApplicationModel", "Foundation", "Fou
 wmi = "0.17.3"
 windows-future = { version = "0.2", features = ["std"] }
 tauri-plugin-updater = "=2.12.0"
+rrule = "=0.14.0"
+chrono-tz = "0.10"
+chrono = "0.4.45"
 

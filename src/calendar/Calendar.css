@@ -1,0 +1,125 @@
+.calendar-panel__body {
+  position: absolute;
+  top: 46px;
+  left: 48px;
+  right: 48px;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.calendar-panel__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.calendar-panel__empty strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.calendar-panel__empty span {
+  max-width: 340px;
+  color: rgba(235, 238, 245, 0.6);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.calendar-days {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.calendar-day + .calendar-day {
+  margin-top: 8px;
+}
+
+.calendar-day__label {
+  display: block;
+  margin-bottom: 4px;
+  color: #ff6961;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calendar-day ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-event {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+}
+
+.calendar-event--now {
+  background: rgba(255, 69, 58, 0.16);
+  box-shadow: inset 3px 0 0 #ff453a;
+}
+
+.calendar-event__time {
+  color: rgba(235, 238, 245, 0.75);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.calendar-event--now .calendar-event__time {
+  color: #ff6961;
+}
+
+.calendar-event__main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.calendar-event__title,
+.calendar-event__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event__title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.calendar-event__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 11px;
+}
+
+.calendar-panel__error {
+  color: #ffb340;
+  font-size: 11.5px;
+}

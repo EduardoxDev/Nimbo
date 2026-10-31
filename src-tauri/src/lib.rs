@@ -1,6 +1,7 @@
 mod agents;
 mod assistant;
 mod broadlink;
+mod calendar;
 mod clipboard_history;
 mod fullscreen;
 mod home_assistant;
@@ -1869,6 +1870,10 @@ pub fn run() {
             assistant::assistant_save_key,
             assistant::assistant_delete_key,
             assistant::assistant_step,
+            calendar::calendar_sources,
+            calendar::calendar_add_source,
+            calendar::calendar_remove_source,
+            calendar::calendar_events,
             shelf::shelf_list,
             shelf::shelf_add,
             shelf::shelf_remove,

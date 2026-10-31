@@ -33,6 +33,7 @@ import { HomeSettingsPage } from "./home/HomeSettingsPage";
 import { AgentsSettings } from "./agents/AgentsSettings";
 import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import { useUpdater } from "./updates/useUpdater";
+import { CalendarSettingsPage } from "./calendar/CalendarSettings";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
 
@@ -52,7 +53,6 @@ type PageId =
   | "agents"
   | "about";
 
-type SoonPage = "calendar";
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -71,7 +71,6 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "agents", icon: Bot, color: "#bf5af2" },
 ];
 
-const SOON_PAGES = new Set<PageId>(["calendar"]);
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
 const PAGE_STORAGE_KEY = SETTINGS_PAGE_STORAGE_KEY;
@@ -204,7 +203,7 @@ export default function SettingsWindow() {
           {page === "hud" && <HudPage settings={settings} update={update} />}
           {page === "shelf" && <ShelfPage />}
           {page === "about" && <AboutPage />}
-          {SOON_PAGES.has(page) && <SoonPageView page={page as SoonPage} />}
+          {page === "calendar" && <CalendarSettingsPage settings={settings} update={update} />}
         </div>
       </main>
     </div>
@@ -685,22 +684,6 @@ function ShelfPage() {
         </button>
       </Row>
     </Section>
-  );
-}
-
-function SoonPageView({ page }: { page: SoonPage }) {
-  const t = useTranslation();
-  const entry = PAGES.find((item) => item.id === page);
-  const Icon = entry?.icon ?? Info;
-
-  return (
-    <div className="prefs-soon">
-      <span className="prefs-soon__tile" style={{ background: entry?.color }} aria-hidden="true">
-        <Icon size={30} strokeWidth={2.2} />
-      </span>
-      <span className="prefs-soon__badge">{t.prefs.comingSoon}</span>
-      <p>{t.prefs.soon[page]}</p>
-    </div>
   );
 }
 

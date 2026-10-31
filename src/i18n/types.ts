@@ -303,6 +303,21 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  calendar: {
+    title: string;
+    today: string;
+    tomorrow: string;
+    allDay: string;
+    now: string;
+    emptyTitle: string;
+    emptyHint: string;
+    free: string;
+    freeHint: string;
+    loading: string;
+    failed: (names: string) => string;
+    startsIn: (title: string, minutes: number) => string;
+    ok: string;
+  };
   updates: {
     available: (version: string) => string;
     downloading: (percent: number | null) => string;
@@ -526,6 +541,21 @@ export type Translations = {
       wheel: string;
       wheelHint: string;
       note: string;
+    };
+    calendarPrefs: {
+      section: string;
+      hint: string;
+      sources: string;
+      name: string;
+      namePlaceholder: string;
+      url: string;
+      urlPlaceholder: string;
+      urlHint: string;
+      add: string;
+      adding: string;
+      remove: string;
+      reminder: string;
+      off: string;
     };
     shelfPrefs: {
       section: string;

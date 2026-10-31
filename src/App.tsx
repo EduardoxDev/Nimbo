@@ -35,6 +35,7 @@ import {
   Languages,
   ListTodo,
   MessageSquareQuote,
+  CalendarDays,
   Minus,
   Music,
   NotebookPen,
@@ -77,6 +78,7 @@ import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type Lyric
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import { HOME_DEMO } from "./demo/homeDemo";
 import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
+import { CALENDAR_DEMO } from "./demo/calendarDemo";
 import { HomePanel } from "./HomePanel";
 import { IslandTabs } from "./IslandTabs";
 import { FocusPanel } from "./focus/FocusPanel";
@@ -88,6 +90,10 @@ import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
 import { useUpdater } from "./updates/useUpdater";
+import { CalendarPanel } from "./calendar/CalendarPanel";
+import { minutesUntil } from "./calendar/calendar";
+import { useCalendar } from "./calendar/useCalendar";
+import "./calendar/Calendar.css";
 import "./shelf/Shelf.css";
 import { AgentsPanel } from "./agents/AgentsPanel";
 import { AssistantPanel } from "./assistant/AssistantPanel";
@@ -111,7 +117,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "assistant" | "music" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "todo" | "assistant" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -267,6 +273,7 @@ export type IslandSettings = {
   waterCupMl: number;
   /** Minutes between water reminders; 0 turns them off. */
   waterReminderMinutes: number;
+  calendarReminderMinutes: number;
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -436,6 +443,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   waterGoalMl: 2000,
   waterCupMl: 250,
   waterReminderMinutes: 60,
+  calendarReminderMinutes: 10,
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -817,6 +825,13 @@ export function normalizeSettings(
       0,
       180,
       15,
+    ),
+    calendarReminderMinutes: stepped(
+      settings?.calendarReminderMinutes,
+      DEFAULT_SETTINGS.calendarReminderMinutes,
+      0,
+      60,
+      5,
     ),
   };
 }
@@ -4260,7 +4275,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4268,7 +4283,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4430,6 +4445,7 @@ function IslandApp({
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const updater = useUpdater({ background: true });
+  const calendar = useCalendar(settings.calendarReminderMinutes);
   const shelf = useShelf({
     onDragEnter: () => openIslandPageRef.current?.("shelf"),
     onAdded: (count) => setAgentNotice({ text: t.shelf.added(count), until: Date.now() + 5_000 }),
@@ -4462,6 +4478,13 @@ function IslandApp({
       ? { text: agentNotice.text, color: "#bf8cff", page: "agents" }
       : focusNotice
       ? { text: focusNotice.text, color: focusColor, page: "focus" }
+      : calendar.reminder
+      ? {
+          text: t.calendar.startsIn(calendar.reminder.title, minutesUntil(calendar.reminder, calendar.now)),
+          color: "#ff6961",
+          page: "calendar",
+          actions: [{ label: t.calendar.ok, primary: true, onClick: () => calendar.dismiss(calendar.reminder!.id) }],
+        }
       : updater.showNotice
       ? {
           text:
@@ -4536,7 +4559,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "shelf"
+        : page === "agents" || page === "shelf" || page === "calendar"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
@@ -4913,6 +4936,7 @@ function IslandApp({
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "assistant", label: t.assistant.title, icon: Sparkles },
     { id: "music", label: t.island.music, icon: Music },
+    { id: "calendar", label: t.calendar.title, icon: CalendarDays },
     { id: "home", label: t.home.title, icon: House },
     { id: "focus", label: t.focus.title, icon: Timer },
     { id: "water", label: t.water.title, icon: Droplet },
@@ -6173,6 +6197,15 @@ function IslandApp({
           <FocusPanel
             timer={focusTimer}
             rounds={settings.focusRounds}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "calendar" && (
+          <CalendarPanel
+            calendar={calendar}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}
