@@ -311,6 +311,21 @@ const ptBR: Translations = {
     next: "Próximo",
     start: "Começar",
   },
+  launcher: {
+    title: "Lançador",
+    placeholder: "Abrir um app…",
+    loading: "Carregando seus apps…",
+    hint: "Digite o nome de um app e aperte Enter. Atalho padrão: Alt+Shift+Espaço.",
+    noResults: "Nenhum app com esse nome.",
+  },
+  shortcuts: {
+    section: "Atalhos de teclado",
+    hint: "Clique no campo e aperte a combinação (com Ctrl, Alt, Shift ou Win). Backspace apaga o atalho.",
+    press: "Aperte as teclas…",
+    none: "Nenhum",
+    clear: "Limpar",
+    actions: { toggle: "Abrir ou fechar a ilha", launcher: "Lançador de apps", playPause: "Tocar ou pausar música", nextPage: "Próxima página da ilha", settings: "Abrir Configurações" },
+  },
   weather: {
     section: "Tempo",
     city: "Cidade",

@@ -8,8 +8,10 @@ mod fullscreen;
 mod home_assistant;
 mod hud;
 mod ir_climate;
+mod launcher;
 mod lyrics;
 mod shelf;
+mod shortcuts;
 mod media_control;
 mod translation;
 mod weather;
@@ -1815,6 +1817,8 @@ pub fn run() {
             agents::init(app.handle());
             hud::init(app.handle());
             fullscreen::init(app.handle());
+            shortcuts::init(app.handle());
+            launcher::init();
             keep_launch_at_startup_current(app.handle().clone());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
@@ -1837,6 +1841,9 @@ pub fn run() {
             get_launch_at_startup,
             set_launch_at_startup,
             fullscreen::set_hide_in_fullscreen,
+            shortcuts::set_global_shortcuts,
+            launcher::launcher_apps,
+            launcher::launcher_open,
             diagnostics::diagnostics_log,
             diagnostics::diagnostics_report,
             get_agent_status,

@@ -907,3 +907,28 @@
   flex: 0 0 auto;
   margin-top: 2px;
 }
+
+.prefs-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prefs-shortcut__input {
+  width: 170px;
+  padding: 6px 10px;
+  color: var(--prefs-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.prefs-shortcut__input:focus-visible,
+.prefs-shortcut__input:focus {
+  outline: 2px solid var(--prefs-blue);
+  outline-offset: 1px;
+}

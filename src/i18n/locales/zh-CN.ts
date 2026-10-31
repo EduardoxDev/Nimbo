@@ -314,6 +314,21 @@ const zhCN: Translations = {
     next: "下一步",
     start: "开始使用",
   },
+  launcher: {
+    title: "启动器",
+    placeholder: "打开应用…",
+    loading: "正在加载应用…",
+    hint: "输入应用名称并按 Enter。默认快捷键：Alt+Shift+空格。",
+    noResults: "没有找到该应用。",
+  },
+  shortcuts: {
+    section: "键盘快捷键",
+    hint: "点击输入框并按下组合键（需包含 Ctrl、Alt、Shift 或 Win），按 Backspace 删除。",
+    press: "请按下按键…",
+    none: "无",
+    clear: "清除",
+    actions: { toggle: "打开或关闭灵动岛", launcher: "应用启动器", playPause: "播放或暂停音乐", nextPage: "灵动岛下一页", settings: "打开设置" },
+  },
   weather: {
     section: "天气",
     city: "城市",

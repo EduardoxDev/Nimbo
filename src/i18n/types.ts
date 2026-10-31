@@ -310,6 +310,21 @@ export type Translations = {
     next: string;
     start: string;
   };
+  launcher: {
+    title: string;
+    placeholder: string;
+    loading: string;
+    hint: string;
+    noResults: string;
+  };
+  shortcuts: {
+    section: string;
+    hint: string;
+    press: string;
+    none: string;
+    clear: string;
+    actions: Record<"toggle" | "playPause" | "nextPage" | "settings" | "launcher", string>;
+  };
   weather: {
     section: string;
     city: string;

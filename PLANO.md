@@ -143,8 +143,8 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 |---|---|---|---|
 | C1 | **Atividades ao vivo**: download do navegador, cópia de arquivos, timer, gravação de tela, chamada no Discord/Teams | É o que mais faz a ilha parecer "viva" | G |
 | C2 | **Notificações do Windows na ilha** (WhatsApp, Discord, e-mail) com resposta rápida | Pede identidade de app (pacote MSIX); pesquisar antes de prometer | G |
-| C3 | **Lançador rápido**: atalho de teclado abre a ilha com busca de apps, arquivos e comandos | Substitui o menu Iniciar para quem usa teclado | M |
-| C4 | **Atalhos globais configuráveis** (abrir ilha, play/pause, próxima página, ligar o ar) | Pedido comum nesse tipo de app | P |
+| C3 | ✅ **Lançador rápido**: atalho de teclado abre a ilha com busca de apps, arquivos e comandos | Substitui o menu Iniciar para quem usa teclado | M |
+| C4 | ✅ **Atalhos globais configuráveis** (abrir ilha, play/pause, próxima página, ligar o ar) | Pedido comum nesse tipo de app | P |
 | C5 | **Assistente com voz** (aperte e fale) e mais ações no PC: abrir app, mudar volume, criar tarefa, controlar a casa | Junta o assistente com tudo o que a ilha já controla | M |
 | C6 | **Automações da Casa**: "liga o ar às 22h", "desliga ao sair do PC", cenas | O ar já é controlado; falta agendar | M |
 | C7 | ✅ **Tempo (clima lá fora)** no topo da ilha e no anel de status | Informação útil que cabe no espaço livre | P |

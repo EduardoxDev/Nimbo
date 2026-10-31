@@ -45,6 +45,7 @@ import {
   Plus,
   RefreshCcw,
   Rewind,
+  Rocket,
   RotateCcw,
   Save,
   Search,
@@ -93,9 +94,13 @@ import { useUpdater } from "./updates/useUpdater";
 import { WeatherChip } from "./weather/WeatherChip";
 import { useWeather } from "./weather/useWeather";
 import type { WeatherPlace } from "./weather/weather";
+import { DEFAULT_SHORTCUTS, normalizeShortcuts, shortcutRequests, type ShortcutAction, type Shortcuts } from "./settings/shortcut";
 import "./weather/Weather.css";
 import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
+import { LauncherPanel } from "./launcher/LauncherPanel";
+import { LAUNCHER_DEMO } from "./demo/launcherDemo";
+import "./launcher/Launcher.css";
 import { minutesUntil } from "./calendar/calendar";
 import { useCalendar } from "./calendar/useCalendar";
 import "./calendar/Calendar.css";
@@ -122,7 +127,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "assistant" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "todo" | "assistant" | "launcher" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -280,6 +285,7 @@ export type IslandSettings = {
   waterReminderMinutes: number;
   calendarReminderMinutes: number;
   weatherPlace: WeatherPlace | null;
+  shortcuts: Shortcuts;
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -451,6 +457,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   waterReminderMinutes: 60,
   calendarReminderMinutes: 10,
   weatherPlace: null,
+  shortcuts: DEFAULT_SHORTCUTS,
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -834,6 +841,7 @@ export function normalizeSettings(
       15,
     ),
     weatherPlace: normalizeWeatherPlace(settings?.weatherPlace),
+    shortcuts: normalizeShortcuts(settings?.shortcuts),
     calendarReminderMinutes: stepped(
       settings?.calendarReminderMinutes,
       DEFAULT_SETTINGS.calendarReminderMinutes,
@@ -4293,7 +4301,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO || LAUNCHER_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4301,7 +4309,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : LAUNCHER_DEMO ? "launcher" : "todo",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4587,7 +4595,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "shelf" || page === "calendar"
+        : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
@@ -4963,6 +4971,7 @@ function IslandApp({
   const islandPageLinks: IslandPageLink[] = [
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "assistant", label: t.assistant.title, icon: Sparkles },
+    { id: "launcher", label: t.launcher.title, icon: Rocket },
     { id: "music", label: t.island.music, icon: Music },
     { id: "calendar", label: t.calendar.title, icon: CalendarDays },
     { id: "home", label: t.home.title, icon: House },
@@ -4985,6 +4994,43 @@ function IslandApp({
   const openClipboardHistory = useCallback(() => {
     openIslandPage("clipboard");
   }, [openIslandPage]);
+
+  const shortcutsKey = JSON.stringify(settings.shortcuts);
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("set_global_shortcuts", { shortcuts: shortcutRequests(JSON.parse(shortcutsKey) as Shortcuts) }).catch(
+      (error) => console.error("Failed to register shortcuts", error),
+    );
+  }, [shortcutsKey]);
+
+  const shortcutHandlerRef = useRef<(action: ShortcutAction) => void>(() => {});
+  shortcutHandlerRef.current = (action) => {
+    if (action === "toggle") {
+      if (mode === "expanded") setMode("collapsed");
+      else openIslandPage(page);
+    } else if (action === "playPause") {
+      void invoke("media_play_pause").catch((error) => console.error("Failed to toggle playback", error));
+    } else if (action === "nextPage") {
+      const index = islandPageLinks.findIndex((link) => link.id === page);
+      openIslandPage(islandPageLinks[(index + 1) % islandPageLinks.length].id);
+    } else if (action === "launcher") {
+      openIslandPage("launcher");
+    }
+  };
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    void listen<ShortcutAction>("global-shortcut", ({ payload }) => shortcutHandlerRef.current(payload)).then((stop) => {
+      if (cancelled) stop();
+      else unlisten = stop;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   const toggleClipboardHistory = useCallback(() => {
     const now = Date.now();
@@ -6229,6 +6275,15 @@ function IslandApp({
             currentPage={page}
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
+          />
+        )}
+        {page === "launcher" && (
+          <LauncherPanel
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+            onDone={() => setMode("collapsed")}
           />
         )}
         {page === "calendar" && (

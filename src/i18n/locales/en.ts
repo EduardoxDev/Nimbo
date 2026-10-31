@@ -311,6 +311,21 @@ const en: Translations = {
     next: "Next",
     start: "Get started",
   },
+  launcher: {
+    title: "Launcher",
+    placeholder: "Open an app…",
+    loading: "Loading your apps…",
+    hint: "Type an app name and press Enter. Default shortcut: Alt+Shift+Space.",
+    noResults: "No app with that name.",
+  },
+  shortcuts: {
+    section: "Keyboard shortcuts",
+    hint: "Click a field and press the combination (with Ctrl, Alt, Shift or Win). Backspace removes it.",
+    press: "Press the keys…",
+    none: "None",
+    clear: "Clear",
+    actions: { toggle: "Open or close the island", launcher: "App launcher", playPause: "Play or pause music", nextPage: "Next island page", settings: "Open Settings" },
+  },
   weather: {
     section: "Weather",
     city: "City",
