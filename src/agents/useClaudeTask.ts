@@ -12,6 +12,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
   const [error, setError] = useState("");
   const [changes, setChanges] = useState<FileChange[]>([]);
   const [queued, setQueued] = useState<string[]>([]);
+  const [attachment, setAttachment] = useState<string | null>(null);
   const queueRef = useRef<string[]>([]);
   const startRef = useRef<(prompt: string, resume?: boolean) => Promise<boolean>>(async () => false);
 
@@ -60,8 +61,10 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
     async (prompt: string, resume?: boolean) => {
       setError("");
       setChanges([]);
+      const fullPrompt = attachment ? `Look at the screenshot saved at "${attachment}" (open it with the Read tool) and answer: ${prompt}` : prompt;
       try {
-        await invoke("claude_task_start", { prompt, folder: workFolder, mode, resume: resume ?? status.canResume });
+        await invoke("claude_task_start", { prompt: fullPrompt, folder: workFolder, mode, resume: resume ?? status.canResume });
+        setAttachment(null);
         setStatus((current) => ({ ...current, running: true }));
         return true;
       } catch (failure) {
@@ -69,7 +72,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
         return false;
       }
     },
-    [workFolder, mode, status.canResume],
+    [workFolder, mode, status.canResume, attachment],
   );
   startRef.current = start;
 
@@ -98,7 +101,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
       .catch((failure) => setError(String(failure)));
   }, [setQueue]);
 
-  return { available: status.available, running: status.running, canResume: status.canResume, folder: workFolder, error, changes, queued, start, enqueue, clearQueue, stop, forget, undo };
+  return { available: status.available, running: status.running, canResume: status.canResume, folder: workFolder, error, changes, queued, attachment, attach: setAttachment, start, enqueue, clearQueue, stop, forget, undo };
 }
 
 export type ClaudeTask = ReturnType<typeof useClaudeTask>;

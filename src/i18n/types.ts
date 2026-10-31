@@ -285,6 +285,8 @@ export type Translations = {
     continuePlaceholder: string;
     newChat: string;
     newChatShort: string;
+    screenAttached: string;
+    screenRemove: string;
     changesShort: (files: number) => string;
     changesTitle: (files: number, added: number, removed: number) => string;
     newFile: string;
@@ -330,6 +332,32 @@ export type Translations = {
       air_conditioner: string;
       toggle_device: string;
     };
+  };
+  life: {
+    focusGuard: (name: string) => string;
+    habit: (app: string, weekday: string, hour: number) => string;
+    open: string;
+    notNow: string;
+    summary: (parts: { todos: number; focus: number; agents: number; waterPercent: number; pending: number; quiet: boolean }) => string;
+    listen: string;
+    ok: string;
+    wakeError: (message: string) => string;
+    section: string;
+    focusGuardTitle: string;
+    focusGuardHint: string;
+    habitsTitle: string;
+    habitsHint: string;
+    summaryTitle: string;
+    summaryHint: string;
+    wakeTitle: string;
+    wakeHint: string;
+  };
+  draw: {
+    title: string;
+    undo: string;
+    copy: string;
+    close: string;
+    hint: string;
   };
   buddy: {
     section: string;
@@ -441,6 +469,7 @@ export type Translations = {
     reminderDue: (text: string) => string;
     reminderDone: string;
     reminderSnooze: string;
+    clipRow: string;
   };
   shortcuts: {
     section: string;
@@ -448,7 +477,7 @@ export type Translations = {
     press: string;
     none: string;
     clear: string;
-    actions: Record<"toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice", string>;
+    actions: Record<"toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice" | "screen" | "draw", string>;
   };
   weather: {
     section: string;

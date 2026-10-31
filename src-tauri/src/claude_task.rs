@@ -335,6 +335,9 @@ pub(crate) async fn claude_task_start(
     command
         .creation_flags(CREATE_NO_WINDOW)
         .args(["-p", &prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", mode]);
+    if let Ok(captures) = crate::capture::captures_dir(&app) {
+        command.arg("--add-dir").arg(captures);
+    }
     if let Some(id) = &resume_id {
         command.args(["--resume", id]);
     }

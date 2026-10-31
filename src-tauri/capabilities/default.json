@@ -6,7 +6,8 @@
     "main",
     "translation",
     "settings",
-    "buddy"
+    "buddy",
+    "draw"
   ],
   "permissions": [
     "core:default",

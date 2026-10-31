@@ -19,6 +19,10 @@ function score(name: string, query: string) {
   return 3;
 }
 
+export function isClipRequest(query: string) {
+  return /^(grav(a|ar|e)\s+(os\s+)?[uú]ltimos\s+30\s+segundos|clipe?|record that|clip that|grava isso|剪辑)$/i.test(query.trim());
+}
+
 export function searchApps(apps: LauncherApp[], query: string): LauncherApp[] {
   const needle = fold(query.trim());
   if (!needle) return [];

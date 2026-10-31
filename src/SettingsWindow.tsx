@@ -445,6 +445,20 @@ function GeneralPage({ settings, update }: PageProps) {
         />
       </Row>
     </Section>
+    <Section title={t.life.section}>
+      <Row title={t.life.focusGuardTitle} hint={t.life.focusGuardHint}>
+        <Toggle label={t.life.focusGuardTitle} checked={settings.focusGuard} onChange={(focusGuard) => update({ focusGuard })} />
+      </Row>
+      <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
+        <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
+      </Row>
+      <Row title={t.life.summaryTitle} hint={t.life.summaryHint}>
+        <Toggle label={t.life.summaryTitle} checked={settings.dailySummary} onChange={(dailySummary) => update({ dailySummary })} />
+      </Row>
+      <Row title={t.life.wakeTitle} hint={t.life.wakeHint}>
+        <Toggle label={t.life.wakeTitle} checked={settings.wakeWord} onChange={(wakeWord) => update({ wakeWord })} />
+      </Row>
+    </Section>
     <Section title={t.buddy.section}>
       <Row title={t.buddy.mode} hint={t.buddy.hints[settings.buddyMode]}>
         <Segmented

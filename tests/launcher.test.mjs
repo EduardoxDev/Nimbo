@@ -19,3 +19,10 @@ test("loose letters still find apps and empty queries return nothing", () => {
   assert.deepEqual(searchApps(apps, "  "), []);
   assert.deepEqual(searchApps(apps, "zzz"), []);
 });
+
+test("asking for a clip is recognized", async () => {
+  const { isClipRequest } = await import("../src/launcher/launcher.ts");
+  assert.equal(isClipRequest("grava os últimos 30 segundos"), true);
+  assert.equal(isClipRequest("record that"), true);
+  assert.equal(isClipRequest("calculadora"), false);
+});

@@ -3,6 +3,7 @@ mod assistant;
 mod broadlink;
 mod buddy;
 mod calendar;
+mod capture;
 mod claude_task;
 mod clipboard_history;
 mod diagnostics;
@@ -1930,8 +1931,15 @@ pub fn run() {
             buddy::buddy_scene,
             buddy::buddy_move_monitor,
             buddy::foreground_window,
+            capture::capture_screen_file,
+            capture::draw_open,
+            capture::draw_background,
+            capture::draw_finish,
+            capture::record_last_clip,
+            launcher::open_program,
             speech::speech_listen,
             speech::speech_cancel,
+            speech::speech_wake,
             claude_task::claude_task_forget,
             task_changes::claude_task_changes,
             task_changes::claude_task_undo,

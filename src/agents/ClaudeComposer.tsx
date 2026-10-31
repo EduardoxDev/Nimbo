@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUp, FileDiff, Folder, ListPlus, RotateCcw, Square, Undo2 } from "lucide-react";
+import { ArrowUp, Camera, FileDiff, Folder, ListPlus, RotateCcw, Square, Undo2, X } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { ClaudeTask } from "./useClaudeTask";
@@ -60,6 +60,13 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
         spellCheck={false}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
+      {claude.attachment && (
+        <button className="claude-composer__folder claude-composer__shot" type="button" title={copy.screenRemove} onClick={() => claude.attach(null)}>
+          <Camera size={11} strokeWidth={2.4} aria-hidden="true" />
+          <span>{copy.screenAttached}</span>
+          <X size={10} strokeWidth={2.6} aria-hidden="true" />
+        </button>
+      )}
       {claude.queued.length > 0 && (
         <button className="claude-composer__folder" type="button" title={[copy.queueClear, ...claude.queued].join(" · ")} onClick={claude.clearQueue}>
           <ListPlus size={11} strokeWidth={2.4} aria-hidden="true" />

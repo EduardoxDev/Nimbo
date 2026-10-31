@@ -104,6 +104,16 @@ pub(crate) fn launcher_open(id: String) -> Result<(), String> {
         .map_err(|error| format!("Could not open the app: {error}"))
 }
 
+#[tauri::command]
+pub(crate) fn open_program(path: String) -> Result<(), String> {
+    let program = std::path::Path::new(&path);
+    let is_exe = program.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("exe"));
+    if !is_exe || !program.is_file() {
+        return Err("Esse programa não existe mais.".to_string());
+    }
+    std::process::Command::new(program).spawn().map(|_| ()).map_err(|error| error.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,15 +1,20 @@
 use std::{
     sync::atomic::{AtomicBool, Ordering},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
+use tauri::{AppHandle, Emitter};
 use windows::{
     core::HSTRING,
-    Foundation::TimeSpan,
+    Foundation::{TimeSpan, TypedEventHandler},
     Globalization::Language,
-    Media::SpeechRecognition::{SpeechRecognitionResultStatus, SpeechRecognizer, SpeechRecognizerState},
+    Media::SpeechRecognition::{
+        SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession, SpeechRecognitionConfidence,
+        SpeechRecognitionListConstraint, SpeechRecognitionResultStatus, SpeechRecognizer, SpeechRecognizerState,
+    },
     Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED},
 };
+use windows_collections::IIterable;
 use windows_future::AsyncStatus;
 
 const PRIVACY_DECLINED: i32 = 0x8004_5509_u32 as i32;
@@ -18,6 +23,11 @@ const NO_MICROPHONE: i32 = 0x8004_5508_u32 as i32;
 
 static LISTENING: AtomicBool = AtomicBool::new(false);
 static CANCEL: AtomicBool = AtomicBool::new(false);
+static WAKE_ENABLED: AtomicBool = AtomicBool::new(false);
+static WAKE_RUNNING: AtomicBool = AtomicBool::new(false);
+
+const WAKE_PHRASES: [&str; 4] = ["ei nimbo", "oi nimbo", "hey nimbo", "嘿 nimbo"];
+const WAKE_COOLDOWN: Duration = Duration::from_secs(4);
 
 fn seconds(value: f64) -> TimeSpan {
     TimeSpan { Duration: (value * 10_000_000.0) as i64 }
@@ -75,6 +85,74 @@ fn listen(language: &str) -> Result<String, String> {
     }
 }
 
+pub(crate) fn is_wake_phrase(text: &str) -> bool {
+    let clean = text.to_lowercase().replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "");
+    clean.split_whitespace().any(|word| word == "nimbo")
+}
+
+fn start_session(language: &str, app: AppHandle) -> windows::core::Result<(SpeechRecognizer, SpeechContinuousRecognitionSession)> {
+    let recognizer = recognizer(language)?;
+    let phrases: Vec<HSTRING> = WAKE_PHRASES.iter().map(|phrase| HSTRING::from(*phrase)).collect();
+    let constraint = SpeechRecognitionListConstraint::Create(&IIterable::<HSTRING>::from(phrases))?;
+    recognizer.Constraints()?.Append(&constraint)?;
+    recognizer.CompileConstraintsAsync()?.get()?;
+    let session = recognizer.ContinuousRecognitionSession()?;
+    let last = std::sync::Mutex::new(Instant::now() - WAKE_COOLDOWN);
+    session.ResultGenerated(&TypedEventHandler::<SpeechContinuousRecognitionSession, SpeechContinuousRecognitionResultGeneratedEventArgs>::new(
+        move |_, args| {
+            let Some(args) = args.as_ref() else { return Ok(()) };
+            let result = args.Result()?;
+            let confident = matches!(result.Confidence()?, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium);
+            if confident && is_wake_phrase(&result.Text()?.to_string()) {
+                if let Ok(mut moment) = last.lock() {
+                    if moment.elapsed() >= WAKE_COOLDOWN {
+                        *moment = Instant::now();
+                        let _ = app.emit("wake-word", ());
+                    }
+                }
+            }
+            Ok(())
+        },
+    ))?;
+    session.StartAsync()?.get()?;
+    Ok((recognizer, session))
+}
+
+fn wake_loop(app: AppHandle, language: String) {
+    let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    let mut active: Option<(SpeechRecognizer, SpeechContinuousRecognitionSession)> = None;
+    let mut retry_at = Instant::now();
+    while WAKE_ENABLED.load(Ordering::SeqCst) {
+        let paused = LISTENING.load(Ordering::SeqCst);
+        if paused {
+            if let Some((_, session)) = active.take() {
+                let _ = session.CancelAsync().and_then(|operation| operation.get());
+            }
+        } else if active.is_none() && Instant::now() >= retry_at {
+            match start_session(&language, app.clone()) {
+                Ok(pair) => active = Some(pair),
+                Err(error) => {
+                    let _ = app.emit("wake-word-error", error_message(error.code().0));
+                    retry_at = Instant::now() + Duration::from_secs(30);
+                }
+            }
+        }
+        thread::sleep(Duration::from_millis(250));
+    }
+    if let Some((_, session)) = active.take() {
+        let _ = session.CancelAsync().and_then(|operation| operation.get());
+    }
+    WAKE_RUNNING.store(false, Ordering::SeqCst);
+}
+
+#[tauri::command]
+pub(crate) fn speech_wake(app: AppHandle, enabled: bool, language: String) {
+    WAKE_ENABLED.store(enabled, Ordering::SeqCst);
+    if enabled && !WAKE_RUNNING.swap(true, Ordering::SeqCst) {
+        thread::spawn(move || wake_loop(app, language));
+    }
+}
+
 #[tauri::command]
 pub(crate) async fn speech_listen(language: String) -> Result<String, String> {
     if LISTENING.swap(true, Ordering::SeqCst) {
@@ -94,6 +172,13 @@ pub(crate) fn speech_cancel() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_phrases_with_the_name_wake_nimbo() {
+        assert!(is_wake_phrase("Ei, Nimbo!"));
+        assert!(is_wake_phrase("hey nimbo"));
+        assert!(!is_wake_phrase("ei limbo"));
+    }
 
     #[test]
     fn known_errors_explain_the_fix() {

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { AlarmClock, Rocket, Search, X } from "lucide-react";
+import { AlarmClock, Clapperboard, Rocket, Search, X } from "lucide-react";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import { LAUNCHER_DEMO_APPS } from "../demo/launcherDemo";
-import { searchApps, type LauncherApp } from "./launcher";
+import { isClipRequest, searchApps, type LauncherApp } from "./launcher";
 import { parseReminder } from "../reminders/reminders";
 import type { Reminders } from "../reminders/useReminders";
 
@@ -37,7 +37,19 @@ export function LauncherPanel<Page extends string>({
   const [selected, setSelected] = useState(0);
   const [error, setError] = useState("");
   const reminder = parseReminder(query, Date.now());
-  const results = reminder ? [] : searchApps(apps, query);
+  const clip = !reminder && isClipRequest(query);
+  const results = reminder || clip ? [] : searchApps(apps, query);
+
+  const saveClip = () => {
+    if (!isTauri()) return;
+    setError("");
+    void invoke("record_last_clip")
+      .then(() => {
+        setQuery("");
+        onDone();
+      })
+      .catch((failure) => setError(String(failure)));
+  };
 
   const saveReminder = () => {
     if (!reminder) return;
@@ -108,6 +120,7 @@ export function LauncherPanel<Page extends string>({
               } else if (event.key === "Enter") {
                 event.preventDefault();
                 if (reminder) saveReminder();
+                else if (clip) saveClip();
                 else open(results[selected]);
               } else if (event.key === "Escape") {
                 setQuery("");
@@ -124,6 +137,18 @@ export function LauncherPanel<Page extends string>({
                   <AlarmClock size={14} strokeWidth={2.4} />
                 </span>
                 <span className="launcher-result__name">{copy.reminderRow(reminder.text, whenOf(reminder.at))}</span>
+                <kbd>Enter</kbd>
+              </button>
+            </li>
+          </ul>
+        ) : clip ? (
+          <ul className="launcher-results" role="listbox" aria-label={copy.title}>
+            <li role="option" aria-selected="true">
+              <button className="launcher-result launcher-result--selected" type="button" tabIndex={-1} onClick={saveClip}>
+                <span className="launcher-result__avatar launcher-result__avatar--reminder" aria-hidden="true">
+                  <Clapperboard size={14} strokeWidth={2.4} />
+                </span>
+                <span className="launcher-result__name">{copy.clipRow}</span>
                 <kbd>Enter</kbd>
               </button>
             </li>

@@ -676,6 +676,10 @@ pub(crate) fn write_clipboard_text(text: &str) -> Result<(), String> {
     })
 }
 
+pub(crate) fn write_clipboard_image_public(image: &RgbaImage) -> Result<(), String> {
+    write_clipboard_image(image.width() as usize, image.height() as usize, image)
+}
+
 fn write_clipboard_image(width: usize, height: usize, image: &RgbaImage) -> Result<(), String> {
     retry_clipboard_write("set clipboard image", || {
         Clipboard::new()

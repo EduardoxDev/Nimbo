@@ -137,6 +137,8 @@ import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
 import { WeekPanel } from "./week/WeekPanel";
 import { IslandWeather } from "./island/IslandWeather";
 import { useBuddyDirector } from "./buddy/useBuddyDirector";
+import { useLifeHelpers } from "./life/useLifeHelpers";
+import { dayKey } from "./water/water";
 import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
@@ -288,6 +290,10 @@ export type IslandSettings = {
   hideInFullscreen: boolean;
   meetingMode: boolean;
   buddyMode: BuddyMode;
+  focusGuard: boolean;
+  habitTips: boolean;
+  dailySummary: boolean;
+  wakeWord: boolean;
   carryOverIncompleteTodos: boolean;
   enableTodoReorder: boolean;
   openMode: IslandOpenMode;
@@ -472,6 +478,10 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   hideInFullscreen: true,
   meetingMode: true,
   buddyMode: "off",
+  focusGuard: true,
+  habitTips: true,
+  dailySummary: true,
+  wakeWord: false,
   carryOverIncompleteTodos: false,
   enableTodoReorder: false,
   openMode: "hover",
@@ -828,6 +838,10 @@ export function normalizeSettings(
         ? settings.meetingMode
         : DEFAULT_SETTINGS.meetingMode,
     buddyMode: isBuddyMode(settings?.buddyMode) ? settings.buddyMode : DEFAULT_SETTINGS.buddyMode,
+    focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
+    habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
+    dailySummary: typeof settings?.dailySummary === "boolean" ? settings.dailySummary : DEFAULT_SETTINGS.dailySummary,
+    wakeWord: typeof settings?.wakeWord === "boolean" ? settings.wakeWord : DEFAULT_SETTINGS.wakeWord,
     showIdleTodoCount:
       typeof settings?.showIdleTodoCount === "boolean"
         ? settings.showIdleTodoCount
@@ -4570,6 +4584,40 @@ function IslandApp({
   });
 
   const isFocusActive = focusTimer.state.status !== "idle";
+  const life = useLifeHelpers({
+    focusRunning: focusTimer.state.status === "running" && focusTimer.state.phase === "focus",
+    focusGuard: settings.focusGuard,
+    habitTips: settings.habitTips,
+    dailySummary: settings.dailySummary,
+    buddyMode: settings.buddyMode,
+    localeTag: t.localeTag,
+    locale,
+    today: () => {
+      const stats = statsHistory[dayKey(Date.now())] ?? { focus: 0, todos: 0, agents: 0 };
+      return { ...stats, waterMl: water.drankMl, goalMl: settings.waterGoalMl, pending: todos.filter((todo) => !todo.completed).length };
+    },
+    copy: t.life,
+  });
+  const lifePushRef = useRef(life.push);
+  lifePushRef.current = life.push;
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("speech_wake", { enabled: settings.wakeWord, language: locale }).catch(() => {});
+  }, [settings.wakeWord, locale]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const stops: (() => void)[] = [];
+    let cancelled = false;
+    const keep = (stop: () => void) => (cancelled ? stop() : stops.push(stop));
+    void listen("wake-word", () => shortcutHandlerRef.current("voice")).then(keep);
+    void listen<string>("wake-word-error", ({ payload }) => lifePushRef.current({ text: t.life.wakeError(payload), actions: [{ label: t.life.ok, primary: true }] })).then(keep);
+    return () => {
+      cancelled = true;
+      stops.forEach((stop) => stop());
+    };
+  }, [t]);
   const focusColor =
     focusTimer.state.phase === "focus" ? "#ff7a59" : focusTimer.state.phase === "short" ? "#35e985" : "#5ac8fa";
   const statusRing: CollapsedStatus["ring"] =
@@ -4616,6 +4664,20 @@ function IslandApp({
             },
             { label: t.calendar.notNow, onClick: () => setMeetingEnded(false) },
           ],
+        }
+      : life.notice
+      ? {
+          text: life.notice.text,
+          color: "#64d2ff",
+          page,
+          actions: life.notice.actions.map((action) => ({
+            label: action.label,
+            primary: action.primary,
+            onClick: () => {
+              action.run?.();
+              life.dismiss();
+            },
+          })),
         }
       : reminders.due
       ? {
@@ -5143,6 +5205,13 @@ function IslandApp({
     } else if (action === "voice") {
       openIslandPage("assistant");
       setVoiceToken((token) => token + 1);
+    } else if (action === "screen") {
+      void invoke<string>("capture_screen_file")
+        .then((path) => {
+          claudeTask.attach(path);
+          openIslandPage("agents");
+        })
+        .catch((error) => console.error("Failed to capture the screen", error));
     }
   };
 
