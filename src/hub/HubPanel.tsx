@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Droplet, ListTodo, Music, Timer, type LucideIcon } from "lucide-react";
+import { Bot, CalendarDays, Droplet, ListTodo, Music, Timer, type LucideIcon } from "lucide-react";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { IslandBar } from "../island/PageChrome";
@@ -42,6 +42,10 @@ export function HubPanel<Page extends string>({
   const copy = useTranslation().hub;
   const [dizzy, setDizzy] = useState(false);
   const busy = pills.some((pill) => pill.active) || lines.length > 0 || agents.length > 0;
+  const shownLines: HubLine[] = [
+    ...agents.slice(0, 2).map((agent) => ({ key: agent.id, icon: Bot, text: `${agent.name.replace(/^Claude Code · /, "")}: ${agent.text}` })),
+    ...lines,
+  ];
 
   const handleReaction = (reaction: "dizzy" | "annoyed") => {
     if (reaction !== "dizzy") return;
@@ -105,7 +109,7 @@ export function HubPanel<Page extends string>({
           <div className="hub__card hub__card--focus g-card">
             {mascot(62, mood)}
             <ul className="hub__lines">
-              {lines.slice(0, 3).map((line, index) => {
+              {shownLines.slice(0, 3).map((line, index) => {
                 const Icon = line.icon;
                 return (
                   <li key={line.key} className={index === 0 ? "hub__line hub__line--current" : "hub__line"}>
