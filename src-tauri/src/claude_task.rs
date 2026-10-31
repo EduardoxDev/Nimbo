@@ -22,6 +22,8 @@ const SEARCH_DEPTH: usize = 6;
 static EXECUTABLE: OnceLock<Option<PathBuf>> = OnceLock::new();
 static CHILD: Mutex<Option<Child>> = Mutex::new(None);
 static LAST_SESSION: Mutex<Option<String>> = Mutex::new(None);
+static TASK_DONE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -182,7 +184,7 @@ fn steps_of(titles: &[String], done: bool) -> Vec<ExternalStep> {
         .collect()
 }
 
-fn watch(app: AppHandle, child: Child, goal: String) {
+fn watch(app: AppHandle, child: Child, goal: String, generation: u64) {
     let mut child = child;
     let stdout = child.stdout.take();
     let mut stderr = child.stderr.take();
@@ -213,6 +215,7 @@ fn watch(app: AppHandle, child: Child, goal: String) {
                     }
                     StreamEvent::Finished { text, failed } => {
                         finished = true;
+                        TASK_DONE.store(true, std::sync::atomic::Ordering::SeqCst);
                         let answer = if text.is_empty() { last_text.clone().unwrap_or_default() } else { text };
                         let notice = if failed { "Não consegui terminar" } else { "Terminei o pedido" };
                         report_external(
@@ -235,6 +238,10 @@ fn watch(app: AppHandle, child: Child, goal: String) {
     if let Some(stderr) = stderr.as_mut() {
         let _ = stderr.take(4_000).read_to_string(&mut errors);
     }
+    if GENERATION.load(std::sync::atomic::Ordering::SeqCst) != generation {
+        return;
+    }
+    TASK_DONE.store(true, std::sync::atomic::Ordering::SeqCst);
     let stopped_by_user = CHILD.lock().map(|mut slot| slot.take().is_none()).unwrap_or(false);
     if !finished && !stopped_by_user {
         let message = if errors.trim().is_empty() { "O Claude Code parou sem responder.".to_string() } else { short(&errors, 300) };
@@ -253,6 +260,9 @@ fn watch(app: AppHandle, child: Child, goal: String) {
 }
 
 fn is_running() -> bool {
+    if TASK_DONE.load(std::sync::atomic::Ordering::SeqCst) {
+        return false;
+    }
     CHILD
         .lock()
         .map(|mut slot| match slot.as_mut() {
@@ -296,6 +306,20 @@ pub(crate) async fn claude_task_start(
     if is_running() {
         return Err("O Claude Code já está trabalhando num pedido.".to_string());
     }
+    let previous = CHILD.lock().map_err(|error| error.to_string())?.take();
+    if let Some(mut previous) = previous {
+        tauri::async_runtime::spawn_blocking(move || {
+            for _ in 0..30 {
+                if !matches!(previous.try_wait(), Ok(None)) {
+                    return;
+                }
+                thread::sleep(std::time::Duration::from_millis(100));
+            }
+            let _ = previous.kill();
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+    }
     let exe = tauri::async_runtime::spawn_blocking(executable)
         .await
         .map_err(|error| error.to_string())?
@@ -317,9 +341,11 @@ pub(crate) async fn claude_task_start(
         .spawn()
         .map_err(|error| format!("Não consegui abrir o Claude Code: {error}"))?;
 
+    TASK_DONE.store(false, std::sync::atomic::Ordering::SeqCst);
+    let generation = GENERATION.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
     let goal = short(&prompt, 120);
     report_external(&app, AGENT_NAME, Some(goal.clone()), Vec::new(), "working", None, None);
-    thread::spawn(move || watch(app, child, goal));
+    thread::spawn(move || watch(app, child, goal, generation));
     Ok(())
 }
 

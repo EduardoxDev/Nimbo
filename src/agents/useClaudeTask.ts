@@ -15,7 +15,9 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
     let cancelled = false;
     void listen("claude-task-finished", () => {
       setStatus((current) => ({ ...current, running: false }));
-      void invoke<Status>("claude_task_status").then(setStatus).catch(() => {});
+      void invoke<Status>("claude_task_status")
+        .then((next) => setStatus({ ...next, running: false }))
+        .catch(() => {});
     }).then((stop) => {
       if (cancelled) stop();
       else unlisten = stop;
