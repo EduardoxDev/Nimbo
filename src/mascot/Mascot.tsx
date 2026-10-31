@@ -54,6 +54,7 @@ export function Mascot({
   label,
   accessory = null,
   aura = null,
+  fps,
 }: {
   mood: MascotMood;
   shape: MascotShape;
@@ -67,6 +68,7 @@ export function Mascot({
   label?: string;
   accessory?: MascotAccessory | null;
   aura?: "sparkle" | "wings" | null;
+  fps?: number;
 }) {
   const maskId = `mascot-${useId().replace(/:/g, "")}`;
   const ref = useRef<SVGSVGElement>(null);
@@ -120,13 +122,13 @@ export function Mascot({
   useEffect(() => {
     if (reducedMotion()) return;
     let last = 0;
-    const interval = size < 28 ? 1 / 12 : 1 / 30;
+    const interval = fps ? 1 / fps : size < 28 ? 1 / 12 : 1 / 30;
     return subscribe((now) => {
       if (now - last < interval) return;
       last = now;
       setTime(now);
     });
-  }, [size]);
+  }, [size, fps]);
 
   let gaze: { x: number; y: number } | null = null;
   if (pointer && performance.now() - pointer.at < 2500 && ref.current) {

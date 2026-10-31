@@ -26,7 +26,7 @@ const SLEEPY_AFTER_MS = 8_000;
 const HIDE_AFTER_MS = 120_000;
 const DIZZY_IMPACT = 2300;
 const CURSOR_OFFSET = { x: 18, y: 22 };
-const MINI_SIZE = 30;
+const MINI_SIZE = 26;
 const BUBBLE_MS = 6_000;
 const DELIVER_BUBBLE_MS = 9_000;
 const BUBBLE_WIDTH = 220;
@@ -211,8 +211,7 @@ export default function BuddyWindow() {
         body0.ground !== null &&
         body0.vx === 0 &&
         squashRef.current === 0 &&
-        now < behaviorRef.current.until &&
-        minis.length === 0;
+        now < behaviorRef.current.until;
       if (calm && now - last < 100) {
         raf = requestAnimationFrame(tick);
         return;
@@ -458,7 +457,7 @@ export default function BuddyWindow() {
             style={{ width: MINI_SIZE, height: MINI_SIZE }}
             title={agent.name}
           >
-            <Mascot mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={MINI_SIZE} showDot={false} />
+            <Mascot mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={MINI_SIZE} showDot={false} fps={8} />
           </div>
         ))}
       {mode !== "off" && bubble && (
@@ -476,7 +475,7 @@ export default function BuddyWindow() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} aura={auraOf(level)} label="Nimbo" />
+          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} aura={auraOf(level)} label="Nimbo" fps={20} />
         </div>
       )}
     </div>
