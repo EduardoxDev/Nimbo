@@ -75,3 +75,17 @@ test("no reminders at night, when off, or once the goal is met", () => {
   const full = drink(drink(day, late), late);
   assert.equal(nextReminderAt(full, settings, late), null);
 });
+
+test("water history keeps two weeks and marks met goals", async () => {
+  const { recordHistory, lastDays, parseWaterHistory } = await import("../src/water/water.ts");
+  let history = {};
+  for (let day = 1; day <= 20; day += 1) history = recordHistory(history, `2026-10-${String(day).padStart(2, "0")}`, day * 100);
+  assert.equal(Object.keys(history).length, 14);
+  const now = new Date(2026, 9, 20, 12).getTime();
+  const week = lastDays(history, now, 1800);
+  assert.equal(week.length, 7);
+  assert.equal(week[6].isToday, true);
+  assert.equal(week[6].met, true);
+  assert.equal(week[0].met, false);
+  assert.deepEqual(parseWaterHistory('{"2026-10-01": 500, "bad": 3, "2026-10-02": -1}'), { "2026-10-01": 500 });
+});

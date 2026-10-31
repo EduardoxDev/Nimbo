@@ -307,6 +307,13 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  waterMeter: {
+    today: string;
+    week: string;
+    levels: [string, string, string];
+    undo: string;
+    summary: (liters: string, met: number) => string;
+  };
   hub: {
     title: string;
     greeting: string;

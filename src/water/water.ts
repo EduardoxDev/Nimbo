@@ -98,3 +98,39 @@ export function parseWaterDay(raw: string | null, now: number): WaterDay {
   }
   return freshDay(now);
 }
+
+export type WaterHistory = Record<string, number>;
+export type HistoryDay = { date: string; ml: number; met: boolean; isToday: boolean };
+
+const HISTORY_DAYS = 14;
+
+export function recordHistory(history: WaterHistory, date: string, ml: number): WaterHistory {
+  const next = { ...history, [date]: ml };
+  const keep = Object.keys(next).sort().slice(-HISTORY_DAYS);
+  return Object.fromEntries(keep.map((key) => [key, next[key]]));
+}
+
+export function lastDays(history: WaterHistory, now: number, goalMl: number, count = 7): HistoryDay[] {
+  const today = dayKey(now);
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() - (count - 1 - index));
+    const key = dayKey(date.getTime());
+    const ml = history[key] ?? 0;
+    return { date: key, ml, met: goalMl > 0 && ml >= goalMl, isToday: key === today };
+  });
+}
+
+export function parseWaterHistory(raw: string | null): WaterHistory {
+  try {
+    const value = raw ? JSON.parse(raw) : null;
+    if (!value || typeof value !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(
+        ([key, ml]) => /^\d{4}-\d{2}-\d{2}$/.test(key) && typeof ml === "number" && ml >= 0,
+      ),
+    ) as WaterHistory;
+  } catch {
+    return {};
+  }
+}

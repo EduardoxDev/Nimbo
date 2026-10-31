@@ -1,11 +1,11 @@
 import { useId } from "react";
-import { Droplet, Minus, Plus } from "lucide-react";
+import { CalendarDays, Droplet, Plus, Undo2 } from "lucide-react";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import type { WaterTracker } from "./useWater";
+import "./WaterMeter.css";
 
-/** A glass that fills with a moving wave as the day's goal gets closer. */
 function WaterGlass({ progress }: { progress: number }) {
   const id = useId().replace(/:/g, "");
   const level = 96 - 84 * Math.min(1, progress);
@@ -32,6 +32,10 @@ function WaterGlass({ progress }: { progress: number }) {
   );
 }
 
+export function levelOf(progress: number) {
+  return progress >= 1 ? 2 : progress >= 0.5 ? 1 : 0;
+}
+
 export function WaterPanel<Page extends string>({
   water,
   goalMl,
@@ -52,12 +56,20 @@ export function WaterPanel<Page extends string>({
   onPageChange: (page: Page) => void;
 }) {
   const t = useTranslation();
+  const copy = t.waterMeter;
   const number = new Intl.NumberFormat(t.localeTag);
-  const goalCups = Math.ceil(goalMl / cupMl);
+  const liters = new Intl.NumberFormat(t.localeTag, { maximumFractionDigits: 1 });
+  const weekday = new Intl.DateTimeFormat(t.localeTag, { weekday: "narrow" });
+  const percent = Math.round(water.progress * 100);
+  const level = levelOf(water.progress);
+  const metDays = water.history.filter((day) => day.met).length;
+  const average = water.history.reduce((sum, day) => sum + day.ml, 0) / Math.max(1, water.history.length) / 1000;
   const nextTime =
     water.nextReminderAt !== null
       ? new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" }).format(water.nextReminderAt)
       : null;
+  const reminder =
+    reminderMinutes <= 0 ? t.water.remindersOff : nextTime ? t.water.nextReminder(nextTime) : t.water.noMoreReminders;
 
   return (
     <PageChrome
@@ -70,43 +82,67 @@ export function WaterPanel<Page extends string>({
       className={`water-panel${water.progress >= 1 ? " water-panel--done" : ""}`}
       label={t.water.title}
     >
-      <div className="water-panel__body">
-        <div className="water-panel__glass">
-          <WaterGlass progress={water.progress} />
-          <span className="water-panel__percent">{Math.round(water.progress * 100)}%</span>
-        </div>
-        <div className="water-panel__side">
-          <strong className="water-panel__amount">
-            {number.format(water.drankMl)}
-            <span> / {number.format(goalMl)} ml</span>
-          </strong>
-          <span className="water-panel__cups">
-            {water.progress >= 1 ? t.water.goalReached : t.water.cupsOf(water.day.cups, goalCups)}
-          </span>
-          <div className="water-panel__controls">
-            <button className="water-panel__primary" type="button" onClick={water.add}>
-              <Plus size={16} strokeWidth={2.8} aria-hidden="true" />
-              {t.water.addCup(number.format(cupMl))}
+      <div className="water-meter">
+        <section className="water-meter__card water-meter__today g-card" aria-label={copy.today}>
+          <header className="water-meter__head">
+            <span className="water-meter__label">
+              <Droplet size={11} strokeWidth={2.4} aria-hidden="true" />
+              {copy.today}
+            </span>
+            <span className="water-meter__amount">
+              <strong>{number.format(water.drankMl)} ml</strong> / {number.format(goalMl)} ml
+            </span>
+          </header>
+          <div className="water-meter__main">
+            <strong className="water-meter__percent">{percent}%</strong>
+            <WaterGlass progress={water.progress} />
+            <div className="water-meter__ruler" role="img" aria-label={copy.levels[level]}>
+              {copy.levels.map((name, index) => (
+                <span key={name} className={`water-meter__stop${index === level ? " water-meter__stop--current" : ""}${index < level ? " water-meter__stop--passed" : ""}`}>
+                  <i aria-hidden="true" />
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="water-meter__foot">{reminder}</span>
+        </section>
+        <section className="water-meter__card water-meter__week g-card" aria-label={copy.week}>
+          <header className="water-meter__head">
+            <span className="water-meter__label">
+              <CalendarDays size={11} strokeWidth={2.4} aria-hidden="true" />
+              {copy.week}
+            </span>
+            <span className="water-meter__amount">
+              <strong>{metDays}</strong>/7
+            </span>
+          </header>
+          <ol className="water-meter__days">
+            {water.history.map((day) => {
+              const [year, month, date] = day.date.split("-").map(Number);
+              return (
+                <li
+                  key={day.date}
+                  className={`water-meter__day${day.met ? " water-meter__day--met" : ""}${day.isToday ? " water-meter__day--today" : ""}`}
+                  title={`${number.format(day.ml)} ml`}
+                >
+                  <span>{weekday.format(new Date(year, month - 1, date))}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <span className="water-meter__summary">{copy.summary(liters.format(average), metDays)}</span>
+          <div className="water-meter__actions">
+            <button className="water-meter__button water-meter__button--primary" type="button" onClick={water.add}>
+              <Plus size={13} strokeWidth={2.8} aria-hidden="true" />
+              {number.format(cupMl)} ml
             </button>
-            <button
-              className="focus-panel__icon"
-              type="button"
-              title={t.water.undo}
-              aria-label={t.water.undo}
-              disabled={water.day.cups === 0}
-              onClick={water.undo}
-            >
-              <Minus size={16} strokeWidth={2.6} />
+            <button className="water-meter__button" type="button" title={t.water.undo} disabled={water.day.cups === 0} onClick={water.undo}>
+              <Undo2 size={13} strokeWidth={2.4} aria-hidden="true" />
+              {copy.undo}
             </button>
           </div>
-          <span className="water-panel__next">
-            {reminderMinutes <= 0
-              ? t.water.remindersOff
-              : nextTime
-                ? t.water.nextReminder(nextTime)
-                : t.water.noMoreReminders}
-          </span>
-        </div>
+        </section>
       </div>
     </PageChrome>
   );

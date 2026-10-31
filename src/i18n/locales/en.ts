@@ -304,6 +304,13 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  waterMeter: {
+    today: "Today",
+    week: "Last 7 days",
+    levels: ["low", "good", "goal"],
+    undo: "Undo",
+    summary: (liters, met) => `${liters} L a day on average · ${met} of 7 goals`,
+  },
   hub: {
     title: "Home",
     greeting: "Hi! All quiet here",

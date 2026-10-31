@@ -304,6 +304,13 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  waterMeter: {
+    today: "Hoje",
+    week: "Últimos 7 dias",
+    levels: ["pouco", "bom", "meta"],
+    undo: "Desfazer",
+    summary: (liters, met) => `Média de ${liters} L por dia · ${met} de 7 metas`,
+  },
   hub: {
     title: "Início",
     greeting: "Oi! Tudo tranquilo por aqui",

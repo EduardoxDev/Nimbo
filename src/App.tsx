@@ -4584,13 +4584,13 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "system" || page === "hub"
+        : page === "agents" || page === "system" || page === "hub" || page === "water"
           ? CARDS_EXPANDED_ISLAND_HEIGHT
           : page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
-          : page === "home" || page === "water"
+          : page === "home"
           ? HOME_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
             ? FOCUS_EXPANDED_ISLAND_HEIGHT

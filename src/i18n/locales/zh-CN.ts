@@ -307,6 +307,13 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  waterMeter: {
+    today: "今天",
+    week: "最近 7 天",
+    levels: ["偏少", "不错", "达标"],
+    undo: "撤销",
+    summary: (liters, met) => `日均 ${liters} L · 7 天达标 ${met} 天`,
+  },
   hub: {
     title: "首页",
     greeting: "嗨！一切安好",

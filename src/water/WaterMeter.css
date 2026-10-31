@@ -1,0 +1,198 @@
+.water-meter {
+  position: absolute;
+  top: 48px;
+  left: 22px;
+  right: 22px;
+  bottom: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.water-meter__card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  overflow: hidden;
+}
+
+.water-meter__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.water-meter__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--g-text-3);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.water-meter__amount {
+  color: var(--g-text-3);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.water-meter__amount strong {
+  color: var(--g-text);
+  font-size: 12px;
+}
+
+.water-meter__main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.water-meter__percent {
+  color: var(--g-text);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.water-meter .water-glass {
+  width: 36px;
+  height: 48px;
+  filter: drop-shadow(0 6px 14px rgba(26, 124, 255, 0.35));
+}
+
+.water-meter__ruler {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.water-meter__ruler::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), #35e985 50%, #ff9f0a);
+  border-radius: 999px;
+  opacity: 0.6;
+}
+
+.water-meter__stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--g-text-3);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.water-meter__stop i {
+  width: 16px;
+  height: 16px;
+  background: #16171a;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.water-meter__stop--passed i {
+  border-color: rgba(53, 233, 133, 0.6);
+}
+
+.water-meter__stop--current {
+  color: #35e985;
+}
+
+.water-meter__stop--current i {
+  background: radial-gradient(circle, #35e985 0 35%, #16171a 40%);
+  border-color: #35e985;
+  box-shadow: 0 0 10px rgba(53, 233, 133, 0.55);
+}
+
+.water-meter__foot,
+.water-meter__summary {
+  color: var(--g-text-3);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.water-meter__days {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.water-meter__day {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--g-text-3);
+  font-size: 9.5px;
+  font-weight: 700;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.water-meter__day--met {
+  color: #0b0b0f;
+  background: #35e985;
+  border-color: #35e985;
+}
+
+.water-meter__day--today {
+  box-shadow: 0 0 0 2px rgba(53, 233, 133, 0.35), 0 0 10px rgba(53, 233, 133, 0.35);
+  border-color: #35e985;
+}
+
+.water-meter__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.water-meter__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  color: var(--g-text);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  background: var(--g-pill);
+  border: 1px solid var(--g-pill-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.water-meter__button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.water-meter__button--primary {
+  color: #0b0b0f;
+  background: #f5f5f7;
+  border-color: transparent;
+}
