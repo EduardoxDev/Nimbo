@@ -176,7 +176,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, message: u32, wparam: WPARAM, 
         let index = (wparam.0 as i32 - FIRST_HOTKEY_ID) as usize;
         if let (Some(app), Some(action)) = (APP.get(), ACTIONS.get(index)) {
             if *action == "settings" {
-                let _ = crate::open_settings_window(app.clone());
+                let _ = crate::show_settings(app);
             } else {
                 if *action == "toggle" || *action == "launcher" {
                     crate::fullscreen::user_changed_visibility();

@@ -1724,10 +1724,14 @@ mod tests {
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 
 #[tauri::command]
-fn open_settings_window(app: AppHandle) -> Result<(), String> {
+async fn open_settings_window(app: AppHandle) -> Result<(), String> {
+    show_settings(&app)
+}
+
+fn show_settings(app: &AppHandle) -> Result<(), String> {
     let window = match app.get_webview_window(SETTINGS_WINDOW_LABEL) {
         Some(window) => window,
-        None => WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, WebviewUrl::App("index.html?window=settings".into()))
+        None => WebviewWindowBuilder::new(app, SETTINGS_WINDOW_LABEL, WebviewUrl::App("index.html?window=settings".into()))
             .title("Nimbo")
             .inner_size(780.0, 560.0)
             .min_inner_size(680.0, 480.0)
@@ -1769,7 +1773,7 @@ fn build_tray(app: &App) -> tauri::Result<()> {
                 hide_island(app);
             }
             "settings" => {
-                let _ = open_settings_window(app.clone());
+                let _ = show_settings(app);
             }
             "quit" => app.exit(0),
             _ => {}
