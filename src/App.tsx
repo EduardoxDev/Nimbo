@@ -90,6 +90,7 @@ import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
 import { useUpdater } from "./updates/useUpdater";
+import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
 import { minutesUntil } from "./calendar/calendar";
 import { useCalendar } from "./calendar/useCalendar";
@@ -4318,6 +4319,15 @@ function IslandApp({
     expiresAt: number;
   } | null>(null);
   const [settings, setSettings] = useState<IslandSettings>(loadSettings);
+
+  useEffect(() => {
+    if (!isTauri() || !welcomeOpeningDue()) return;
+    const timer = window.setTimeout(() => {
+      markWelcomeOpened();
+      void invoke("open_settings_window").catch((error) => console.error("Failed to open welcome", error));
+    }, 1_500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) return;

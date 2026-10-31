@@ -34,6 +34,8 @@ import { AgentsSettings } from "./agents/AgentsSettings";
 import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import { useUpdater } from "./updates/useUpdater";
 import { CalendarSettingsPage } from "./calendar/CalendarSettings";
+import { WelcomeSheet } from "./welcome/WelcomeSheet";
+import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
 
@@ -150,6 +152,8 @@ export default function SettingsWindow() {
     if (isTauri()) void getCurrentWindow().hide();
   };
 
+  const [showWelcome, setShowWelcome] = useState(welcomePending);
+
   return (
     <div className="prefs">
       <aside className="prefs__sidebar" data-tauri-drag-region>
@@ -206,6 +210,7 @@ export default function SettingsWindow() {
           {page === "calendar" && <CalendarSettingsPage settings={settings} update={update} />}
         </div>
       </main>
+      {showWelcome && <WelcomeSheet onDone={() => setShowWelcome(false)} />}
     </div>
   );
 }

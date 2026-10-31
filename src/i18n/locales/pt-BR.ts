@@ -300,6 +300,17 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  welcome: {
+    eyebrow: "Bem-vindo ao Nimbo",
+    steps: [
+      { title: "Abra a ilha", text: "Passe o mouse ou clique na ilha no topo da tela. Ela abre e mostra música, tarefas e o que estiver acontecendo." },
+      { title: "Troque de página", text: "Use as setas dos lados ou os pontinhos embaixo para ir para Agenda, Foco, Água, Casa, Prateleira e mais." },
+      { title: "Deixe do seu jeito", text: "Estas Configurações ficam no ícone do Nimbo perto do relógio. Ali você liga a agenda, a casa e o assistente." },
+    ],
+    skip: "Pular",
+    next: "Próximo",
+    start: "Começar",
+  },
   calendar: {
     title: "Agenda",
     today: "Hoje",

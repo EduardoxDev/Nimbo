@@ -303,6 +303,13 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  welcome: {
+    eyebrow: string;
+    steps: { title: string; text: string }[];
+    skip: string;
+    next: string;
+    start: string;
+  };
   calendar: {
     title: string;
     today: string;

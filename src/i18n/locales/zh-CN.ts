@@ -303,6 +303,17 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  welcome: {
+    eyebrow: "欢迎使用 Nimbo",
+    steps: [
+      { title: "打开灵动岛", text: "把鼠标移到屏幕顶部的灵动岛上或点击它，即可查看音乐、待办和正在发生的事。" },
+      { title: "切换页面", text: "用两侧的箭头或底部的圆点切换到日程、专注、喝水、家居、收纳架等页面。" },
+      { title: "按你的方式设置", text: "设置在时钟旁的 Nimbo 图标里，可以连接日历、家居和助手。" },
+    ],
+    skip: "跳过",
+    next: "下一步",
+    start: "开始使用",
+  },
   calendar: {
     title: "日程",
     today: "今天",

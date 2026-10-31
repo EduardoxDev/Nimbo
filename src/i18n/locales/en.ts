@@ -300,6 +300,17 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  welcome: {
+    eyebrow: "Welcome to Nimbo",
+    steps: [
+      { title: "Open the island", text: "Hover or click the island at the top of the screen. It opens to show music, tasks and whatever is going on." },
+      { title: "Switch pages", text: "Use the side arrows or the dots at the bottom to go to Calendar, Focus, Water, Home, Shelf and more." },
+      { title: "Make it yours", text: "These Settings live in the Nimbo icon next to the clock. Connect your calendar, home and assistant there." },
+    ],
+    skip: "Skip",
+    next: "Next",
+    start: "Get started",
+  },
   calendar: {
     title: "Calendar",
     today: "Today",

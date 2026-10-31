@@ -136,7 +136,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | B2 | ✅ **Tradução**: trocar o DeepSeek (herdado do fly-island) pelo Claude, com a mesma chave do assistente, ou remover | Hoje exige uma segunda chave de outro provedor | P |
 | B3 | **Sistema** (etapa 5): volume por app, Wi-Fi, Bluetooth, modo escuro, luz noturna, bateria, CPU/RAM | Etapa do plano original ainda não feita | G |
 | B4 | **Testes ao vivo pendentes**: assistente com chave real, Broadlink quando chegar, brilho, volume pela roda do mouse | Funcionam nos testes, mas nunca foram vistos no uso real | P |
-| B5 | **Primeira abertura (onboarding)**: 3 telas curtas mostrando abrir a ilha, trocar página e Configurações | Quem instala hoje não sabe o que a ilha faz | P |
+| B5 | ✅ **Primeira abertura (onboarding)**: 3 telas curtas mostrando abrir a ilha, trocar página e Configurações | Quem instala hoje não sabe o que a ilha faz | P |
 
 ### Fase C — Diferenciais (o que nenhum concorrente no Windows tem junto)
 | # | Melhoria | Por quê | Tam. |
