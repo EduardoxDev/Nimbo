@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -129,6 +130,10 @@ import {
   useAgentEvents,
   type AgentNotice, answerApproval, islandAgentsOf, pendingApproval, type IslandAgent } from "./agents/agentsStore";
 import "./App.css";
+import { recordStat, useStats } from "./stats/useStats";
+import { evolutionOf } from "./stats/stats";
+import { mascotAccessory } from "./mascot/accessories";
+import { getWeather, subscribeWeather } from "./weather/weather";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
 import "./FocusWater.css";
@@ -4345,6 +4350,14 @@ function IslandApp({
     loadSettingPresets(t),
   );
   const [todos, setTodos] = useState<TodoItem[]>(loadTodos);
+  const completedTodosRef = useRef<number | null>(null);
+  useEffect(() => {
+    const completed = todos.filter((todo) => todo.completed).length;
+    const previous = completedTodosRef.current;
+    completedTodosRef.current = completed;
+    if (previous === null) return;
+    for (let index = previous; index < completed; index += 1) recordStat("todos");
+  }, [todos]);
   const [dailyNote, setDailyNote] = useState(loadDailyNote);
   const [draftTodo, setDraftTodo] = useState("");
   const [activeTodoId, setActiveTodoId] = useState<string | null>(
@@ -4414,7 +4427,10 @@ function IslandApp({
   const focusTimer = useFocusTimer(focusDurations, {
     autoStart: settings.focusAutoStart,
     sound: settings.focusSound,
-    onPhaseEnd: (ended) => setFocusNotice({ text: t.focus.ended[ended], until: Date.now() + 12_000 }),
+    onPhaseEnd: (ended) => {
+      if (ended === "focus") recordStat("focus");
+      setFocusNotice({ text: t.focus.ended[ended], until: Date.now() + 12_000 });
+    },
   });
   useEffect(() => {
     if (!focusNotice) return;
@@ -4430,6 +4446,9 @@ function IslandApp({
     [settings.waterGoalMl, settings.waterCupMl, settings.waterReminderMinutes],
   );
   const water = useWater(waterSettings);
+  const statsHistory = useStats();
+  const evolution = useMemo(() => evolutionOf(statsHistory, water.daysMet), [statsHistory, water.daysMet]);
+  const currentWeather = useSyncExternalStore(subscribeWeather, getWeather, getWeather);
   const agentBoard = useAgentBoard();
   const [agentNotice, setAgentNotice] = useState<{ text: string; until: number } | null>(null);
   const handleAgentNotice = useCallback(
@@ -6344,6 +6363,8 @@ function IslandApp({
             })}
             lines={hubLines}
             pills={hubPills}
+            accessory={mascotAccessory(new Date().getHours(), currentWeather, evolution.level)}
+            evolution={evolution}
             agents={islandAgents.map((agent) => {
               const entry = agentBoard.board.agents.find((item) => item.id === agent.id);
               const step = entry ? currentStepOf(entry)?.title ?? entry.message ?? entry.goal ?? agent.name : agent.name;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { recordStat } from "../stats/useStats";
 
 export type FileChange = { path: string; added: number; removed: number; created: boolean };
 
@@ -26,6 +27,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
     let cancelled = false;
     void listen<{ changes?: FileChange[]; failed?: boolean }>("claude-task-finished", ({ payload }) => {
       setChanges(payload?.changes ?? []);
+      if (!payload?.failed) recordStat("agents");
       setStatus((current) => ({ ...current, running: false }));
       void invoke<Status>("claude_task_status")
         .then((next) => {

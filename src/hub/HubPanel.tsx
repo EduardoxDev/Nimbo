@@ -4,6 +4,7 @@ import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { IslandBar } from "../island/PageChrome";
 import { Mascot } from "../mascot/Mascot";
+import type { MascotAccessory } from "../mascot/accessories";
 import type { MascotMood, MascotShape } from "../mascot/engine";
 import { NIMBO_COLOR, STATUS_COLORS } from "../mascot/nimboMood";
 import "./Hub.css";
@@ -24,6 +25,8 @@ export function HubPanel<Page extends string>({
   pills,
   agents,
   progress,
+  accessory,
+  evolution,
   pages,
   currentPage,
   onPageChange,
@@ -34,6 +37,8 @@ export function HubPanel<Page extends string>({
   pills: HubPill[];
   agents: HubAgent[];
   progress: HubProgress;
+  accessory: MascotAccessory | null;
+  evolution: { level: number; points: number; nextAt: number | null };
   pages: IslandTab<Page>[];
   currentPage: Page;
   onPageChange: (page: Page) => void;
@@ -54,7 +59,7 @@ export function HubPanel<Page extends string>({
   };
 
   const mascot = (size: number, shownMood: MascotMood) => (
-    <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" />
+    <Mascot mood={shownMood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={size} glow interactive onReaction={handleReaction} label="Nimbo" accessory={accessory} />
   );
 
   const side = (
@@ -101,6 +106,15 @@ export function HubPanel<Page extends string>({
             <div className="hub__greeting">
               <strong>{copy.greeting}</strong>
               <span>{copy.calm}</span>
+              <span className="hub__level" title={copy.levelHint}>
+                {copy.level(evolution.level)}
+                {evolution.nextAt !== null && (
+                  <span className="hub__level-track" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, (evolution.points / evolution.nextAt) * 100)}%` }} />
+                  </span>
+                )}
+                <small>{copy.points(evolution.points)}</small>
+              </span>
             </div>
           </div>
         </div>

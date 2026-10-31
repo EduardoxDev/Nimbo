@@ -334,6 +334,9 @@ export type Translations = {
     title: string;
     greeting: string;
     calm: string;
+    level: (level: number) => string;
+    points: (points: number) => string;
+    levelHint: string;
     dizzy: string;
     nothingPlaying: string;
     freeCalendar: string;

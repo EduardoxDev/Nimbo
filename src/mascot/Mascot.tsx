@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { hashSeed, mascotFrame, type MascotMood, type MascotShape } from "./engine";
+import type { MascotAccessory } from "./accessories";
+import { AccessoryShape } from "./MascotAccessory";
 import "./Mascot.css";
 
 type Listener = (time: number) => void;
@@ -50,6 +52,7 @@ export function Mascot({
   interactive = false,
   onReaction,
   label,
+  accessory = null,
 }: {
   mood: MascotMood;
   shape: MascotShape;
@@ -61,6 +64,7 @@ export function Mascot({
   interactive?: boolean;
   onReaction?: (reaction: "dizzy" | "annoyed") => void;
   label?: string;
+  accessory?: MascotAccessory | null;
 }) {
   const maskId = `mascot-${useId().replace(/:/g, "")}`;
   const ref = useRef<SVGSVGElement>(null);
@@ -137,6 +141,7 @@ export function Mascot({
       ref={ref}
       className={`mascot mascot--${shownMood}${interactive ? " mascot--interactive" : ""}`}
       {...interactions}
+      overflow="visible"
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -183,6 +188,7 @@ export function Mascot({
       {glow && <circle className="mascot__glow" cx="50" cy="52" r="58" fill={`url(#${maskId}-glow)`} />}
       <g transform={`translate(0 ${current.offsetY}) rotate(${current.rotation} 50 50) translate(50 50) scale(${current.scale}) translate(-50 -50)`}>
         <path d={current.body} fill={color} mask={`url(#${maskId})`} />
+        {accessory && !(accessory === "sunglasses" && shownMood === "sleeping") && <AccessoryShape accessory={accessory} eyes={current.eyes} />}
       </g>
       {current.hands.map((hand, index) => (
         <circle key={index} className="mascot__hand" cx={hand.cx} cy={hand.cy + current.offsetY} r={hand.r} fill={color} />

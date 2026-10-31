@@ -30,6 +30,7 @@ export type WaterTracker = {
   reminderDue: boolean;
   nextReminderAt: number | null;
   history: HistoryDay[];
+  daysMet: number;
   add: () => void;
   undo: () => void;
   dismiss: () => void;
@@ -95,6 +96,7 @@ export function useWater(settings: WaterSettings): WaterTracker {
       reminderDue: isReminderDue(day, settings, now, STARTED_AT),
       nextReminderAt: nextReminderAt(day, settings, STARTED_AT),
       history: lastDays(history, now, settings.goalMl),
+      daysMet: settings.goalMl > 0 ? Object.values(history).filter((ml) => ml >= settings.goalMl).length : 0,
       add,
       undo,
       dismiss,
