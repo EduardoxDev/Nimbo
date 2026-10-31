@@ -1,0 +1,60 @@
+.mascot {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.mascot path {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+
+.mascot--waiting .mascot__dot,
+.mascot--working .mascot__dot {
+  animation: mascot-dot 1.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.mascot__z {
+  animation: mascot-z 2.4s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+@keyframes mascot-dot {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes mascot-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px);
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(6px, -8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot__dot,
+  .mascot__z {
+    animation: none !important;
+  }
+}
+
+.island__agent-dots {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+}
+
+.agents-panel__titles .agents-panel__error {
+  color: #ff6961;
+}

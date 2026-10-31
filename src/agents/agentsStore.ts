@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { AGENT_STALE_MS } from "./moods";
+
+export { AGENT_STALE_MS, agentMood, islandAgentsOf, mascotOf, type IslandAgent } from "./moods";
 
 /** Mirrors the structs in src-tauri/src/agents.rs. */
 export type AgentStep = {
@@ -13,7 +16,7 @@ export type AgentEntry = {
   name: string;
   goal: string | null;
   steps: AgentStep[];
-  state: "working" | "done";
+  state: "working" | "done" | "error";
   message: string | null;
   updatedAt: number;
 };
@@ -47,8 +50,6 @@ export type AgentServerInfo = {
   error: string | null;
 };
 
-/** An agent quiet for this long no longer counts as "working" on the island. */
-export const AGENT_STALE_MS = 30 * 60_000;
 
 export const AGENTS_DEMO =
   import.meta.env.DEV &&
@@ -74,6 +75,15 @@ const DEMO_BOARD: AgentBoard = {
       state: "working",
       message: null,
       updatedAt: Date.now() - 60_000,
+    },
+    {
+      id: "cursor",
+      name: "Cursor",
+      goal: "Atualizar as dependências",
+      steps: [{ title: "Rodar a instalação", status: "in_progress" }],
+      state: "error",
+      message: "Não consegui baixar um pacote",
+      updatedAt: Date.now() - 30_000,
     },
     {
       id: "codex",

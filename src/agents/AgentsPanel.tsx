@@ -3,8 +3,10 @@ import { Bot, Check, Circle, LoaderCircle, X } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
-import { PageChrome, ProgressRing } from "../island/PageChrome";
-import { AGENT_STALE_MS, answerApproval, currentStepOf, pendingApproval, progressOf, type AgentBoard } from "./agentsStore";
+import { PageChrome } from "../island/PageChrome";
+import { agentMood, answerApproval, currentStepOf, mascotOf, pendingApproval, type AgentBoard } from "./agentsStore";
+import { Mascot } from "../mascot/Mascot";
+import { identityOf } from "../mascot/engine";
 
 const AGENT_COLOR = "#bf8cff";
 
@@ -52,6 +54,7 @@ export function AgentsPanel<Page extends string>({
     >
       {approval && (
         <div className="agents-approval" role="alertdialog" aria-label={t.agents.asks(approval.agent, approval.question)}>
+          <Mascot mood="waiting" {...identityOf(approval.agent)} seed={approval.agent} size={34} />
           <span className="agents-approval__text">
             <strong>{approval.agent}</strong>
             {approval.question}
@@ -68,7 +71,7 @@ export function AgentsPanel<Page extends string>({
         <div className="agents-panel__body">
           <div className="agents-panel__list" role="tablist" aria-label={t.agents.title}>
             {agents.map((agent) => {
-              const isStale = agent.state === "working" && now - agent.updatedAt > AGENT_STALE_MS;
+              const identity = mascotOf(agent);
               return (
                 <button
                   key={agent.id}
@@ -78,12 +81,7 @@ export function AgentsPanel<Page extends string>({
                   aria-selected={agent.id === selected.id}
                   onClick={() => setSelectedId(agent.id)}
                 >
-                  <ProgressRing
-                    progress={progressOf(agent)}
-                    size={18}
-                    stroke={2.6}
-                    color={agent.state === "done" ? "#35e985" : isStale ? "#8e8e93" : AGENT_COLOR}
-                  />
+                  <Mascot mood={agentMood(agent, board, now)} shape={identity.shape} color={identity.color} seed={agent.name} size={20} showDot={false} />
                   <span>{agent.name}</span>
                 </button>
               );
@@ -92,10 +90,11 @@ export function AgentsPanel<Page extends string>({
 
           <div className="agents-panel__detail">
             <div className="agents-panel__head">
+              <Mascot mood={agentMood(selected, board, now)} {...mascotOf(selected)} seed={selected.name} size={40} label={selected.name} />
               <div className="agents-panel__titles">
                 <strong>{selected.goal ?? selected.name}</strong>
-                <span>
-                  {selected.state === "done"
+                <span className={selected.state === "error" ? "agents-panel__error" : undefined}>
+                  {selected.state === "done" || selected.state === "error"
                     ? selected.message ?? t.agents.done
                     : currentStepOf(selected)?.title ?? selected.message ?? t.agents.working}
                 </span>

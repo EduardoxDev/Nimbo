@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import TranslationWindow from "./TranslationWindow";
 import SettingsWindow from "./SettingsWindow";
+import MascotGallery from "./demo/MascotGallery";
 import { I18nProvider } from "./i18n";
 import { installDiagnostics } from "./diagnostics";
 
@@ -35,6 +36,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <TranslationWindow />
       ) : windowKind === "settings" ? (
         <SettingsWindow />
+      ) : windowKind === "mascots" && import.meta.env.DEV ? (
+        <MascotGallery />
       ) : (
         <App />
       )}

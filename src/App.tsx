@@ -97,6 +97,7 @@ import { useWeather } from "./weather/useWeather";
 import type { WeatherPlace } from "./weather/weather";
 import { DEFAULT_SHORTCUTS, normalizeShortcuts, shortcutRequests, type ShortcutAction, type Shortcuts } from "./settings/shortcut";
 import "./weather/Weather.css";
+import { Mascot } from "./mascot/Mascot";
 import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
 import { LauncherPanel } from "./launcher/LauncherPanel";
@@ -124,7 +125,7 @@ import {
   AGENTS_DEMO,
   useAgentBoard,
   useAgentEvents,
-  type AgentNotice, answerApproval, pendingApproval } from "./agents/agentsStore";
+  type AgentNotice, answerApproval, islandAgentsOf, pendingApproval, type IslandAgent } from "./agents/agentsStore";
 import "./App.css";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
@@ -320,6 +321,7 @@ type CollapsedStatus = {
   timer: { text: string; color: string } | null;
   /** Replaces the idle to-do count, e.g. what an AI agent is doing right now. */
   label: string | null;
+  agents: IslandAgent[];
 };
 
 type IslandShellProps = {
@@ -1458,6 +1460,15 @@ export function IslandShell({
           >
             {collapsedStatus.hud ? (
               <IslandHud hud={collapsedStatus.hud} />
+            ) : collapsedStatus.agents.length > 0 ? (
+              <Mascot
+                mood={collapsedStatus.agents[0].mood}
+                shape={collapsedStatus.agents[0].shape}
+                color={collapsedStatus.agents[0].color}
+                seed={collapsedStatus.agents[0].name}
+                size={24}
+                label={collapsedStatus.agents[0].name}
+              />
             ) : collapsedStatus.ring ? (
               <ProgressRing
                 progress={collapsedStatus.ring.progress}
@@ -1498,6 +1509,13 @@ export function IslandShell({
                 </span>
               </span>
             </span>
+            )}
+            {!collapsedStatus.hud && collapsedStatus.agents.length > 1 && (
+              <span className="island__agent-dots" aria-hidden="true">
+                {collapsedStatus.agents.slice(1).map((agent) => (
+                  <Mascot key={agent.id} mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={14} showDot={false} />
+                ))}
+              </span>
             )}
           </button>
           {collapsedStatus.hud ? null : collapsedStatus.notice?.actions ? (
@@ -4506,6 +4524,7 @@ function IslandApp({
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const approval = pendingApproval(agentBoard.board);
+  const islandAgents = islandAgentsOf(agentBoard.board, Date.now());
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
   useWeather(settings.weatherPlace);
@@ -4543,6 +4562,7 @@ function IslandApp({
   const activeAgentStep = activeAgent ? currentStepOf(activeAgent) : null;
   const collapsedStatus: CollapsedStatus = {
     hud: islandHud.hud,
+    agents: islandAgents,
     label: activeAgent ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}` : null,
     ring: statusRing,
     notice: approval

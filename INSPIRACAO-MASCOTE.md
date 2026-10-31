@@ -45,6 +45,8 @@ O personagem do Grok Bot é da xAI. Até os projetos MIT avisam que a licença c
 
 ## Plano para o Nimbo
 
+> 31/10/2026: passos 1 a 5 feitos (`src/mascot/`, humores em `src/agents/moods.ts`, galeria em `?window=mascots` no modo dev). Falta o 6.
+
 1. **Motor do mascote** (`src/mascot/`): SVG procedural feito do zero, inspirado na técnica do bloub e do motion-lab (perfil radial que se transforma, olhos como máscara, piscar, olhar seguindo o cursor, função pura do tempo, pausa com "reduzir movimento").
 2. **Humores** ligados aos agentes: ocioso, pensando (olhos olhando para cima e balanço lento), trabalhando (pulinho e ponto azul), esperando você (olhar fixo e ponto laranja), pronto (olhos felizes e check verde), erro (olhos fechados e ponto vermelho), dormindo.
 3. **Ilha fechada**: mascote à esquerda e um ponto colorido por agente à direita, como no print.

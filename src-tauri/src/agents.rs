@@ -54,7 +54,7 @@ pub(crate) struct AgentEntry {
     name: String,
     goal: Option<String>,
     steps: Vec<AgentStep>,
-    /// "working" or "done".
+    /// "working", "done" or "error".
     state: String,
     message: Option<String>,
     updated_at: i64,
@@ -248,10 +248,10 @@ fn tool_definitions() -> Value {
         },
         {
             "name": "finish",
-            "description": "Mark your plan as done and show a one-line summary on the island.",
+            "description": "Mark your plan as done and show a one-line summary on the island. Pass failed: true when you could not finish, so the island shows it as an error.",
             "inputSchema": {
                 "type": "object",
-                "properties": { "summary": { "type": "string" }, "agent": agent },
+                "properties": { "summary": { "type": "string" }, "failed": { "type": "boolean" }, "agent": agent },
                 "required": ["summary"]
             }
         },
@@ -396,11 +396,14 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
         }
         "finish" => {
             let summary = text("summary").unwrap_or_else(|| "Done".to_string());
+            let failed = args.get("failed").and_then(Value::as_bool).unwrap_or(false);
             if let Ok(entry) = upsert(&mut runtime.board, &agent_name) {
-                for step in &mut entry.steps {
-                    step.status = "completed".to_string();
+                if !failed {
+                    for step in &mut entry.steps {
+                        step.status = "completed".to_string();
+                    }
                 }
-                entry.state = "done".to_string();
+                entry.state = if failed { "error" } else { "done" }.to_string();
                 entry.message = Some(summary.clone());
                 entry.updated_at = now_millis();
             }
@@ -408,7 +411,7 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
                 text_result("Marked as done on the island.", false),
                 vec![
                     Effect::BoardChanged,
-                    Effect::Notice { agent: agent_name, text: summary, level: "success".to_string() },
+                    Effect::Notice { agent: agent_name, text: summary, level: if failed { "warning" } else { "success" }.to_string() },
                 ],
             )
         }
