@@ -331,6 +331,11 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  voice: {
+    start: string;
+    stop: string;
+    nothingHeard: string;
+  };
   week: {
     title: string;
     days: string;
@@ -419,7 +424,7 @@ export type Translations = {
     press: string;
     none: string;
     clear: string;
-    actions: Record<"toggle" | "playPause" | "nextPage" | "settings" | "launcher", string>;
+    actions: Record<"toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice", string>;
   };
   weather: {
     section: string;

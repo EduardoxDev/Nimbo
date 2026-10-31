@@ -1,13 +1,14 @@
 import type { KeyboardEvent } from "react";
 
-export type ShortcutAction = "toggle" | "playPause" | "nextPage" | "settings" | "launcher";
-export const SHORTCUT_ACTIONS: ShortcutAction[] = ["toggle", "launcher", "playPause", "nextPage", "settings"];
+export type ShortcutAction = "toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice";
+export const SHORTCUT_ACTIONS: ShortcutAction[] = ["toggle", "launcher", "voice", "playPause", "nextPage", "settings"];
 export type Shortcuts = Record<ShortcutAction, string>;
 export type ShortcutResult = { action: ShortcutAction; shortcut: string; error: string | null };
 
 export const DEFAULT_SHORTCUTS: Shortcuts = {
   toggle: "Alt+Shift+N",
   launcher: "Alt+Shift+Space",
+  voice: "Alt+Shift+M",
   playPause: "",
   nextPage: "",
   settings: "",

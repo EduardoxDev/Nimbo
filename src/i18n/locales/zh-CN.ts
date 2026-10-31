@@ -331,6 +331,11 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  voice: {
+    start: "说话（麦克风）",
+    stop: "停止聆听",
+    nothingHeard: "没有听到声音，请再试一次。",
+  },
   week: {
     title: "本周",
     days: "每日",
@@ -423,7 +428,7 @@ const zhCN: Translations = {
     press: "请按下按键…",
     none: "无",
     clear: "清除",
-    actions: { toggle: "打开或关闭灵动岛", launcher: "应用启动器", playPause: "播放或暂停音乐", nextPage: "灵动岛下一页", settings: "打开设置" },
+    actions: { toggle: "打开或关闭灵动岛", launcher: "应用启动器", voice: "和助手说话", playPause: "播放或暂停音乐", nextPage: "灵动岛下一页", settings: "打开设置" },
   },
   weather: {
     section: "天气",

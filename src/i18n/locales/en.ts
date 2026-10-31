@@ -328,6 +328,11 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  voice: {
+    start: "Speak (microphone)",
+    stop: "Stop listening",
+    nothingHeard: "I did not hear anything. Try again.",
+  },
   week: {
     title: "Your week",
     days: "Day by day",
@@ -420,7 +425,7 @@ const en: Translations = {
     press: "Press the keys…",
     none: "None",
     clear: "Clear",
-    actions: { toggle: "Open or close the island", launcher: "App launcher", playPause: "Play or pause music", nextPage: "Next island page", settings: "Open Settings" },
+    actions: { toggle: "Open or close the island", launcher: "App launcher", voice: "Talk to the assistant", playPause: "Play or pause music", nextPage: "Next island page", settings: "Open Settings" },
   },
   weather: {
     section: "Weather",

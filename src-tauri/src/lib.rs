@@ -19,6 +19,7 @@ mod system;
 mod media_control;
 mod monitors;
 mod quick_action;
+mod speech;
 mod translation;
 mod weather;
 
@@ -1922,6 +1923,8 @@ pub fn run() {
             claude_task::claude_task_start,
             claude_task::claude_task_stop,
             quick_action::clipboard_ai_action,
+            speech::speech_listen,
+            speech::speech_cancel,
             claude_task::claude_task_forget,
             task_changes::claude_task_changes,
             task_changes::claude_task_undo,

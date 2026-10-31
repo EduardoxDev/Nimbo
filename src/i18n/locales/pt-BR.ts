@@ -328,6 +328,11 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  voice: {
+    start: "Falar (microfone)",
+    stop: "Parar de ouvir",
+    nothingHeard: "Não ouvi nada. Tente de novo.",
+  },
   week: {
     title: "Sua semana",
     days: "Dia a dia",
@@ -420,7 +425,7 @@ const ptBR: Translations = {
     press: "Aperte as teclas…",
     none: "Nenhum",
     clear: "Limpar",
-    actions: { toggle: "Abrir ou fechar a ilha", launcher: "Lançador de apps", playPause: "Tocar ou pausar música", nextPage: "Próxima página da ilha", settings: "Abrir Configurações" },
+    actions: { toggle: "Abrir ou fechar a ilha", launcher: "Lançador de apps", voice: "Falar com o assistente", playPause: "Tocar ou pausar música", nextPage: "Próxima página da ilha", settings: "Abrir Configurações" },
   },
   weather: {
     section: "Tempo",

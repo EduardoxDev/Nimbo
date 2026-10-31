@@ -4461,6 +4461,7 @@ function IslandApp({
   );
   const water = useWater(waterSettings);
   const reminders = useReminders();
+  const [voiceToken, setVoiceToken] = useState(0);
   const statsHistory = useStats();
   const evolution = useMemo(() => evolutionOf(statsHistory, water.daysMet), [statsHistory, water.daysMet]);
   const currentWeather = useSyncExternalStore(subscribeWeather, getWeather, getWeather);
@@ -5096,6 +5097,9 @@ function IslandApp({
       openIslandPage(islandPageLinks[(index + 1) % islandPageLinks.length].id);
     } else if (action === "launcher") {
       openIslandPage("launcher");
+    } else if (action === "voice") {
+      openIslandPage("assistant");
+      setVoiceToken((token) => token + 1);
     }
   };
 
@@ -6521,6 +6525,7 @@ function IslandApp({
                 longConversation: t.assistant.longConversation,
               })
             }
+            voiceToken={voiceToken}
             onReset={assistant.reset}
             pages={islandPageLinks}
             currentPage={page}

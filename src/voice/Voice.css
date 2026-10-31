@@ -1,0 +1,69 @@
+.mic-button {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--g-text-2, rgba(255, 255, 255, 0.7));
+  background: var(--g-pill, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--g-pill-border, rgba(255, 255, 255, 0.08));
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mic-button:hover:not(:disabled) {
+  color: var(--g-text, #fff);
+}
+
+.mic-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mic-button--listening {
+  color: #ffffff;
+  background: #ff453a;
+  border-color: transparent;
+}
+
+.mic-button--listening::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid rgba(255, 69, 58, 0.55);
+  border-radius: 50%;
+  animation: mic-pulse 1.2s ease-out infinite;
+}
+
+@keyframes mic-pulse {
+  from {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+.voice-error {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 54px;
+  z-index: 4;
+  padding: 6px 10px;
+  color: #ff9f95;
+  font-size: 11px;
+  background: #17181b;
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-button--listening::after {
+    animation: none;
+  }
+}

@@ -21,7 +21,7 @@ use windows::{
     },
 };
 
-pub(crate) const ACTIONS: [&str; 5] = ["toggle", "playPause", "nextPage", "settings", "launcher"];
+pub(crate) const ACTIONS: [&str; 6] = ["toggle", "playPause", "nextPage", "settings", "launcher", "voice"];
 const FIRST_HOTKEY_ID: i32 = 0x4E00;
 const APPLY_MESSAGE: u32 = WM_APP + 0x61;
 
@@ -178,7 +178,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, message: u32, wparam: WPARAM, 
             if *action == "settings" {
                 let _ = crate::show_settings(app);
             } else {
-                if *action == "toggle" || *action == "launcher" {
+                if *action == "toggle" || *action == "launcher" || *action == "voice" {
                     crate::fullscreen::user_changed_visibility();
                     let _ = crate::show_island(app);
                 }

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { useTranslation } from "../i18n";
+import { useLocale, useTranslation } from "../i18n";
+import { MicButton } from "../voice/MicButton";
+import { speak } from "../voice/voice";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import { ASSISTANT_DEMO, type ChatEntry } from "./useAssistant";
@@ -13,6 +15,7 @@ export function AssistantPanel<Page extends string>({
   busy,
   onSend,
   onReset,
+  voiceToken,
   pages,
   currentPage,
   showPageIcons,
@@ -22,6 +25,7 @@ export function AssistantPanel<Page extends string>({
   busy: boolean;
   onSend: (text: string) => void;
   onReset: () => void;
+  voiceToken: number;
   pages: IslandTab<Page>[];
   currentPage: Page;
   showPageIcons: boolean;
@@ -33,6 +37,18 @@ export function AssistantPanel<Page extends string>({
   const [hasKey, setHasKey] = useState<boolean | null>(ASSISTANT_DEMO ? true : null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const { locale } = useLocale();
+  const [voiceError, setVoiceError] = useState("");
+  const spokenRef = useRef(false);
+  const lastSpokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const last = entries[entries.length - 1];
+    if (!last || last.role !== "assistant" || !spokenRef.current || lastSpokenRef.current === last.id) return;
+    lastSpokenRef.current = last.id;
+    spokenRef.current = false;
+    speak(last.text, locale);
+  }, [entries, locale]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -140,10 +156,25 @@ export function AssistantPanel<Page extends string>({
               maxLength={2000}
               onChange={(event) => setDraft(event.currentTarget.value)}
             />
+            <MicButton
+              disabled={busy}
+              startToken={voiceToken}
+              onText={(text) => {
+                setVoiceError("");
+                spokenRef.current = true;
+                submit(undefined, text);
+              }}
+              onError={setVoiceError}
+            />
             <button className="assistant-panel__send" type="submit" disabled={!draft.trim() || busy} aria-label={copy.send}>
               <ArrowUp size={16} strokeWidth={2.8} />
             </button>
           </form>
+          {voiceError && (
+            <span className="voice-error" role="alert">
+              {voiceError}
+            </span>
+          )}
         </>
       )}
     </PageChrome>

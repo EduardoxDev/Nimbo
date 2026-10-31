@@ -3,6 +3,7 @@ import { ArrowUp, FileDiff, Folder, ListPlus, RotateCcw, Square, Undo2 } from "l
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { ClaudeTask } from "./useClaudeTask";
+import { MicButton } from "../voice/MicButton";
 
 function folderName(path: string) {
   const parts = path.split(/[\\/]/).filter(Boolean);
@@ -14,6 +15,7 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
   const [prompt, setPrompt] = useState("");
   const [showChanges, setShowChanges] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   const added = claude.changes.reduce((sum, change) => sum + change.added, 0);
   const removed = claude.changes.reduce((sum, change) => sum + change.removed, 0);
 
@@ -116,6 +118,14 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
           <span>{copy.newChatShort}</span>
         </button>
       )}
+      <MicButton
+        onText={(text) => {
+          setVoiceError("");
+          if (claude.running) claude.enqueue(text);
+          else void claude.start(text);
+        }}
+        onError={setVoiceError}
+      />
       {claude.running && prompt.trim() ? (
         <button className="claude-composer__send" type="submit" title={copy.queueAdd} aria-label={copy.queueAdd}>
           <ListPlus size={13} strokeWidth={2.6} />
@@ -129,9 +139,9 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
           <ArrowUp size={14} strokeWidth={2.8} />
         </button>
       )}
-      {claude.error && (
+      {(claude.error || voiceError) && (
         <span className="claude-composer__error" role="alert">
-          {claude.error}
+          {claude.error || voiceError}
         </span>
       )}
     </form>
