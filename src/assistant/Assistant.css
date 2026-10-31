@@ -1,16 +1,16 @@
 /* Assistant page: a short chat that sits between the clock and the page tabs. */
 .assistant-panel__list {
   position: absolute;
-  top: 46px;
-  left: 52px;
-  right: 52px;
-  bottom: 84px;
+  top: 50px;
+  left: 22px;
+  right: 22px;
+  bottom: 64px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
   scrollbar-width: none;
-  mask-image: linear-gradient(180deg, transparent, #000 14px);
+  mask-image: linear-gradient(180deg, transparent, #000 18px);
 }
 
 .assistant-panel__list::-webkit-scrollbar {
@@ -141,9 +141,9 @@
 
 .assistant-panel__input {
   position: absolute;
-  left: 52px;
-  right: 52px;
-  bottom: 36px;
+  left: 22px;
+  right: 22px;
+  bottom: 18px;
   height: 40px;
   display: flex;
   align-items: center;

@@ -61,4 +61,4 @@ O personagem do Grok Bot é da xAI. Até os projetos MIT avisam que a licença c
 - **Agentes**: cartão de foco (mascote de 64 px com brilho do humor + 3 passos, o atual em negrito) e cartão de pílulas 2×2. O erro vira um cartão inteiro com degradê quente e botão redondo.
 - **Sistema, Agenda, Lançador e Prateleira**: margens de 22 px, cartões e pílulas no mesmo estilo; botões ligados em branco.
 - **Tema "Noir"** (#0A0A0D) para o fundo quase preto da referência.
-- Ainda com o visual antigo: Música (o player aprovado antes), Casa, Tarefas e Assistente, que têm cabeçalho próprio.
+- Música, Casa, Tarefas e Assistente também passaram para a barra nova (componente `IslandBar`); o player e o chat foram realinhados às margens de 22–26 px.

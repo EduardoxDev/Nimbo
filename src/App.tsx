@@ -16,8 +16,6 @@ import {
   Archive,
   Bot,
   Check,
-  ChevronLeft,
-  ChevronRight,
   CircleDot,
   Clipboard,
   ClipboardList,
@@ -87,12 +85,11 @@ import { FocusPanel } from "./focus/FocusPanel";
 import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
-import { ProgressRing } from "./island/PageChrome";
+import { IslandBar, ProgressRing } from "./island/PageChrome";
 import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
 import { useUpdater } from "./updates/useUpdater";
-import { WeatherChip } from "./weather/WeatherChip";
 import { useWeather } from "./weather/useWeather";
 import type { WeatherPlace } from "./weather/weather";
 import { DEFAULT_SHORTCUTS, normalizeShortcuts, shortcutRequests, type ShortcutAction, type Shortcuts } from "./settings/shortcut";
@@ -376,7 +373,7 @@ const MIN_COLLAPSED_TEXT_UNITS = 2;
 const MAX_COLLAPSED_TEXT_UNITS = 12;
 const BASE_EXPANDED_ISLAND_HEIGHT = 306;
 const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
-const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
+const MUSIC_EXPANDED_ISLAND_HEIGHT = 232;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
 const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
@@ -1583,7 +1580,7 @@ export function IslandShell({
               tabs={pageTabs}
               current={page}
               label={t.island.editor}
-              variant="header"
+              variant="bar"
               onChange={onPageChange}
             />
 
@@ -3331,7 +3328,6 @@ function MusicPlayerPanel({
   commandError,
   pages,
   currentPage,
-  showPageIcons,
   onPageChange,
   onPlayPause,
   onNext,
@@ -3492,25 +3488,6 @@ function MusicPlayerPanel({
     }
   };
 
-  const pageIndex = Math.max(0, pages.findIndex((link) => link.id === currentPage));
-  const previousPage = pages[(pageIndex - 1 + pages.length) % pages.length];
-  const nextPage = pages[(pageIndex + 1) % pages.length];
-
-  // "qui 29 out 2026": the parts without the locale's commas, dots and "de".
-  const dateLabel = new Intl.DateTimeFormat(t.localeTag, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-    .formatToParts(now)
-    .filter((part) => part.type !== "literal")
-    .map((part) => part.value.replace(/\.$/, ""))
-    .join(" ");
-  const timeLabel = new Intl.DateTimeFormat(t.localeTag, {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(now);
   const subtitle = [mediaState.artist, mediaState.albumTitle].filter(Boolean).join(" - ");
   const statusLabel = commandError
     ? t.music.controlFailed
@@ -3535,40 +3512,21 @@ function MusicPlayerPanel({
       aria-label={t.music.playerLabel}
       title={commandError ?? undefined}
     >
-      <div className="np-clock">
-        <PlaybackRing progress={progress} isPlaying={isPlaying} />
-        <span>{dateLabel}</span>
-        <strong>{timeLabel}</strong>
-        <WeatherChip />
-        <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
-      </div>
-
-      <span className={`np-bars${isPlaying ? " np-bars--live" : ""}`} aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
-
-      <button
-        className="np-nav np-nav--previous"
-        type="button"
-        title={previousPage.label}
-        aria-label={`${t.music.previousPage}: ${previousPage.label}`}
-        onClick={() => onPageChange(previousPage.id)}
-      >
-        <ChevronLeft size={15} strokeWidth={2.8} />
-      </button>
-      <button
-        className="np-nav np-nav--next"
-        type="button"
-        title={nextPage.label}
-        aria-label={`${t.music.nextPage}: ${nextPage.label}`}
-        onClick={() => onPageChange(nextPage.id)}
-      >
-        <ChevronRight size={15} strokeWidth={2.8} />
-      </button>
+      <IslandBar
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={onPageChange}
+        extra={
+          <span className={`np-bars np-bars--inline${isPlaying ? " np-bars--live" : ""}`} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </span>
+        }
+      />
+      <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
 
       {showLyrics ? (
         <div className="np-lyrics">
@@ -3719,48 +3677,11 @@ function MusicPlayerPanel({
             <VolumeIcon size={17} fill="currentColor" strokeWidth={1.8} />
           </button>
         </div>
-
-        <div className="np-dots">
-          <IslandTabs
-            tabs={pages}
-            current={currentPage}
-            label={t.island.editor}
-            variant="compact"
-            revealIcons={showPageIcons}
-            onChange={onPageChange}
-          />
-        </div>
       </div>
     </section>
   );
 }
 
-/** Small ring next to the clock that fills as the track plays. */
-function PlaybackRing({ progress, isPlaying }: { progress: number; isPlaying: boolean }) {
-  const radius = 6;
-  const circumference = 2 * Math.PI * radius;
-
-  return (
-    <svg
-      className={`np-ring${isPlaying ? " np-ring--playing" : ""}`}
-      width="17"
-      height="17"
-      viewBox="0 0 17 17"
-      aria-hidden="true"
-    >
-      <circle className="np-ring__track" cx="8.5" cy="8.5" r={radius} />
-      <circle
-        className="np-ring__value"
-        cx="8.5"
-        cy="8.5"
-        r={radius}
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference * (1 - clamp(progress, 0, 1))}
-      />
-      <circle className="np-ring__dot" cx="8.5" cy="8.5" r="2" />
-    </svg>
-  );
-}
 
 function ClipboardHistoryPanel({
   snapshot,

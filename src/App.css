@@ -1261,9 +1261,9 @@ input,
 /* Cover and track text. */
 .np-hero {
   position: absolute;
-  top: 17px;
-  left: 56px;
-  right: 64px;
+  top: 50px;
+  left: 26px;
+  right: 26px;
   height: 81px;
   display: flex;
   align-items: flex-start;
@@ -1338,9 +1338,9 @@ input,
 /* Timeline, controls and page dots share one three-column grid. */
 .np-deck {
   position: absolute;
-  top: 114px;
-  left: 56px;
-  right: 64px;
+  top: 146px;
+  left: 26px;
+  right: 26px;
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr) 78px;
   grid-template-rows: 26px 46px 14px;

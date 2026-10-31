@@ -6,6 +6,41 @@ import { WeatherChip } from "../weather/WeatherChip";
 import { useBattery } from "../system/useBattery";
 import "./IslandBar.css";
 
+export function IslandBar<Page extends string>({
+  pages,
+  currentPage,
+  onPageChange,
+  extra,
+}: {
+  pages: IslandTab<Page>[];
+  currentPage: Page;
+  onPageChange: (page: Page) => void;
+  extra?: ReactNode;
+}) {
+  const t = useTranslation();
+  const now = useMinuteClock();
+  const battery = useBattery();
+  const time = new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" }).format(now);
+  const BatteryIcon = battery?.charging ? BatteryCharging : battery && battery.level <= 20 ? BatteryLow : Battery;
+
+  return (
+    <div className="island-bar">
+      <IslandTabs tabs={pages} current={currentPage} label={t.island.editor} variant="bar" onChange={onPageChange} />
+      <span className="island-bar__status">
+        {extra}
+        <WeatherChip />
+        {battery && (
+          <span className="island-bar__battery" title={`${battery.level}%`}>
+            <BatteryIcon size={14} strokeWidth={2.2} aria-hidden="true" />
+            {battery.level}%
+          </span>
+        )}
+        <strong>{time}</strong>
+      </span>
+    </div>
+  );
+}
+
 export function PageChrome<Page extends string>({
   pages,
   currentPage,
@@ -24,27 +59,9 @@ export function PageChrome<Page extends string>({
   label: string;
   children: ReactNode;
 }) {
-  const t = useTranslation();
-  const now = useMinuteClock();
-  const battery = useBattery();
-  const time = new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" }).format(now);
-  const BatteryIcon = battery?.charging ? BatteryCharging : battery && battery.level <= 20 ? BatteryLow : Battery;
-
   return (
     <section className={`island-page ${className}`} aria-label={label}>
-      <div className="island-bar">
-        <IslandTabs tabs={pages} current={currentPage} label={t.island.editor} variant="bar" onChange={onPageChange} />
-        <span className="island-bar__status">
-          <WeatherChip />
-          {battery && (
-            <span className="island-bar__battery" title={`${battery.level}%`}>
-              <BatteryIcon size={14} strokeWidth={2.2} aria-hidden="true" />
-              {battery.level}%
-            </span>
-          )}
-          <strong>{time}</strong>
-        </span>
-      </div>
+      <IslandBar pages={pages} currentPage={currentPage} onPageChange={onPageChange} />
       {children}
     </section>
   );

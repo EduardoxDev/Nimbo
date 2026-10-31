@@ -83,3 +83,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.island-bar .np-bars--inline {
+  position: static;
+  height: 12px;
+}

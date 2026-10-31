@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AirVent,
-  ChevronLeft,
-  ChevronRight,
   Droplets,
   Fan,
   Flame,
-  House,
   Lightbulb,
   Minus,
   Plug,
@@ -32,7 +29,7 @@ import {
   type HomeEntity,
   type HomeServiceCall,
 } from "./home/homeStore";
-import { IslandTabs } from "./IslandTabs";
+import { IslandBar } from "./island/PageChrome";
 import { AirConditioner3D, airModeOf } from "./home/AirConditioner3D";
 import "./HomePanel.css";
 
@@ -74,7 +71,6 @@ function orderedModes(modes: string[]) {
 export function HomePanel<Page extends string>({
   pages,
   currentPage,
-  showPageIcons,
   onPageChange,
 }: {
   pages: HomePageLink<Page>[];
@@ -90,7 +86,6 @@ export function HomePanel<Page extends string>({
   const [climateIndex, setClimateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const temperatureTimer = useRef<number | undefined>(undefined);
-  const now = useMinuteClock();
 
   const refresh = useCallback(async () => {
     try {
@@ -176,19 +171,6 @@ export function HomePanel<Page extends string>({
     }
   };
 
-  const pageIndex = Math.max(0, pages.findIndex((link) => link.id === currentPage));
-  const previousPage = pages[(pageIndex - 1 + pages.length) % pages.length];
-  const nextPage = pages[(pageIndex + 1) % pages.length];
-  const dateLabel = new Intl.DateTimeFormat(t.localeTag, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  })
-    .formatToParts(now)
-    .filter((part) => part.type !== "literal")
-    .map((part) => part.value.replace(/\.$/, ""))
-    .join(" ");
-  const timeLabel = new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" }).format(now);
   const isClimateOn = climate !== null && climate.state !== "off";
   const ClimateIcon = climate ? (MODE_ICONS[climate.state] ?? AirVent) : AirVent;
 
@@ -197,30 +179,7 @@ export function HomePanel<Page extends string>({
       className={`home-panel${climate ? "" : " home-panel--no-climate"}`}
       aria-label={t.home.title}
     >
-      <div className="np-clock">
-        <House className="home-panel__clock-icon" size={15} strokeWidth={2.4} aria-hidden="true" />
-        <span>{dateLabel}</span>
-        <strong>{timeLabel}</strong>
-      </div>
-
-      <button
-        className="np-nav np-nav--previous"
-        type="button"
-        title={previousPage.label}
-        aria-label={`${t.music.previousPage}: ${previousPage.label}`}
-        onClick={() => onPageChange(previousPage.id)}
-      >
-        <ChevronLeft size={15} strokeWidth={2.8} />
-      </button>
-      <button
-        className="np-nav np-nav--next"
-        type="button"
-        title={nextPage.label}
-        aria-label={`${t.music.nextPage}: ${nextPage.label}`}
-        onClick={() => onPageChange(nextPage.id)}
-      >
-        <ChevronRight size={15} strokeWidth={2.8} />
-      </button>
+      <IslandBar pages={pages} currentPage={currentPage} onPageChange={onPageChange} />
 
       {loadState === "ready" && visible.length > 0 ? (
         <>
@@ -357,26 +316,6 @@ export function HomePanel<Page extends string>({
           )}
         </div>
       )}
-
-      <div className="home-panel__dots">
-        <IslandTabs
-          tabs={pages}
-          current={currentPage}
-          label={t.island.editor}
-          variant="compact"
-          revealIcons={showPageIcons}
-          onChange={onPageChange}
-        />
-      </div>
     </section>
   );
-}
-
-function useMinuteClock() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
-    return () => window.clearInterval(interval);
-  }, []);
-  return now;
 }
