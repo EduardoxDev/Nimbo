@@ -16,6 +16,8 @@ import {
 } from "./agentsStore";
 import { Mascot } from "../mascot/Mascot";
 import { identityOf } from "../mascot/engine";
+import { ClaudeComposer } from "./ClaudeComposer";
+import type { ClaudeTask } from "./useClaudeTask";
 import "./Agents.css";
 
 const AGENT_COLOR = "#bf8cff";
@@ -29,6 +31,7 @@ function visibleSteps(steps: AgentStep[]) {
 
 export function AgentsPanel<Page extends string>({
   board,
+  claude,
   onClear,
   pages,
   currentPage,
@@ -36,6 +39,7 @@ export function AgentsPanel<Page extends string>({
   onPageChange,
 }: {
   board: AgentBoard;
+  claude: ClaudeTask;
   onClear: (agentId?: string) => void;
   pages: IslandTab<Page>[];
   currentPage: Page;
@@ -100,7 +104,7 @@ export function AgentsPanel<Page extends string>({
                 <strong>{t.agents.failedTitle(selected.name)}</strong>
                 <span>{selected.message ?? selected.goal ?? ""}</span>
               </div>
-            ) : selected.steps.length > 0 ? (
+            ) : selected.steps.length > 0 && !(selected.state === "done" && selected.message) ? (
               <ol className="agents-g__steps" aria-label={selected.goal ?? selected.name}>
                 {visibleSteps(selected.steps).map(({ step, isCurrent }, index) => (
                   <li
@@ -157,7 +161,7 @@ export function AgentsPanel<Page extends string>({
           )}
         </div>
       ) : (
-        <div className="home-empty" role="status">
+        <div className="home-empty agents-empty" role="status">
           <strong>{t.agents.emptyTitle}</strong>
           <span className="home-empty__hint">{t.agents.emptyHint}</span>
           <button className="home-empty__button" type="button" onClick={openSettings}>
@@ -165,6 +169,7 @@ export function AgentsPanel<Page extends string>({
           </button>
         </div>
       )}
+      <ClaudeComposer claude={claude} />
     </PageChrome>
   );
 }

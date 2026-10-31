@@ -2,6 +2,7 @@ mod agents;
 mod assistant;
 mod broadlink;
 mod calendar;
+mod claude_task;
 mod clipboard_history;
 mod diagnostics;
 mod fullscreen;
@@ -1913,6 +1914,9 @@ pub fn run() {
             agents::agents_clear,
             agents::agents_sync_todos,
             agents::agents_answer_approval,
+            claude_task::claude_task_status,
+            claude_task::claude_task_start,
+            claude_task::claude_task_stop,
             assistant::assistant_has_key,
             assistant::assistant_save_key,
             assistant::assistant_delete_key,

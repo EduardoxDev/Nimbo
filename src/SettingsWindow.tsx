@@ -31,6 +31,7 @@ import {
 import { LOCALE_CODES, TRANSLATIONS, useLocale, useTranslation } from "./i18n";
 import { HomeSettingsPage } from "./home/HomeSettingsPage";
 import { AgentsSettings } from "./agents/AgentsSettings";
+import { ClaudeTaskSettings } from "./agents/ClaudeTaskSettings";
 import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import { useUpdater } from "./updates/useUpdater";
 import { CalendarSettingsPage } from "./calendar/CalendarSettings";
@@ -203,7 +204,12 @@ export default function SettingsWindow() {
           {page === "music" && <MusicPage />}
           {page === "todo" && <TodoPage settings={settings} update={update} />}
           {page === "home" && <HomeSettingsPage />}
-          {page === "agents" && <AgentsSettings />}
+          {page === "agents" && (
+            <>
+              <ClaudeTaskSettings settings={settings} update={update} />
+              <AgentsSettings />
+            </>
+          )}
           {page === "statusRing" && <StatusRingPage settings={settings} update={update} />}
           {page === "pomodoro" && <PomodoroPage settings={settings} update={update} />}
           {page === "water" && <WaterPage settings={settings} update={update} />}

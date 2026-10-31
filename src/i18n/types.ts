@@ -270,6 +270,10 @@ export type Translations = {
     title: string;
     asks: (agent: string, question: string) => string;
     failedTitle: (agent: string) => string;
+    askPlaceholder: string;
+    send: string;
+    stop: string;
+    noClaude: string;
     approve: string;
     deny: string;
     done: string;
@@ -635,6 +639,17 @@ export type Translations = {
       wheel: string;
       wheelHint: string;
       note: string;
+    };
+    claudeTask: {
+      section: string;
+      folder: string;
+      folderPlaceholder: string;
+      folderHint: string;
+      mode: string;
+      edit: string;
+      plan: string;
+      editHint: string;
+      planHint: string;
     };
     automations: {
       section: string;

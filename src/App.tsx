@@ -105,6 +105,7 @@ import { LauncherPanel } from "./launcher/LauncherPanel";
 import { SystemPanel } from "./system/SystemPanel";
 import { useSystem } from "./system/useSystem";
 import { useHomeAutomations } from "./home/useHomeAutomations";
+import { useClaudeTask } from "./agents/useClaudeTask";
 import { SYSTEM_DEMO } from "./demo/systemDemo";
 import "./system/System.css";
 import { LAUNCHER_DEMO } from "./demo/launcherDemo";
@@ -294,6 +295,8 @@ export type IslandSettings = {
   weatherPlace: WeatherPlace | null;
   shortcuts: Shortcuts;
   monitor: string;
+  claudeFolder: string;
+  claudeMode: "acceptEdits" | "plan";
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -471,6 +474,8 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   weatherPlace: null,
   shortcuts: DEFAULT_SHORTCUTS,
   monitor: "primary",
+  claudeFolder: "",
+  claudeMode: "acceptEdits",
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -855,6 +860,8 @@ export function normalizeSettings(
     ),
     weatherPlace: normalizeWeatherPlace(settings?.weatherPlace),
     shortcuts: normalizeShortcuts(settings?.shortcuts),
+    claudeFolder: typeof settings?.claudeFolder === "string" ? settings.claudeFolder.slice(0, 400) : DEFAULT_SETTINGS.claudeFolder,
+    claudeMode: settings?.claudeMode === "plan" ? "plan" : "acceptEdits",
     monitor: typeof settings?.monitor === "string" && settings.monitor ? settings.monitor.slice(0, 128) : DEFAULT_SETTINGS.monitor,
     calendarReminderMinutes: stepped(
       settings?.calendarReminderMinutes,
@@ -4449,6 +4456,7 @@ function IslandApp({
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const approval = pendingApproval(agentBoard.board);
   const islandAgents = islandAgentsOf(agentBoard.board, Date.now());
+  const claudeTask = useClaudeTask(settings.claudeFolder, settings.claudeMode);
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
   useWeather(settings.weatherPlace);
@@ -4584,9 +4592,9 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "system" || page === "hub" || page === "water"
+        : page === "system" || page === "hub" || page === "water"
           ? CARDS_EXPANDED_ISLAND_HEIGHT
-          : page === "shelf" || page === "calendar" || page === "launcher"
+          : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
@@ -6418,6 +6426,7 @@ function IslandApp({
         {page === "agents" && (
           <AgentsPanel
             board={agentBoard.board}
+            claude={claudeTask}
             onClear={agentBoard.clear}
             pages={islandPageLinks}
             currentPage={page}

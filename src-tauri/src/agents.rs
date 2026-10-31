@@ -28,6 +28,7 @@ const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAX_AGENTS: usize = 8;
 const MAX_STEPS: usize = 40;
 const MAX_TEXT: usize = 200;
+const MAX_EXTERNAL_MESSAGE: usize = 700;
 const MAX_APPROVALS: usize = 10;
 const APPROVAL_TTL_MS: i64 = 60 * 60 * 1000;
 
@@ -745,6 +746,42 @@ pub(crate) fn agents_answer_approval(app: AppHandle, id: String, approved: bool)
     }
     apply_effects(&app, vec![Effect::BoardChanged]);
     Ok(agents_board())
+}
+
+pub(crate) struct ExternalStep {
+    pub(crate) title: String,
+    pub(crate) status: &'static str,
+}
+
+pub(crate) fn report_external(
+    app: &AppHandle,
+    name: &str,
+    goal: Option<String>,
+    steps: Vec<ExternalStep>,
+    state: &str,
+    message: Option<String>,
+    notice: Option<(String, &str)>,
+) {
+    if let Ok(mut guard) = runtime().lock() {
+        if let Ok(entry) = upsert(&mut guard.board, name) {
+            if goal.is_some() {
+                entry.goal = goal.map(|text| clip(&text));
+            }
+            entry.steps = steps
+                .into_iter()
+                .take(MAX_STEPS)
+                .map(|step| AgentStep { title: clip(&step.title), status: step.status.to_string() })
+                .collect();
+            entry.state = state.to_string();
+            entry.message = message.map(|text| text.chars().take(MAX_EXTERNAL_MESSAGE).collect());
+            entry.updated_at = now_millis();
+        }
+    }
+    let mut effects = vec![Effect::BoardChanged];
+    if let Some((text, level)) = notice {
+        effects.push(Effect::Notice { agent: name.to_string(), text: clip(&text), level: level.to_string() });
+    }
+    apply_effects(app, effects);
 }
 
 /// The island keeps the user's to-dos; agents read them through this copy.
