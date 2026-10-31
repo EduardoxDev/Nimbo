@@ -1,14 +1,31 @@
 import { useState } from "react";
-import { Bot, Check, Circle, LoaderCircle, X } from "lucide-react";
+import { Bot, Check, Circle, LoaderCircle, RotateCcw, X } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
-import { agentMood, answerApproval, currentStepOf, mascotOf, pendingApproval, type AgentBoard } from "./agentsStore";
+import {
+  agentMood,
+  answerApproval,
+  currentStepOf,
+  mascotOf,
+  pendingApproval,
+  type AgentBoard,
+  type AgentEntry,
+  type AgentStep,
+} from "./agentsStore";
 import { Mascot } from "../mascot/Mascot";
 import { identityOf } from "../mascot/engine";
+import "./Agents.css";
 
 const AGENT_COLOR = "#bf8cff";
+
+function visibleSteps(steps: AgentStep[]) {
+  const current = steps.findIndex((step) => step.status !== "completed");
+  const focus = current === -1 ? steps.length - 1 : current;
+  const start = Math.max(0, Math.min(focus - 1, steps.length - 3));
+  return steps.slice(start, start + 3).map((step, offset) => ({ step, isCurrent: start + offset === focus }));
+}
 
 export function AgentsPanel<Page extends string>({
   board,
@@ -31,6 +48,8 @@ export function AgentsPanel<Page extends string>({
   const selected = agents.find((agent) => agent.id === selectedId) ?? agents[0] ?? null;
   const now = Date.now();
   const approval = pendingApproval(board);
+  const selectedMood = selected ? agentMood(selected, board, now) : "idle";
+  const isError = selectedMood === "error";
 
   const openSettings = () => {
     try {
@@ -40,6 +59,11 @@ export function AgentsPanel<Page extends string>({
     }
     if (isTauri()) void invoke("open_settings_window").catch(() => {});
   };
+
+  const statusLine = (agent: AgentEntry) =>
+    agent.state === "done" || agent.state === "error"
+      ? agent.message ?? t.agents.done
+      : currentStepOf(agent)?.title ?? agent.message ?? t.agents.working;
 
   return (
     <PageChrome
@@ -53,8 +77,8 @@ export function AgentsPanel<Page extends string>({
       label={t.agents.title}
     >
       {approval && (
-        <div className="agents-approval" role="alertdialog" aria-label={t.agents.asks(approval.agent, approval.question)}>
-          <Mascot mood="waiting" {...identityOf(approval.agent)} seed={approval.agent} size={34} />
+        <div className="agents-approval g-card" role="alertdialog" aria-label={t.agents.asks(approval.agent, approval.question)}>
+          <Mascot mood="waiting" {...identityOf(approval.agent)} seed={approval.agent} size={38} glow />
           <span className="agents-approval__text">
             <strong>{approval.agent}</strong>
             {approval.question}
@@ -68,65 +92,69 @@ export function AgentsPanel<Page extends string>({
         </div>
       )}
       {selected ? (
-        <div className="agents-panel__body">
-          <div className="agents-panel__list" role="tablist" aria-label={t.agents.title}>
-            {agents.map((agent) => {
-              const identity = mascotOf(agent);
-              return (
-                <button
-                  key={agent.id}
-                  className={`agents-chip${agent.id === selected.id ? " agents-chip--active" : ""}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={agent.id === selected.id}
-                  onClick={() => setSelectedId(agent.id)}
-                >
-                  <Mascot mood={agentMood(agent, board, now)} shape={identity.shape} color={identity.color} seed={agent.name} size={20} showDot={false} />
-                  <span>{agent.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="agents-panel__detail">
-            <div className="agents-panel__head">
-              <Mascot mood={agentMood(selected, board, now)} {...mascotOf(selected)} seed={selected.name} size={40} label={selected.name} />
-              <div className="agents-panel__titles">
-                <strong>{selected.goal ?? selected.name}</strong>
-                <span className={selected.state === "error" ? "agents-panel__error" : undefined}>
-                  {selected.state === "done" || selected.state === "error"
-                    ? selected.message ?? t.agents.done
-                    : currentStepOf(selected)?.title ?? selected.message ?? t.agents.working}
-                </span>
+        <div className={`agents-g${isError ? " agents-g--error" : ""}`}>
+          <div className={`agents-g__focus g-card${isError ? " agents-g__focus--error" : ""}`}>
+            <Mascot mood={selectedMood} {...mascotOf(selected)} seed={selected.name} size={64} glow label={selected.name} />
+            {isError ? (
+              <div className="agents-g__error">
+                <strong>{t.agents.failedTitle(selected.name)}</strong>
+                <span>{selected.message ?? selected.goal ?? ""}</span>
               </div>
-              <span className="agents-panel__count">
-                {selected.steps.filter((step) => step.status === "completed").length}/{selected.steps.length}
-              </span>
-              <button
-                className="agents-panel__dismiss"
-                type="button"
-                title={t.agents.dismiss}
-                aria-label={t.agents.dismiss}
-                onClick={() => onClear(selected.id)}
-              >
-                <X size={14} strokeWidth={2.6} />
-              </button>
-            </div>
-            <ol className="agents-panel__steps">
-              {selected.steps.map((step, index) => (
-                <li key={`${index}-${step.title}`} className={`agents-step agents-step--${step.status}`}>
-                  {step.status === "completed" ? (
-                    <Check size={13} strokeWidth={3} aria-hidden="true" />
-                  ) : step.status === "in_progress" ? (
-                    <LoaderCircle className="agents-step__spinner" size={13} strokeWidth={2.6} aria-hidden="true" />
-                  ) : (
-                    <Circle size={11} strokeWidth={2.4} aria-hidden="true" />
-                  )}
-                  <span>{step.title}</span>
-                </li>
-              ))}
-            </ol>
+            ) : selected.steps.length > 0 ? (
+              <ol className="agents-g__steps" aria-label={selected.goal ?? selected.name}>
+                {visibleSteps(selected.steps).map(({ step, isCurrent }, index) => (
+                  <li
+                    key={`${index}-${step.title}`}
+                    className={`agents-g__step${isCurrent ? " agents-g__step--current" : ""}${step.status === "completed" ? " agents-g__step--done" : ""}`}
+                  >
+                    {step.status === "completed" ? (
+                      <Check size={12} strokeWidth={3} aria-hidden="true" />
+                    ) : step.status === "in_progress" ? (
+                      <LoaderCircle className="agents-step__spinner" size={12} strokeWidth={2.6} aria-hidden="true" />
+                    ) : (
+                      <Circle size={10} strokeWidth={2.4} aria-hidden="true" />
+                    )}
+                    <span>{step.title}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="agents-g__error agents-g__error--calm">
+                <strong>{selected.goal ?? selected.name}</strong>
+                <span>{statusLine(selected)}</span>
+              </div>
+            )}
+            <button
+              className={isError ? "agents-g__retry" : "agents-g__dismiss"}
+              type="button"
+              title={t.agents.dismiss}
+              aria-label={t.agents.dismiss}
+              onClick={() => onClear(selected.id)}
+            >
+              {isError ? <RotateCcw size={14} strokeWidth={2.4} /> : <X size={12} strokeWidth={2.6} />}
+            </button>
           </div>
+          {!isError && (
+            <div className="agents-g__others g-card" role="tablist" aria-label={t.agents.title}>
+              {agents.slice(0, 4).map((agent) => {
+                const identity = mascotOf(agent);
+                return (
+                  <button
+                    key={agent.id}
+                    className={`g-pill agents-g__pill${agent.id === selected.id ? " agents-g__pill--active" : ""}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={agent.id === selected.id}
+                    title={`${agent.name}: ${statusLine(agent)}`}
+                    onClick={() => setSelectedId(agent.id)}
+                  >
+                    <Mascot mood={agentMood(agent, board, now)} shape={identity.shape} color={identity.color} seed={agent.name} size={18} showDot={false} glow />
+                    <span>{statusLine(agent)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <div className="home-empty" role="status">

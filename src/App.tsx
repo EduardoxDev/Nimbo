@@ -380,6 +380,7 @@ const MUSIC_EXPANDED_ISLAND_HEIGHT = 204;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
 const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
+const CARDS_EXPANDED_ISLAND_HEIGHT = 220;
 const ASSISTANT_EXPANDED_ISLAND_HEIGHT = 300;
 const CLIPBOARD_EXPANDED_ISLAND_HEIGHT = 430;
 const EDITOR_EXPANDED_ISLAND_HEIGHT = 430;
@@ -4660,7 +4661,9 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher" || page === "system"
+        : page === "agents" || page === "system"
+          ? CARDS_EXPANDED_ISLAND_HEIGHT
+          : page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
           : page === "assistant"
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT

@@ -269,6 +269,7 @@ export type Translations = {
   agents: {
     title: string;
     asks: (agent: string, question: string) => string;
+    failedTitle: (agent: string) => string;
     approve: string;
     deny: string;
     done: string;
@@ -315,7 +316,7 @@ export type Translations = {
   };
   themes: {
     section: string;
-    presets: Record<"graphite" | "midnight" | "ocean" | "plum" | "forest" | "ember", string>;
+    presets: Record<"graphite" | "noir" | "midnight" | "ocean" | "plum" | "forest" | "ember", string>;
     importLabel: string;
     importPlaceholder: string;
     copy: string;

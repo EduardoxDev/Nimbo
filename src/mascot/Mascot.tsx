@@ -41,6 +41,7 @@ export function Mascot({
   size,
   seed = "nimbo",
   showDot = true,
+  glow = false,
   label,
 }: {
   mood: MascotMood;
@@ -49,6 +50,7 @@ export function Mascot({
   size: number;
   seed?: string;
   showDot?: boolean;
+  glow?: boolean;
   label?: string;
 }) {
   const maskId = `mascot-${useId().replace(/:/g, "")}`;
@@ -89,6 +91,10 @@ export function Mascot({
       aria-hidden={label ? undefined : true}
     >
       <defs>
+        <radialGradient id={`${maskId}-glow`}>
+          <stop offset="0.35" stopColor={current.dot ?? color} stopOpacity="0.55" />
+          <stop offset="1" stopColor={current.dot ?? color} stopOpacity="0" />
+        </radialGradient>
         <mask id={maskId}>
           <rect width="100" height="100" fill="#fff" />
           {current.eyes.map((eye, index) =>
@@ -118,6 +124,7 @@ export function Mascot({
           )}
         </mask>
       </defs>
+      {glow && <circle className="mascot__glow" cx="50" cy="52" r="58" fill={`url(#${maskId}-glow)`} />}
       <g transform={`translate(0 ${current.offsetY}) rotate(${current.rotation} 50 50) translate(50 50) scale(${current.scale}) translate(-50 -50)`}>
         <path d={current.body} fill={color} mask={`url(#${maskId})`} />
       </g>

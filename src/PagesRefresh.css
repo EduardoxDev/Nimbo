@@ -703,8 +703,8 @@
   position: absolute;
   z-index: 3;
   top: 44px;
-  left: 48px;
-  right: 48px;
+  left: 22px;
+  right: 22px;
   display: flex;
   align-items: center;
   gap: 8px;

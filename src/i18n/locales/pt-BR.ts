@@ -266,6 +266,7 @@ const ptBR: Translations = {
   agents: {
     title: "Agentes",
     asks: (agent, question) => `${agent}: ${question}`,
+    failedTitle: (agent) => `${agent} não conseguiu terminar`,
     approve: "Aprovar",
     deny: "Recusar",
     done: "Concluído",
@@ -316,7 +317,7 @@ const ptBR: Translations = {
   },
   themes: {
     section: "Temas",
-    presets: { graphite: "Grafite", midnight: "Meia-noite", ocean: "Oceano", plum: "Ameixa", forest: "Floresta", ember: "Brasa" },
+    presets: { graphite: "Grafite", noir: "Noir", midnight: "Meia-noite", ocean: "Oceano", plum: "Ameixa", forest: "Floresta", ember: "Brasa" },
     importLabel: "Importar um tema",
     importPlaceholder: "Cole aqui o tema que alguém compartilhou",
     copy: "Copiar meu tema",

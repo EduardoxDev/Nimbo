@@ -1,0 +1,85 @@
+:root {
+  --g-panel: #08080a;
+  --g-card: linear-gradient(180deg, #1d1e22, #16171a);
+  --g-card-border: rgba(255, 255, 255, 0.07);
+  --g-pill: #222327;
+  --g-pill-border: rgba(255, 255, 255, 0.08);
+  --g-text: #f5f5f7;
+  --g-text-2: rgba(235, 238, 245, 0.58);
+  --g-text-3: rgba(235, 238, 245, 0.34);
+  --g-radius-card: 18px;
+}
+
+.island-bar {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.island-bar .island-tabs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.island-bar__status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--g-text-2);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.island-bar__status strong {
+  color: var(--g-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.island-bar__status .weather-chip {
+  margin-left: 0;
+  color: var(--g-text-2);
+  font-size: 11.5px;
+}
+
+.island-bar__battery {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.g-card {
+  background: var(--g-card);
+  border: 1px solid var(--g-card-border);
+  border-radius: var(--g-radius-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.g-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 10px 4px 5px;
+  color: var(--g-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--g-pill);
+  border: 1px solid var(--g-pill-border);
+  border-radius: 999px;
+}
+
+.g-pill > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

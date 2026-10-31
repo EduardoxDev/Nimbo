@@ -23,7 +23,7 @@ export function IslandTabs<Page extends string>({
   tabs: IslandTab<Page>[];
   current: Page;
   label: string;
-  variant: "header" | "compact";
+  variant: "header" | "compact" | "bar";
   revealIcons?: boolean;
   onChange: (page: Page) => void;
 }) {

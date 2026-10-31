@@ -73,7 +73,7 @@ export function SystemPanel<Page extends string>({
       label={copy.title}
     >
       <div className="system-panel__body">
-        <div className="system-panel__meters">
+        <div className="system-panel__meters g-card">
           <Meter label={copy.cpu} value={stats?.cpu ?? null} detail={copy.processor} color="#64d2ff" />
           <Meter
             label={copy.memory}
@@ -90,6 +90,7 @@ export function SystemPanel<Page extends string>({
             />
           )}
         </div>
+        <div className="system-panel__controls g-card">
         <div className="system-panel__toggles">
           <Toggle
             icon={<Wifi size={15} strokeWidth={2.4} aria-hidden="true" />}
@@ -142,6 +143,7 @@ export function SystemPanel<Page extends string>({
               </label>
             ))
           )}
+        </div>
         </div>
         {system.error && (
           <span className="system-panel__error" role="alert">

@@ -266,6 +266,7 @@ const en: Translations = {
   agents: {
     title: "Agents",
     asks: (agent, question) => `${agent}: ${question}`,
+    failedTitle: (agent) => `${agent} couldn't finish`,
     approve: "Approve",
     deny: "Deny",
     done: "Done",
@@ -316,7 +317,7 @@ const en: Translations = {
   },
   themes: {
     section: "Themes",
-    presets: { graphite: "Graphite", midnight: "Midnight", ocean: "Ocean", plum: "Plum", forest: "Forest", ember: "Ember" },
+    presets: { graphite: "Graphite", noir: "Noir", midnight: "Midnight", ocean: "Ocean", plum: "Plum", forest: "Forest", ember: "Ember" },
     importLabel: "Import a theme",
     importPlaceholder: "Paste a theme someone shared",
     copy: "Copy my theme",

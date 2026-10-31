@@ -53,3 +53,12 @@ O personagem do Grok Bot é da xAI. Até os projetos MIT avisam que a licença c
 4. **Ilha aberta**: pílulas por agente (mini-mascote + frase do passo atual), o plano com o passo atual em destaque, e o cartão de erro com "Tentar de novo".
 5. **Pedidos de aprovação**: o mascote "olha para você" e mostra Aprovar e Recusar (já existe `request_approval`).
 6. **Detecção sem MCP** (opcional): igual ao agent-notch, olhar `~/.claude/projects/*.jsonl` para saber se o Claude Code está trabalhando, mesmo sem configurar nada.
+
+## Engenharia reversa visual aplicada (31/10/2026)
+
+- **Barra superior** (todas as páginas com `PageChrome`): ícones redondos de 22 px à esquerda (o ativo vira um disco branco) e, à direita, tempo, bateria e hora. Saíram as setas laterais e os pontinhos de baixo.
+- **Tokens** em `src/island/IslandBar.css`: `--g-card` (degradê #1d1e22 → #16171a), borda 7% branca, raio 18 px, pílulas #222327, textos em três tons.
+- **Agentes**: cartão de foco (mascote de 64 px com brilho do humor + 3 passos, o atual em negrito) e cartão de pílulas 2×2. O erro vira um cartão inteiro com degradê quente e botão redondo.
+- **Sistema, Agenda, Lançador e Prateleira**: margens de 22 px, cartões e pílulas no mesmo estilo; botões ligados em branco.
+- **Tema "Noir"** (#0A0A0D) para o fundo quase preto da referência.
+- Ainda com o visual antigo: Música (o player aprovado antes), Casa, Tarefas e Assistente, que têm cabeçalho próprio.

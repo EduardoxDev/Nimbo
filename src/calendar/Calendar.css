@@ -1,9 +1,9 @@
 .calendar-panel__body {
   position: absolute;
-  top: 46px;
-  left: 48px;
-  right: 48px;
-  bottom: 30px;
+  top: 48px;
+  left: 22px;
+  right: 22px;
+  bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -71,9 +71,10 @@
   grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 11px;
+  padding: 7px 12px;
+  background: var(--g-card);
+  border: 1px solid var(--g-card-border);
+  border-radius: 14px;
 }
 
 .calendar-event--now {

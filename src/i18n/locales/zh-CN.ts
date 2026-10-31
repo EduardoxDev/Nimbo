@@ -269,6 +269,7 @@ const zhCN: Translations = {
   agents: {
     title: "智能体",
     asks: (agent, question) => `${agent}：${question}`,
+    failedTitle: (agent) => `${agent} 未能完成`,
     approve: "同意",
     deny: "拒绝",
     done: "已完成",
@@ -319,7 +320,7 @@ const zhCN: Translations = {
   },
   themes: {
     section: "主题",
-    presets: { graphite: "石墨", midnight: "午夜", ocean: "海洋", plum: "梅紫", forest: "森林", ember: "余烬" },
+    presets: { graphite: "石墨", noir: "墨黑", midnight: "午夜", ocean: "海洋", plum: "梅紫", forest: "森林", ember: "余烬" },
     importLabel: "导入主题",
     importPlaceholder: "粘贴别人分享的主题",
     copy: "复制我的主题",

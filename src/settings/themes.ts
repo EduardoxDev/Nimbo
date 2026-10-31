@@ -12,6 +12,7 @@ export type ThemePreset = { id: string; background: string; accent: string };
 
 export const THEME_PRESETS: ThemePreset[] = [
   { id: "graphite", background: "#2F2F37", accent: "#3ae489" },
+  { id: "noir", background: "#0A0A0D", accent: "#f5f5f7" },
   { id: "midnight", background: "#0B0B12", accent: "#7f86ff" },
   { id: "ocean", background: "#0F2A3D", accent: "#5ac8fa" },
   { id: "plum", background: "#2A1838", accent: "#bf5af2" },

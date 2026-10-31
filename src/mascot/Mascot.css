@@ -58,3 +58,22 @@
 .agents-panel__titles .agents-panel__error {
   color: #ff6961;
 }
+
+.mascot__glow {
+  animation: mascot-glow 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes mascot-glow {
+  50% {
+    opacity: 0.7;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot__glow {
+    animation: none;
+  }
+}
