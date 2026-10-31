@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-type Status = { available: boolean; running: boolean; homeDir: string };
+type Status = { available: boolean; running: boolean; canResume: boolean; homeDir: string };
 
 export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
-  const [status, setStatus] = useState<Status>({ available: false, running: false, homeDir: "" });
+  const [status, setStatus] = useState<Status>({ available: false, running: false, canResume: false, homeDir: "" });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -13,7 +13,10 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
     void invoke<Status>("claude_task_status").then(setStatus).catch(() => {});
     let unlisten: (() => void) | null = null;
     let cancelled = false;
-    void listen("claude-task-finished", () => setStatus((current) => ({ ...current, running: false }))).then((stop) => {
+    void listen("claude-task-finished", () => {
+      setStatus((current) => ({ ...current, running: false }));
+      void invoke<Status>("claude_task_status").then(setStatus).catch(() => {});
+    }).then((stop) => {
       if (cancelled) stop();
       else unlisten = stop;
     });
@@ -29,7 +32,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
     async (prompt: string) => {
       setError("");
       try {
-        await invoke("claude_task_start", { prompt, folder: workFolder, mode });
+        await invoke("claude_task_start", { prompt, folder: workFolder, mode, resume: status.canResume });
         setStatus((current) => ({ ...current, running: true }));
         return true;
       } catch (failure) {
@@ -37,8 +40,14 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
         return false;
       }
     },
-    [workFolder, mode],
+    [workFolder, mode, status.canResume],
   );
+
+  const forget = useCallback(() => {
+    void invoke("claude_task_forget")
+      .then(() => setStatus((current) => ({ ...current, canResume: false })))
+      .catch(() => {});
+  }, []);
 
   const stop = useCallback(() => {
     void invoke("claude_task_stop")
@@ -46,7 +55,7 @@ export function useClaudeTask(folder: string, mode: "acceptEdits" | "plan") {
       .catch((failure) => setError(String(failure)));
   }, []);
 
-  return { available: status.available, running: status.running, folder: workFolder, error, start, stop };
+  return { available: status.available, running: status.running, canResume: status.canResume, folder: workFolder, error, start, stop, forget };
 }
 
 export type ClaudeTask = ReturnType<typeof useClaudeTask>;

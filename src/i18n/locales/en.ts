@@ -271,6 +271,9 @@ const en: Translations = {
     send: "Send",
     stop: "Stop",
     noClaude: "Claude Code was not found on this PC. Install the Claude app or Claude Code to send tasks from the island.",
+    continuePlaceholder: "Continue the conversation with Claude Code…",
+    newChat: "Start a new conversation",
+    newChatShort: "New",
     approve: "Approve",
     deny: "Deny",
     done: "Done",
@@ -651,6 +654,8 @@ const en: Translations = {
       plan: "Read and plan only",
       editHint: "May create and edit files in the folder. Terminal commands stay blocked.",
       planHint: "Only reads files and answers with a plan; changes nothing.",
+      watch: "Show Claude Code sessions",
+      watchHint: "Any open Claude Code session (terminal, app or VS Code) shows on the island with its mascot and steps, no setup needed.",
     },
     automations: {
       section: "Automations",

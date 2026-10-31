@@ -274,6 +274,9 @@ export type Translations = {
     send: string;
     stop: string;
     noClaude: string;
+    continuePlaceholder: string;
+    newChat: string;
+    newChatShort: string;
     approve: string;
     deny: string;
     done: string;
@@ -650,6 +653,8 @@ export type Translations = {
       plan: string;
       editHint: string;
       planHint: string;
+      watch: string;
+      watchHint: string;
     };
     automations: {
       section: string;

@@ -274,6 +274,9 @@ const zhCN: Translations = {
     send: "发送",
     stop: "停止",
     noClaude: "此电脑上没有找到 Claude Code。安装 Claude 应用或 Claude Code 后即可从灵动岛派任务。",
+    continuePlaceholder: "继续和 Claude Code 对话…",
+    newChat: "开始新对话",
+    newChatShort: "新对话",
     approve: "同意",
     deny: "拒绝",
     done: "已完成",
@@ -654,6 +657,8 @@ const zhCN: Translations = {
       plan: "只读和规划",
       editHint: "可以在文件夹内新建和编辑文件，终端命令仍被禁止。",
       planHint: "只读取文件并给出计划，不做任何修改。",
+      watch: "显示 Claude Code 会话",
+      watchHint: "任何打开的 Claude Code 会话（终端、应用或 VS Code）都会以吉祥物和步骤显示在灵动岛上，无需配置。",
     },
     automations: {
       section: "自动化",

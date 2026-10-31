@@ -11,6 +11,7 @@ mod hud;
 mod ir_climate;
 mod launcher;
 mod lyrics;
+mod sessions_watch;
 mod shelf;
 mod shortcuts;
 mod system;
@@ -1846,6 +1847,7 @@ pub fn run() {
             shortcuts::init(app.handle());
             launcher::init();
             monitors::init(app.handle());
+            sessions_watch::init(app.handle());
             keep_launch_at_startup_current(app.handle().clone());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
@@ -1917,6 +1919,8 @@ pub fn run() {
             claude_task::claude_task_status,
             claude_task::claude_task_start,
             claude_task::claude_task_stop,
+            claude_task::claude_task_forget,
+            sessions_watch::set_watch_claude_sessions,
             assistant::assistant_has_key,
             assistant::assistant_save_key,
             assistant::assistant_delete_key,

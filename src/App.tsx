@@ -297,6 +297,7 @@ export type IslandSettings = {
   monitor: string;
   claudeFolder: string;
   claudeMode: "acceptEdits" | "plan";
+  watchClaudeSessions: boolean;
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -476,6 +477,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   monitor: "primary",
   claudeFolder: "",
   claudeMode: "acceptEdits",
+  watchClaudeSessions: true,
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -862,6 +864,7 @@ export function normalizeSettings(
     shortcuts: normalizeShortcuts(settings?.shortcuts),
     claudeFolder: typeof settings?.claudeFolder === "string" ? settings.claudeFolder.slice(0, 400) : DEFAULT_SETTINGS.claudeFolder,
     claudeMode: settings?.claudeMode === "plan" ? "plan" : "acceptEdits",
+    watchClaudeSessions: typeof settings?.watchClaudeSessions === "boolean" ? settings.watchClaudeSessions : true,
     monitor: typeof settings?.monitor === "string" && settings.monitor ? settings.monitor.slice(0, 128) : DEFAULT_SETTINGS.monitor,
     calendarReminderMinutes: stepped(
       settings?.calendarReminderMinutes,
@@ -4457,6 +4460,10 @@ function IslandApp({
   const approval = pendingApproval(agentBoard.board);
   const islandAgents = islandAgentsOf(agentBoard.board, Date.now());
   const claudeTask = useClaudeTask(settings.claudeFolder, settings.claudeMode);
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("set_watch_claude_sessions", { enabled: settings.watchClaudeSessions }).catch(() => {});
+  }, [settings.watchClaudeSessions]);
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
   useWeather(settings.weatherPlace);

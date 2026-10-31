@@ -271,6 +271,9 @@ const ptBR: Translations = {
     send: "Enviar",
     stop: "Parar",
     noClaude: "Não achei o Claude Code neste PC. Instale o app Claude ou o Claude Code para pedir tarefas pela ilha.",
+    continuePlaceholder: "Continue a conversa com o Claude Code…",
+    newChat: "Começar uma conversa nova",
+    newChatShort: "Nova",
     approve: "Aprovar",
     deny: "Recusar",
     done: "Concluído",
@@ -651,6 +654,8 @@ const ptBR: Translations = {
       plan: "Só ler e planejar",
       editHint: "Pode criar e editar arquivos na pasta. Comandos no terminal continuam bloqueados.",
       planHint: "Só lê os arquivos e responde com um plano; não muda nada.",
+      watch: "Mostrar as sessões do Claude Code",
+      watchHint: "Qualquer sessão do Claude Code aberta (terminal, app ou VS Code) aparece na ilha com o mascote e os passos, sem configurar nada.",
     },
     automations: {
       section: "Automações",

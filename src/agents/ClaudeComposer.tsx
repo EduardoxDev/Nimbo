@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUp, Folder, Square } from "lucide-react";
+import { ArrowUp, Folder, RotateCcw, Square } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { ClaudeTask } from "./useClaudeTask";
@@ -44,12 +44,18 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
       <input
         value={prompt}
         maxLength={4000}
-        placeholder={claude.running ? copy.working : copy.askPlaceholder}
+        placeholder={claude.running ? copy.working : claude.canResume ? copy.continuePlaceholder : copy.askPlaceholder}
         aria-label={copy.askPlaceholder}
         disabled={claude.running}
         spellCheck={false}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
+      {claude.canResume && !claude.running && (
+        <button className="claude-composer__folder" type="button" title={copy.newChat} onClick={claude.forget}>
+          <RotateCcw size={11} strokeWidth={2.4} aria-hidden="true" />
+          <span>{copy.newChatShort}</span>
+        </button>
+      )}
       {claude.running ? (
         <button className="claude-composer__send claude-composer__send--stop" type="button" title={copy.stop} aria-label={copy.stop} onClick={claude.stop}>
           <Square size={11} strokeWidth={3} fill="currentColor" />

@@ -1,6 +1,6 @@
 import type { IslandSettings } from "../App";
 import { useTranslation } from "../i18n";
-import { Row, Section, Segmented } from "../settings/controls";
+import { Row, Section, Segmented, Toggle } from "../settings/controls";
 
 export function ClaudeTaskSettings({
   settings,
@@ -12,6 +12,9 @@ export function ClaudeTaskSettings({
   const copy = useTranslation().prefs.claudeTask;
   return (
     <Section title={copy.section}>
+      <Row title={copy.watch} hint={copy.watchHint}>
+        <Toggle label={copy.watch} checked={settings.watchClaudeSessions} onChange={(watchClaudeSessions) => update({ watchClaudeSessions })} />
+      </Row>
       <div className="prefs-form">
         <label className="prefs-field">
           <span>{copy.folder}</span>

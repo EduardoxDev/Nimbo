@@ -21,17 +21,20 @@ const SEARCH_DEPTH: usize = 6;
 
 static EXECUTABLE: OnceLock<Option<PathBuf>> = OnceLock::new();
 static CHILD: Mutex<Option<Child>> = Mutex::new(None);
+static LAST_SESSION: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ClaudeTaskStatus {
     available: bool,
     running: bool,
+    can_resume: bool,
     home_dir: String,
 }
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum StreamEvent {
+    Session(String),
     Tool(String),
     Text(String),
     Finished { text: String, failed: bool },
@@ -114,6 +117,12 @@ pub(crate) fn step_title(tool: &str, input: &Value) -> String {
 pub(crate) fn parse_line(line: &str) -> Vec<StreamEvent> {
     let Ok(value) = serde_json::from_str::<Value>(line) else { return Vec::new() };
     match value.get("type").and_then(Value::as_str) {
+        Some("system") => value
+            .get("session_id")
+            .and_then(Value::as_str)
+            .filter(|_| value.get("subtype").and_then(Value::as_str) == Some("init"))
+            .map(|id| vec![StreamEvent::Session(id.to_string())])
+            .unwrap_or_default(),
         Some("assistant") => value
             .pointer("/message/content")
             .and_then(Value::as_array)
@@ -172,6 +181,12 @@ fn watch(app: AppHandle, child: Child, goal: String) {
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             for event in parse_line(&line) {
                 match event {
+                    StreamEvent::Session(id) => {
+                        crate::sessions_watch::ignore_session(&id);
+                        if let Ok(mut last) = LAST_SESSION.lock() {
+                            *last = Some(id);
+                        }
+                    }
                     StreamEvent::Tool(title) => {
                         titles.push(title);
                         report_external(&app, AGENT_NAME, None, steps_of(&titles, false), "working", last_text.clone(), None);
@@ -237,12 +252,19 @@ pub(crate) async fn claude_task_status() -> ClaudeTaskStatus {
     ClaudeTaskStatus {
         available,
         running: is_running(),
+        can_resume: LAST_SESSION.lock().map(|last| last.is_some()).unwrap_or(false),
         home_dir: env::var("USERPROFILE").unwrap_or_default(),
     }
 }
 
 #[tauri::command]
-pub(crate) async fn claude_task_start(app: AppHandle, prompt: String, folder: String, mode: String) -> Result<(), String> {
+pub(crate) async fn claude_task_start(
+    app: AppHandle,
+    prompt: String,
+    folder: String,
+    mode: String,
+    resume: Option<bool>,
+) -> Result<(), String> {
     let prompt = prompt.trim().to_string();
     if prompt.is_empty() {
         return Err("Escreva o que o Claude Code deve fazer.".to_string());
@@ -263,9 +285,15 @@ pub(crate) async fn claude_task_start(app: AppHandle, prompt: String, folder: St
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "Não achei o Claude Code neste PC.".to_string())?;
 
-    let child = Command::new(exe)
+    let resume_id = if resume.unwrap_or(false) { LAST_SESSION.lock().ok().and_then(|last| last.clone()) } else { None };
+    let mut command = Command::new(exe);
+    command
         .creation_flags(CREATE_NO_WINDOW)
-        .args(["-p", &prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", mode])
+        .args(["-p", &prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", mode]);
+    if let Some(id) = &resume_id {
+        command.args(["--resume", id]);
+    }
+    let child = command
         .current_dir(&folder)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -277,6 +305,13 @@ pub(crate) async fn claude_task_start(app: AppHandle, prompt: String, folder: St
     report_external(&app, AGENT_NAME, Some(goal.clone()), Vec::new(), "working", None, None);
     thread::spawn(move || watch(app, child, goal));
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn claude_task_forget() {
+    if let Ok(mut last) = LAST_SESSION.lock() {
+        *last = None;
+    }
 }
 
 #[tauri::command]
@@ -317,6 +352,8 @@ mod tests {
         let failed = json!({ "type": "result", "subtype": "error_max_turns", "result": "" });
         assert_eq!(parse_line(&failed.to_string()), vec![StreamEvent::Finished { text: String::new(), failed: true }]);
         assert!(parse_line("not json").is_empty());
+        let init = json!({ "type": "system", "subtype": "init", "session_id": "abc" });
+        assert_eq!(parse_line(&init.to_string()), vec![StreamEvent::Session("abc".into())]);
     }
 
     #[test]
