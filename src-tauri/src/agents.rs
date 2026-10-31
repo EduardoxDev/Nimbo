@@ -31,6 +31,7 @@ const MAX_TEXT: usize = 200;
 const MAX_EXTERNAL_MESSAGE: usize = 700;
 const MAX_APPROVALS: usize = 10;
 const APPROVAL_TTL_MS: i64 = 60 * 60 * 1000;
+const PERMISSION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -289,6 +290,19 @@ fn tool_definitions() -> Value {
             }
         },
         {
+            "name": "approve_permission",
+            "description": "Permission prompt for Claude Code (--permission-prompt-tool). Shows the requested action on the Nimbo island and waits for the user to allow or deny it.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "tool_name": { "type": "string" },
+                    "input": { "type": "object" },
+                    "tool_use_id": { "type": "string" }
+                },
+                "required": ["tool_name", "input"]
+            }
+        },
+        {
             "name": "list_user_tasks",
             "description": "Read the user's to-do list in Nimbo (titles and whether each is done).",
             "inputSchema": { "type": "object", "properties": {} }
@@ -469,6 +483,75 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
     }
 }
 
+pub(crate) fn permission_question(tool: &str, input: &Value) -> String {
+    let detail = |key: &str| input.get(key).and_then(Value::as_str).map(|text| text.split_whitespace().collect::<Vec<_>>().join(" "));
+    let text = match tool {
+        "Bash" => format!("Rodar: {}", detail("command").unwrap_or_default()),
+        "Edit" | "MultiEdit" | "Write" => format!("Mudar o arquivo {}", detail("file_path").unwrap_or_default()),
+        "WebFetch" => format!("Abrir {}", detail("url").unwrap_or_default()),
+        other => format!("Usar {other}"),
+    };
+    text.chars().take(MAX_TEXT).collect()
+}
+
+fn permission_reply(approved: Option<bool>, input: &Value) -> Value {
+    let body = match approved {
+        Some(true) => json!({ "behavior": "allow", "updatedInput": input }),
+        Some(false) => json!({ "behavior": "deny", "message": "The user denied this on the Nimbo island." }),
+        None => json!({ "behavior": "deny", "message": "No answer from the user in time." }),
+    };
+    text_result(body.to_string(), false)
+}
+
+fn wait_for_permission(app: AppHandle, request: tiny_http::Request, id: Value, session: Option<String>, args: Map<String, Value>) {
+    let tool = args.get("tool_name").and_then(Value::as_str).unwrap_or("Ferramenta").to_string();
+    let input = args.get("input").cloned().unwrap_or(Value::Null);
+    let approval_id = match runtime().lock() {
+        Ok(mut guard) => {
+            let agent = session
+                .as_deref()
+                .and_then(|key| guard.sessions.get(key))
+                .map(|name| friendly_name(name))
+                .unwrap_or_else(|| "Claude Code".to_string());
+            prune_approvals(&mut guard.board.approvals, now_millis());
+            let approval_id = format!("{:x}{:04x}", now_millis(), guard.board.approvals.len());
+            guard.board.approvals.push(Approval {
+                id: approval_id.clone(),
+                agent,
+                question: permission_question(&tool, &input),
+                status: "pending".to_string(),
+                created_at: now_millis(),
+            });
+            approval_id
+        }
+        Err(_) => {
+            respond(request, 200, Some(rpc_result(&id, permission_reply(None, &input))), None);
+            return;
+        }
+    };
+    apply_effects(&app, vec![Effect::BoardChanged]);
+    let started = std::time::Instant::now();
+    let answer = loop {
+        let status = runtime()
+            .lock()
+            .ok()
+            .and_then(|guard| guard.board.approvals.iter().find(|approval| approval.id == approval_id).map(|approval| approval.status.clone()));
+        match status.as_deref() {
+            Some("approved") => break Some(true),
+            Some("denied") => break Some(false),
+            Some(_) if started.elapsed() < PERMISSION_TIMEOUT => thread::sleep(std::time::Duration::from_millis(300)),
+            _ => break None,
+        }
+    };
+    if answer.is_none() {
+        if let Ok(mut guard) = runtime().lock() {
+            guard.board.approvals.retain(|approval| approval.id != approval_id);
+        }
+        apply_effects(&app, vec![Effect::BoardChanged]);
+    }
+    respond(request, 200, Some(rpc_result(&id, permission_reply(answer, &input))), None);
+}
+
 fn prune_approvals(approvals: &mut Vec<Approval>, now: i64) {
     approvals.retain(|approval| approval.status == "pending" || now - approval.created_at < APPROVAL_TTL_MS);
     if approvals.len() > MAX_APPROVALS * 2 {
@@ -622,6 +705,15 @@ fn serve(app: AppHandle, server: Arc<tiny_http::Server>, token: String, port: u1
             .iter()
             .find(|(key, _)| key.eq_ignore_ascii_case("mcp-session-id"))
             .map(|(_, value)| value.clone());
+        let is_permission = message.get("method").and_then(Value::as_str) == Some("tools/call")
+            && message.pointer("/params/name").and_then(Value::as_str) == Some("approve_permission");
+        if is_permission {
+            let id = message.get("id").cloned().unwrap_or(Value::Null);
+            let args = message.pointer("/params/arguments").and_then(Value::as_object).cloned().unwrap_or_default();
+            let app = app.clone();
+            thread::spawn(move || wait_for_permission(app, request, id, session, args));
+            continue;
+        }
         let (reply, effects, new_session) = match runtime().lock() {
             Ok(mut guard) => handle_rpc(&mut guard, session.as_deref(), &message),
             Err(_) => (Some(rpc_error(&Value::Null, -32603, "Busy")), vec![], None),
@@ -679,6 +771,21 @@ pub(crate) fn init(app: &AppHandle) {
         }
     }
     start_server(app, &load_config(app));
+}
+
+pub(crate) fn permission_mcp_config(app: &AppHandle) -> Option<PathBuf> {
+    let info = info(app);
+    if !info.running {
+        return None;
+    }
+    let config = json!({
+        "mcpServers": {
+            "nimbo": { "type": "http", "url": info.url, "headers": { "Authorization": format!("Bearer {}", info.token) } }
+        }
+    });
+    let path = data_path(app, "claude-permission-mcp.json").ok()?;
+    fs::write(&path, config.to_string()).ok()?;
+    Some(path)
 }
 
 fn info(app: &AppHandle) -> ServerInfo {
@@ -910,5 +1017,16 @@ mod tests {
         assert_eq!(approvals.len(), 1);
         assert_eq!(approvals[0].id, "b");
     }
+
+    #[test]
+    fn permission_questions_describe_the_action() {
+        assert_eq!(permission_question("Bash", &json!({ "command": "npm   test" })), "Rodar: npm test");
+        assert_eq!(permission_question("Write", &json!({ "file_path": "a.txt" })), "Mudar o arquivo a.txt");
+        assert_eq!(permission_question("Mystery", &json!({})), "Usar Mystery");
+        let allow = permission_reply(Some(true), &json!({ "command": "ls" })).to_string();
+        assert!(allow.contains("allow") && allow.contains("updatedInput"));
+        assert!(permission_reply(Some(false), &json!({})).to_string().contains("deny"));
+    }
 }
+
 

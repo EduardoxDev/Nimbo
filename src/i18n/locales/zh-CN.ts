@@ -655,7 +655,7 @@ const zhCN: Translations = {
       mode: "允许的操作",
       edit: "编辑文件",
       plan: "只读和规划",
-      editHint: "可以在文件夹内新建和编辑文件，终端命令仍被禁止。",
+      editHint: "可以在文件夹内新建和编辑文件，终端命令需要在灵动岛上批准。",
       planHint: "只读取文件并给出计划，不做任何修改。",
       watch: "显示 Claude Code 会话",
       watchHint: "任何打开的 Claude Code 会话（终端、应用或 VS Code）都会以吉祥物和步骤显示在灵动岛上，无需配置。",

@@ -652,7 +652,7 @@ const en: Translations = {
       mode: "What it may do",
       edit: "Edit files",
       plan: "Read and plan only",
-      editHint: "May create and edit files in the folder. Terminal commands stay blocked.",
+      editHint: "May create and edit files in the folder. Terminal commands ask for your approval on the island.",
       planHint: "Only reads files and answers with a plan; changes nothing.",
       watch: "Show Claude Code sessions",
       watchHint: "Any open Claude Code session (terminal, app or VS Code) shows on the island with its mascot and steps, no setup needed.",

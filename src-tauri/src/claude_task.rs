@@ -333,6 +333,12 @@ pub(crate) async fn claude_task_start(
     if let Some(id) = &resume_id {
         command.args(["--resume", id]);
     }
+    if let Some(config) = crate::agents::permission_mcp_config(&app) {
+        command
+            .arg("--mcp-config")
+            .arg(config)
+            .args(["--permission-prompt-tool", "mcp__nimbo__approve_permission"]);
+    }
     let child = command
         .current_dir(&folder)
         .stdin(Stdio::null())

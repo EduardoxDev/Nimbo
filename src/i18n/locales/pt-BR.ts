@@ -652,7 +652,7 @@ const ptBR: Translations = {
       mode: "O que ele pode fazer",
       edit: "Editar arquivos",
       plan: "Só ler e planejar",
-      editHint: "Pode criar e editar arquivos na pasta. Comandos no terminal continuam bloqueados.",
+      editHint: "Pode criar e editar arquivos na pasta. Comandos no terminal pedem a sua aprovação na ilha.",
       planHint: "Só lê os arquivos e responde com um plano; não muda nada.",
       watch: "Mostrar as sessões do Claude Code",
       watchHint: "Qualquer sessão do Claude Code aberta (terminal, app ou VS Code) aparece na ilha com o mascote e os passos, sem configurar nada.",
