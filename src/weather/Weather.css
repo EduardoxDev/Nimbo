@@ -1,0 +1,14 @@
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.weather-chip svg {
+  color: #ffd60a;
+}

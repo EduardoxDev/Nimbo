@@ -35,6 +35,7 @@ import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import { useUpdater } from "./updates/useUpdater";
 import { CalendarSettingsPage } from "./calendar/CalendarSettings";
 import { WelcomeSheet } from "./welcome/WelcomeSheet";
+import { WeatherSettings } from "./weather/WeatherSettings";
 import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
@@ -399,6 +400,7 @@ function GeneralPage({ settings, update }: PageProps) {
   };
 
   return (
+    <>
     <Section title={copy.section}>
       <Row title={copy.language}>
         <Segmented
@@ -434,6 +436,8 @@ function GeneralPage({ settings, update }: PageProps) {
         />
       </Row>
     </Section>
+    <WeatherSettings place={settings.weatherPlace} onChange={(weatherPlace) => update({ weatherPlace })} />
+    </>
   );
 }
 

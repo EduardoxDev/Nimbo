@@ -87,6 +87,7 @@ npm run tauri build -- --no-bundle
 - Anel de status na ilha fechada mostrando o foco ou a meta de água.
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
+- Tempo: escolha a cidade em Configurações → Geral e a temperatura aparece no topo da ilha (dados do Open-Meteo).
 - Agenda: liga o Google Agenda ou o Outlook pelo link ICS secreto, mostra os próximos 7 dias e avisa na ilha antes de cada compromisso.
 - Tradução rápida com o Claude Haiku (mesma chave da Anthropic do assistente): português, inglês, espanhol e chinês.
 - Idiomas: português (padrão), inglês e chinês.

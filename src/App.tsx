@@ -90,6 +90,10 @@ import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
 import { useUpdater } from "./updates/useUpdater";
+import { WeatherChip } from "./weather/WeatherChip";
+import { useWeather } from "./weather/useWeather";
+import type { WeatherPlace } from "./weather/weather";
+import "./weather/Weather.css";
 import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
 import { minutesUntil } from "./calendar/calendar";
@@ -275,6 +279,7 @@ export type IslandSettings = {
   /** Minutes between water reminders; 0 turns them off. */
   waterReminderMinutes: number;
   calendarReminderMinutes: number;
+  weatherPlace: WeatherPlace | null;
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -445,6 +450,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   waterCupMl: 250,
   waterReminderMinutes: 60,
   calendarReminderMinutes: 10,
+  weatherPlace: null,
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -827,6 +833,7 @@ export function normalizeSettings(
       180,
       15,
     ),
+    weatherPlace: normalizeWeatherPlace(settings?.weatherPlace),
     calendarReminderMinutes: stepped(
       settings?.calendarReminderMinutes,
       DEFAULT_SETTINGS.calendarReminderMinutes,
@@ -838,6 +845,15 @@ export function normalizeSettings(
 }
 
 /** A number setting kept on its step and inside its range. */
+function normalizeWeatherPlace(value: unknown): WeatherPlace | null {
+  if (!value || typeof value !== "object") return null;
+  const place = value as Partial<WeatherPlace>;
+  if (typeof place.name !== "string" || typeof place.latitude !== "number" || typeof place.longitude !== "number") {
+    return null;
+  }
+  return { name: place.name, region: typeof place.region === "string" ? place.region : "", latitude: place.latitude, longitude: place.longitude };
+}
+
 function stepped(value: unknown, fallback: number, min: number, max: number, step: number) {
   const number = Number(value ?? fallback);
   if (!Number.isFinite(number)) return fallback;
@@ -3478,6 +3494,7 @@ function MusicPlayerPanel({
         <PlaybackRing progress={progress} isPlaying={isPlaying} />
         <span>{dateLabel}</span>
         <strong>{timeLabel}</strong>
+        <WeatherChip />
         <span className="visually-hidden" aria-live="polite">{statusLabel}</span>
       </div>
 
@@ -4456,6 +4473,7 @@ function IslandApp({
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
+  useWeather(settings.weatherPlace);
   const shelf = useShelf({
     onDragEnter: () => openIslandPageRef.current?.("shelf"),
     onAdded: (count) => setAgentNotice({ text: t.shelf.added(count), until: Date.now() + 5_000 }),

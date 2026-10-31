@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { IslandTabs, type IslandTab } from "../IslandTabs";
+import { WeatherChip } from "../weather/WeatherChip";
 
 /**
  * Frame shared by the full-island pages: date and time on top, quiet chevrons
@@ -46,6 +47,7 @@ export function PageChrome<Page extends string>({
         <Icon size={15} strokeWidth={2.4} style={{ color: iconColor }} aria-hidden="true" />
         <span>{date}</span>
         <strong>{time}</strong>
+        <WeatherChip />
       </div>
       <button
         className="np-nav np-nav--previous"

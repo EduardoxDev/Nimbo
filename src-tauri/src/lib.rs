@@ -12,6 +12,7 @@ mod lyrics;
 mod shelf;
 mod media_control;
 mod translation;
+mod weather;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -1878,6 +1879,8 @@ pub fn run() {
             calendar::calendar_add_source,
             calendar::calendar_remove_source,
             calendar::calendar_events,
+            weather::weather_search,
+            weather::weather_current,
             shelf::shelf_list,
             shelf::shelf_add,
             shelf::shelf_remove,

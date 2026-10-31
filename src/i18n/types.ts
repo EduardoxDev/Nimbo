@@ -310,6 +310,19 @@ export type Translations = {
     next: string;
     start: string;
   };
+  weather: {
+    section: string;
+    city: string;
+    cityPlaceholder: string;
+    hint: string;
+    searching: string;
+    noResults: string;
+    choose: string;
+    remove: string;
+    attribution: string;
+    range: (max: number, min: number) => string;
+    kinds: Record<"clear" | "partly" | "cloudy" | "fog" | "drizzle" | "rain" | "snow" | "storm", string>;
+  };
   calendar: {
     title: string;
     today: string;

@@ -147,7 +147,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | C4 | **Atalhos globais configuráveis** (abrir ilha, play/pause, próxima página, ligar o ar) | Pedido comum nesse tipo de app | P |
 | C5 | **Assistente com voz** (aperte e fale) e mais ações no PC: abrir app, mudar volume, criar tarefa, controlar a casa | Junta o assistente com tudo o que a ilha já controla | M |
 | C6 | **Automações da Casa**: "liga o ar às 22h", "desliga ao sair do PC", cenas | O ar já é controlado; falta agendar | M |
-| C7 | **Tempo (clima lá fora)** no topo da ilha e no anel de status | Informação útil que cabe no espaço livre | P |
+| C7 | ✅ **Tempo (clima lá fora)** no topo da ilha e no anel de status | Informação útil que cabe no espaço livre | P |
 | C8 | **Agentes**: ver o progresso em tempo real (barra), aprovar ou recusar pedido do agente pela ilha | Hoje o agente só põe a tarefa; falta a conversa de volta | M |
 
 ### Fase D — Ecossistema e lançamento
