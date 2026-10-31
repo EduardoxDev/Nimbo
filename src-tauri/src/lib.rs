@@ -13,6 +13,7 @@ mod lyrics;
 mod shelf;
 mod shortcuts;
 mod media_control;
+mod monitors;
 mod translation;
 mod weather;
 
@@ -1221,6 +1222,10 @@ fn main_window(app: &AppHandle) -> Result<WebviewWindow, String> {
         .ok_or_else(|| "Main island window was not found.".to_string())
 }
 
+fn reapply_geometry(window: &WebviewWindow) -> Result<(), String> {
+    apply_stage_geometry(window, read_window_state(), false)
+}
+
 fn show_island(app: &AppHandle) -> Result<(), String> {
     let window = main_window(app)?;
     apply_stage_geometry(&window, read_window_state(), false)?;
@@ -1327,6 +1332,7 @@ fn apply_stage_geometry(
         .and_then(|position| monitor_for_island_position(window, position).ok().flatten());
     let has_custom_monitor = custom_monitor.is_some();
     let monitor = custom_monitor
+        .or_else(|| monitors::preferred_monitor(window))
         .or_else(|| primary_monitor.or(current_monitor))
         .ok_or_else(|| "No monitor is available for island positioning.".to_string())?;
 
@@ -1819,6 +1825,7 @@ pub fn run() {
             fullscreen::init(app.handle());
             shortcuts::init(app.handle());
             launcher::init();
+            monitors::init(app.handle());
             keep_launch_at_startup_current(app.handle().clone());
             if let Ok(window) = main_window(app.handle()) {
                 if let Err(error) = apply_stage_geometry(&window, IslandWindowState::default(), false) {
@@ -1843,6 +1850,8 @@ pub fn run() {
             fullscreen::set_hide_in_fullscreen,
             shortcuts::set_global_shortcuts,
             launcher::launcher_apps,
+            monitors::list_monitors,
+            monitors::set_island_monitor,
             launcher::launcher_open,
             diagnostics::diagnostics_log,
             diagnostics::diagnostics_report,

@@ -452,6 +452,10 @@ const zhCN: Translations = {
       marginY: "距顶部距离",
       hideInFullscreen: "全屏时隐藏",
       hideInFullscreenHint: "全屏游戏、视频和演示时自动隐藏，退出后恢复",
+      monitor: "灵动岛所在屏幕",
+      monitorPrimary: "主屏幕",
+      monitorMouse: "鼠标所在屏幕",
+      monitorScreen: (index) => `屏幕 ${index}`,
     },
     music: {
       section: "音乐",

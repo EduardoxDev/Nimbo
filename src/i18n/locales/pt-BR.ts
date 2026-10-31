@@ -449,6 +449,10 @@ const ptBR: Translations = {
       marginY: "Distância do topo",
       hideInFullscreen: "Esconder em tela cheia",
       hideInFullscreenHint: "Some durante jogos, vídeos e apresentações em tela cheia e volta quando eles saem",
+      monitor: "Tela da ilha",
+      monitorPrimary: "Principal",
+      monitorMouse: "Onde está o mouse",
+      monitorScreen: (index) => `Tela ${index}`,
     },
     music: {
       section: "Música",

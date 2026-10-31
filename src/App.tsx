@@ -286,6 +286,7 @@ export type IslandSettings = {
   calendarReminderMinutes: number;
   weatherPlace: WeatherPlace | null;
   shortcuts: Shortcuts;
+  monitor: string;
   hudVolume: boolean;
   hudBrightness: boolean;
   hudTrack: boolean;
@@ -458,6 +459,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   calendarReminderMinutes: 10,
   weatherPlace: null,
   shortcuts: DEFAULT_SHORTCUTS,
+  monitor: "primary",
   hudVolume: true,
   hudBrightness: true,
   hudTrack: true,
@@ -842,6 +844,7 @@ export function normalizeSettings(
     ),
     weatherPlace: normalizeWeatherPlace(settings?.weatherPlace),
     shortcuts: normalizeShortcuts(settings?.shortcuts),
+    monitor: typeof settings?.monitor === "string" && settings.monitor ? settings.monitor.slice(0, 128) : DEFAULT_SETTINGS.monitor,
     calendarReminderMinutes: stepped(
       settings?.calendarReminderMinutes,
       DEFAULT_SETTINGS.calendarReminderMinutes,
@@ -4353,6 +4356,13 @@ function IslandApp({
     }, 1_500);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("set_island_monitor", { preference: settings.monitor }).catch((error) =>
+      console.error("Failed to move the island to the chosen screen", error),
+    );
+  }, [settings.monitor]);
 
   useEffect(() => {
     if (!isTauri()) return;

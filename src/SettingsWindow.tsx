@@ -448,6 +448,12 @@ function DisplayPage({ settings, update }: PageProps) {
   const copy = t.prefs.display;
   const appearance = t.prefs.appearance;
   const percent = (value: number) => `${Math.round(value)}%`;
+  const [monitors, setMonitors] = useState<{ id: string; width: number; height: number; primary: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke<typeof monitors>("list_monitors").then(setMonitors).catch(() => setMonitors([]));
+  }, []);
 
   return (
     <Section title={copy.section}>
@@ -499,6 +505,20 @@ function DisplayPage({ settings, update }: PageProps) {
           onChange={(marginY) => update({ marginY })}
         />
       </Row>
+      {monitors.length > 1 && (
+        <Row title={copy.monitor}>
+          <Segmented
+            label={copy.monitor}
+            value={settings.monitor}
+            options={[
+              { value: "primary", label: copy.monitorPrimary },
+              { value: "mouse", label: copy.monitorMouse },
+              ...monitors.map((monitor, index) => ({ value: monitor.id, label: copy.monitorScreen(index + 1) })),
+            ]}
+            onChange={(monitor) => update({ monitor })}
+          />
+        </Row>
+      )}
       <Row title={copy.hideInFullscreen} hint={copy.hideInFullscreenHint}>
         <Toggle
           label={copy.hideInFullscreen}

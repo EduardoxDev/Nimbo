@@ -449,6 +449,10 @@ const en: Translations = {
       marginY: "Distance from the top",
       hideInFullscreen: "Hide in full screen",
       hideInFullscreenHint: "Hides during full-screen games, videos and presentations and comes back when they close",
+      monitor: "Island screen",
+      monitorPrimary: "Main",
+      monitorMouse: "Where the mouse is",
+      monitorScreen: (index) => `Screen ${index}`,
     },
     music: {
       section: "Music",

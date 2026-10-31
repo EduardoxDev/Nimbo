@@ -448,6 +448,10 @@ export type Translations = {
       marginY: string;
       hideInFullscreen: string;
       hideInFullscreenHint: string;
+      monitor: string;
+      monitorPrimary: string;
+      monitorMouse: string;
+      monitorScreen: (index: number) => string;
     };
     music: {
       section: string;
