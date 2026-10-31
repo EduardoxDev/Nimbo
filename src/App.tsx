@@ -6344,6 +6344,11 @@ function IslandApp({
             })}
             lines={hubLines}
             pills={hubPills}
+            agents={islandAgents.map((agent) => {
+              const entry = agentBoard.board.agents.find((item) => item.id === agent.id);
+              const step = entry ? currentStepOf(entry)?.title ?? entry.message ?? entry.goal ?? agent.name : agent.name;
+              return { ...agent, text: step };
+            })}
             progress={
               isFocusActive
                 ? {
@@ -6356,7 +6361,7 @@ function IslandApp({
             pages={islandPageLinks}
             currentPage={page}
             onPageChange={openIslandPage}
-            onOpen={(key) => openIslandPage(key === "music" ? "music" : key === "calendar" ? "calendar" : key)}
+            onOpen={(key) => openIslandPage(key)}
           />
         )}
         {page === "system" && (

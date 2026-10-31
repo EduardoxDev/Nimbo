@@ -95,6 +95,21 @@ fn file_name(input: &Value, key: &str) -> String {
         .unwrap_or_default()
 }
 
+fn mcp_title(tool: &str) -> String {
+    let server = tool.trim_start_matches("mcp__").split("__").next().unwrap_or("").to_lowercase();
+    if server.contains("computer") {
+        "Controlando o computador".to_string()
+    } else if server.contains("browser") || server.contains("chrome") {
+        "Usando o navegador".to_string()
+    } else if server.contains("nimbo") {
+        "Atualizando a ilha".to_string()
+    } else if server.starts_with("ccd") {
+        "Organizando a sessão".to_string()
+    } else {
+        format!("Usando {}", server.replace(['_', '-'], " "))
+    }
+}
+
 pub(crate) fn step_title(tool: &str, input: &Value) -> String {
     match tool {
         "Read" => format!("Lendo {}", file_name(input, "file_path")),
@@ -108,6 +123,7 @@ pub(crate) fn step_title(tool: &str, input: &Value) -> String {
         "WebFetch" | "WebSearch" => "Pesquisando na web".to_string(),
         "TodoWrite" => "Organizando os passos".to_string(),
         "Task" | "Agent" => "Chamando um ajudante".to_string(),
+        other if other.starts_with("mcp__") => mcp_title(other),
         other => other.to_string(),
     }
     .trim()
@@ -335,6 +351,9 @@ mod tests {
         assert_eq!(step_title("Bash", &json!({ "command": "npm test", "description": "Rodar os testes" })), "Rodando Rodar os testes");
         assert_eq!(step_title("Grep", &json!({ "pattern": "useState" })), "Procurando useState");
         assert_eq!(step_title("Mystery", &json!({})), "Mystery");
+        assert_eq!(step_title("mcp__computer-use__zoom", &json!({})), "Controlando o computador");
+        assert_eq!(step_title("mcp__Claude_Browser__navigate", &json!({})), "Usando o navegador");
+        assert_eq!(step_title("mcp__github__create_issue", &json!({})), "Usando github");
     }
 
     #[test]

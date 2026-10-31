@@ -11,6 +11,7 @@ import "./Hub.css";
 export type HubLine = { key: string; icon: LucideIcon; text: string };
 export type HubPill = { key: "music" | "calendar" | "focus" | "water"; text: string; active: boolean };
 export type HubProgress = { label: string; progress: number; detail: string } | null;
+export type HubAgent = { id: string; name: string; text: string; mood: MascotMood; shape: MascotShape; color: string };
 
 const PILL_ICONS: Record<HubPill["key"], LucideIcon> = { music: Music, calendar: CalendarDays, focus: Timer, water: Droplet };
 const PILL_SHAPES: Record<HubPill["key"], MascotShape> = { music: "blob", calendar: "pebble", focus: "drop", water: "round" };
@@ -21,6 +22,7 @@ export function HubPanel<Page extends string>({
   mood,
   lines,
   pills,
+  agents,
   progress,
   pages,
   currentPage,
@@ -30,15 +32,16 @@ export function HubPanel<Page extends string>({
   mood: MascotMood;
   lines: HubLine[];
   pills: HubPill[];
+  agents: HubAgent[];
   progress: HubProgress;
   pages: IslandTab<Page>[];
   currentPage: Page;
   onPageChange: (page: Page) => void;
-  onOpen: (key: HubPill["key"]) => void;
+  onOpen: (key: HubPill["key"] | "agents") => void;
 }) {
   const copy = useTranslation().hub;
   const [dizzy, setDizzy] = useState(false);
-  const busy = pills.some((pill) => pill.active) || lines.length > 0;
+  const busy = pills.some((pill) => pill.active) || lines.length > 0 || agents.length > 0;
 
   const handleReaction = (reaction: "dizzy" | "annoyed") => {
     if (reaction !== "dizzy") return;
@@ -114,7 +117,13 @@ export function HubPanel<Page extends string>({
             </ul>
           </div>
           <div className="hub__pills g-card">
-            {pills.map((pill) => {
+            {agents.length > 0 && agents.slice(0, 4).map((agent) => (
+              <button key={agent.id} className="g-pill hub__pill" type="button" title={`${agent.name}: ${agent.text}`} onClick={() => onOpen("agents")}>
+                <Mascot mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={18} showDot={false} glow />
+                <span>{agent.text}</span>
+              </button>
+            ))}
+            {agents.length === 0 && pills.map((pill) => {
               const Icon = PILL_ICONS[pill.key];
               return (
                 <button
