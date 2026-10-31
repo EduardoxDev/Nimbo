@@ -432,6 +432,10 @@ export type Translations = {
     failed: (names: string) => string;
     startsIn: (title: string, minutes: number) => string;
     ok: string;
+    inMeeting: (title: string, end: string) => string;
+    meetingOver: string;
+    resumeMusic: string;
+    notNow: string;
   };
   updates: {
     available: (version: string) => string;
@@ -696,6 +700,8 @@ export type Translations = {
     };
     calendarPrefs: {
       section: string;
+      meetingMode: string;
+      meetingHint: string;
       hint: string;
       sources: string;
       name: string;

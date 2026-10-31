@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { CALENDAR_DEMO, DEMO_EVENTS } from "../demo/calendarDemo";
-import { CALENDAR_CHANGED_KEY, upcomingReminder, type CalendarEvent } from "./calendar";
+import { CALENDAR_CHANGED_KEY, ongoingEvent, upcomingReminder, type CalendarEvent } from "./calendar";
 
 const REFRESH_MS = 15 * 60 * 1000;
 const DAYS_AHEAD = 7;
@@ -59,11 +59,13 @@ export function useCalendar(reminderMinutes: number) {
     [events, now, reminderMinutes, dismissed],
   );
 
+  const ongoing = useMemo(() => ongoingEvent(events, now), [events, now]);
+
   const dismiss = useCallback((id: string) => {
     setDismissed((current) => new Set(current).add(id));
   }, []);
 
-  return { events, failed, hasSources, loaded, now, reminder, dismiss, refresh };
+  return { events, failed, hasSources, loaded, now, reminder, ongoing, dismiss, refresh };
 }
 
 export type CalendarState = ReturnType<typeof useCalendar>;

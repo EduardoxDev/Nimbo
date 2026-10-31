@@ -433,6 +433,10 @@ const en: Translations = {
     failed: (names) => `Couldn't refresh: ${names}`,
     startsIn: (title, minutes) => (minutes <= 0 ? `${title} started` : `${title} in ${minutes} min`),
     ok: "OK",
+    inMeeting: (title, end) => `In a meeting · ${title} · ends at ${end}`,
+    meetingOver: "The meeting is over. Resume the music?",
+    resumeMusic: "Play",
+    notNow: "Not now",
   },
   updates: {
     available: (version) => `Version ${version}`,
@@ -697,6 +701,8 @@ const en: Translations = {
     },
     calendarPrefs: {
       section: "Calendar",
+      meetingMode: "Meeting mode",
+      meetingHint: "Pauses the music when an event starts and shows when it ends. Windows does not let other apps silence notifications, so turn on its Do not disturb if you want full quiet.",
       hint: "Google Calendar: calendar settings → \"Secret address in iCal format\". Outlook: Settings → Calendar → Shared calendars → Publish → ICS. The link is kept only in Windows Credential Manager.",
       sources: "Connected calendars",
       name: "Name",

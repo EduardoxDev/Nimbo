@@ -436,6 +436,10 @@ const zhCN: Translations = {
     failed: (names) => `无法刷新：${names}`,
     startsIn: (title, minutes) => (minutes <= 0 ? `${title} 已开始` : `${title} ${minutes} 分钟后开始`),
     ok: "好",
+    inMeeting: (title, end) => `会议中 · ${title} · ${end} 结束`,
+    meetingOver: "会议结束了，继续播放音乐吗？",
+    resumeMusic: "播放",
+    notNow: "暂不",
   },
   updates: {
     available: (version) => `新版本 ${version}`,
@@ -700,6 +704,8 @@ const zhCN: Translations = {
     },
     calendarPrefs: {
       section: "日程",
+      meetingMode: "会议模式",
+      meetingHint: "日程开始时暂停音乐并显示结束时间。Windows 不允许其他应用静音通知，如需完全安静请开启系统的请勿打扰。",
       hint: "Google 日历：日历设置 →“iCal 格式的私密地址”。Outlook：设置 → 日历 → 共享日历 → 发布 → ICS。链接只保存在 Windows 凭据管理器。",
       sources: "已连接的日历",
       name: "名称",

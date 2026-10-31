@@ -31,3 +31,15 @@ test("events are grouped by day and finished ones are hidden", () => {
   assert.deepEqual(groups.map((group) => group.offset), [0, 1]);
   assert.deepEqual(groups[0].events.map((item) => item.id), ["today"]);
 });
+
+test("the ongoing event is the timed one happening now", async () => {
+  const { ongoingEvent } = await import("../src/calendar/calendar.ts");
+  const base = { location: null, calendar: "c", allDay: false };
+  const events = [
+    { ...base, id: "all", title: "Feriado", start: 0, end: 10_000, allDay: true },
+    { ...base, id: "a", title: "Daily", start: 1_000, end: 2_000 },
+  ];
+  assert.equal(ongoingEvent(events, 1_500)?.id, "a");
+  assert.equal(ongoingEvent(events, 2_000), null);
+  assert.equal(ongoingEvent(events, 500), null);
+});

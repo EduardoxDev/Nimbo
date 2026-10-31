@@ -279,6 +279,7 @@ export type IslandSettings = {
   showCollapsedText: boolean;
   showIdleTodoCount: boolean;
   hideInFullscreen: boolean;
+  meetingMode: boolean;
   carryOverIncompleteTodos: boolean;
   enableTodoReorder: boolean;
   openMode: IslandOpenMode;
@@ -461,6 +462,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   showCollapsedText: true,
   showIdleTodoCount: true,
   hideInFullscreen: true,
+  meetingMode: true,
   carryOverIncompleteTodos: false,
   enableTodoReorder: false,
   openMode: "hover",
@@ -812,6 +814,10 @@ export function normalizeSettings(
       typeof settings?.hideInFullscreen === "boolean"
         ? settings.hideInFullscreen
         : DEFAULT_SETTINGS.hideInFullscreen,
+    meetingMode:
+      typeof settings?.meetingMode === "boolean"
+        ? settings.meetingMode
+        : DEFAULT_SETTINGS.meetingMode,
     showIdleTodoCount:
       typeof settings?.showIdleTodoCount === "boolean"
         ? settings.showIdleTodoCount
@@ -4487,6 +4493,10 @@ function IslandApp({
   }, [settings.watchClaudeSessions]);
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
+  const meeting = settings.meetingMode ? calendar.ongoing : null;
+  const meetingIdRef = useRef<string | null>(null);
+  const [pausedForMeeting, setPausedForMeeting] = useState(false);
+  const [meetingEnded, setMeetingEnded] = useState(false);
   useWeather(settings.weatherPlace);
   useHomeAutomations((automation, failed) =>
     setAgentNotice({
@@ -4523,7 +4533,11 @@ function IslandApp({
   const collapsedStatus: CollapsedStatus = {
     hud: islandHud.hud,
     agents: islandAgents,
-    label: activeAgent ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}` : null,
+    label: activeAgent
+      ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}`
+      : meeting
+      ? t.calendar.inMeeting(meeting.title, new Date(meeting.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      : null,
     ring: statusRing,
     notice: approval
       ? {
@@ -4533,6 +4547,23 @@ function IslandApp({
           actions: [
             { label: t.agents.approve, primary: true, onClick: () => void answerApproval(approval.id, true) },
             { label: t.agents.deny, onClick: () => void answerApproval(approval.id, false) },
+          ],
+        }
+      : meetingEnded
+      ? {
+          text: t.calendar.meetingOver,
+          color: "#ff6961",
+          page,
+          actions: [
+            {
+              label: t.calendar.resumeMusic,
+              primary: true,
+              onClick: () => {
+                setMeetingEnded(false);
+                if (mediaState.playbackStatus !== "playing") void runMediaCommand("media_play_pause");
+              },
+            },
+            { label: t.calendar.notNow, onClick: () => setMeetingEnded(false) },
           ],
         }
       : reminders.due
@@ -5232,6 +5263,22 @@ function IslandApp({
     },
     [mediaState.audioActive, mediaState.playbackStatus, refreshMediaState],
   );
+
+  useEffect(() => {
+    const id = meeting?.id ?? null;
+    if (id === meetingIdRef.current) return;
+    meetingIdRef.current = id;
+    if (id) {
+      setMeetingEnded(false);
+      if (mediaState.playbackStatus === "playing") {
+        setPausedForMeeting(true);
+        void runMediaCommand("media_play_pause");
+      }
+    } else if (pausedForMeeting) {
+      setPausedForMeeting(false);
+      setMeetingEnded(true);
+    }
+  }, [meeting?.id, mediaState.playbackStatus, pausedForMeeting, runMediaCommand]);
 
   useEffect(() => {
     let didCancel = false;

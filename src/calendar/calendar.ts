@@ -35,6 +35,10 @@ export function upcomingReminder(
   );
 }
 
+export function ongoingEvent(events: CalendarEvent[], now: number): CalendarEvent | null {
+  return events.find((event) => !event.allDay && event.start <= now && now < event.end) ?? null;
+}
+
 export function minutesUntil(event: CalendarEvent, now: number) {
   return Math.max(0, Math.round((event.start - now) / 60_000));
 }

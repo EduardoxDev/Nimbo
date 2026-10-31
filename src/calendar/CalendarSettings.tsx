@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { IslandSettings } from "../App";
 import { useTranslation } from "../i18n";
-import { Row, Section, Stepper } from "../settings/controls";
+import { Row, Section, Stepper, Toggle } from "../settings/controls";
 import { CALENDAR_CHANGED_KEY, type CalendarSource } from "./calendar";
 
 function announceChange() {
@@ -76,6 +76,9 @@ export function CalendarSettingsPage({
             increaseLabel={`${appearance.increase} ${copy.reminder}`}
             onChange={(calendarReminderMinutes) => update({ calendarReminderMinutes })}
           />
+        </Row>
+        <Row title={copy.meetingMode} hint={copy.meetingHint}>
+          <Toggle label={copy.meetingMode} checked={settings.meetingMode} onChange={(meetingMode) => update({ meetingMode })} />
         </Row>
         {sources.map((source, index) => (
           <Row key={`${source.name}-${index}`} title={source.name} hint={source.host}>

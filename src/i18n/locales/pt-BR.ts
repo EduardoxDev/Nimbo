@@ -433,6 +433,10 @@ const ptBR: Translations = {
     failed: (names) => `Não deu para atualizar: ${names}`,
     startsIn: (title, minutes) => (minutes <= 0 ? `${title} começou` : `${title} em ${minutes} min`),
     ok: "Ok",
+    inMeeting: (title, end) => `Em reunião · ${title} · termina às ${end}`,
+    meetingOver: "A reunião acabou. Voltar a música?",
+    resumeMusic: "Tocar",
+    notNow: "Agora não",
   },
   updates: {
     available: (version) => `Versão ${version}`,
@@ -697,6 +701,8 @@ const ptBR: Translations = {
     },
     calendarPrefs: {
       section: "Agenda",
+      meetingMode: "Modo reunião",
+      meetingHint: "Pausa a música quando um compromisso começa e mostra até quando vai. O Windows não deixa outros apps silenciarem as notificações, então ative o Não perturbe dele se quiser silêncio total.",
       hint: "No Google Agenda: Configurações da agenda → \"Endereço secreto no formato iCal\". No Outlook: Configurações → Calendário → Calendários compartilhados → Publicar → ICS. O link fica só no Gerenciador de Credenciais do Windows.",
       sources: "Agendas ligadas",
       name: "Nome",
