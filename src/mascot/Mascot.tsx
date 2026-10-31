@@ -118,7 +118,7 @@ export function Mascot({
   useEffect(() => {
     if (reducedMotion()) return;
     let last = 0;
-    const interval = size < 28 ? 1 / 24 : 1 / 50;
+    const interval = size < 28 ? 1 / 12 : 1 / 30;
     return subscribe((now) => {
       if (now - last < interval) return;
       last = now;

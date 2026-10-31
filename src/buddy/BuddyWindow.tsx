@@ -23,7 +23,9 @@ function pick<T>(items: T[]) {
 
 export default function BuddyWindow() {
   const [mode, setMode] = useState<BuddyMode>(readBuddyMode);
-  const [frame, setFrame] = useState({ x: 0, y: 0, facing: 1, squash: 0, mood: "greeting" as MascotMood });
+  const [mood, setMood] = useState<MascotMood>("greeting");
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const shownMoodRef = useRef<MascotMood>("greeting");
   const [accessory, setAccessory] = useState<MascotAccessory | null>(null);
   const bodyRef = useRef<Body>({ x: window.innerWidth / 2 - BUDDY_SIZE / 2, y: 4, vx: (Math.random() - 0.5) * 500, vy: -650, ground: null });
   const sceneRef = useRef<Scene | null>(null);
@@ -76,7 +78,14 @@ export default function BuddyWindow() {
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const dt = Math.min(0.033, (now - last) / 1000);
+      const body0 = bodyRef.current;
+      const resting =
+        mode === "free" && !dragRef.current && !leavingRef.current && body0.ground !== null && body0.vx === 0 && squashRef.current === 0 && now < behaviorRef.current.until;
+      if (resting && now - last < 100) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      const dt = Math.min(resting ? 0.1 : 0.033, (now - last) / 1000);
       last = now;
       const ratio = window.devicePixelRatio || 1;
       const scene = sceneRef.current;
@@ -139,7 +148,7 @@ export default function BuddyWindow() {
       facingRef.current = facing;
       squashRef.current = Math.max(0, squashRef.current - dt * 4);
       const behavior = behaviorRef.current;
-      const mood: MascotMood =
+      const nextMood: MascotMood =
         now < moodRef.current.until
           ? moodRef.current.mood
           : dragRef.current
@@ -151,7 +160,14 @@ export default function BuddyWindow() {
           : behavior.kind === "walk"
           ? "greeting"
           : "idle";
-      setFrame({ x: body.x, y: body.y, facing, squash: squashRef.current, mood });
+      if (nextMood !== shownMoodRef.current) {
+        shownMoodRef.current = nextMood;
+        setMood(nextMood);
+      }
+      const squash = squashRef.current;
+      if (wrapperRef.current) {
+        wrapperRef.current.style.transform = `translate(${body.x}px, ${body.y}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25})`;
+      }
 
       const capture = Boolean(dragRef.current);
       const hitbox = hitboxRef.current;
@@ -202,22 +218,19 @@ export default function BuddyWindow() {
     if (Math.hypot(velocity.vx, velocity.vy) > 2200) moodRef.current = { mood: "dizzy", until: now + 3500 };
   };
 
-  const walking = frame.mood === "greeting" && mode !== "cursor";
+  const walking = mood === "greeting" && mode !== "cursor";
   return (
     <div className="buddy-stage">
       <div
         className={`buddy${walking ? " buddy--walking" : ""}${mode === "cursor" ? " buddy--cursor" : ""}`}
-        style={{
-          width: BUDDY_SIZE,
-          height: BUDDY_SIZE,
-          transform: `translate(${frame.x}px, ${frame.y}px) scale(${frame.facing * (1 + frame.squash * 0.25)}, ${1 - frame.squash * 0.25})`,
-        }}
+        ref={wrapperRef}
+        style={{ width: BUDDY_SIZE, height: BUDDY_SIZE }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <Mascot mood={frame.mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} label="Nimbo" />
+        <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} label="Nimbo" />
       </div>
     </div>
   );
