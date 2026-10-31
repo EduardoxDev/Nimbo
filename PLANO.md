@@ -159,6 +159,15 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | D4 | ✅ **Acessibilidade**: navegação por teclado, leitor de tela, contraste, "reduzir movimento" em tudo | Obrigatório para um app que fica sempre na tela | M |
 | D5 | **Revisar inglês e chinês** com quem fala a língua | Textos foram escritos sem revisão nativa | P |
 
+### O que ficou para depois (31/10/2026)
+- **A6 Quebrar arquivos gigantes**: as páginas novas já nasceram em módulos próprios (`calendar/`, `launcher/`, `system/`, `weather/`…), mas o `App.tsx` antigo continua grande. Refatorar sem mudar comportamento é uma tarefa à parte.
+- **A9 Assinatura do instalador**: precisa comprar um certificado de assinatura de código (ou usar o Azure Trusted Signing). Não dá para resolver só com código.
+- **B4 Testes ao vivo**: assistente e tradução precisam da chave da Anthropic; o Broadlink precisa do aparelho.
+- **C1 Atividades ao vivo** e **C5 Assistente com voz**: grandes; ficam para as próximas versões.
+- **C2 Notificações do Windows na ilha**: o Windows só entrega notificações de outros apps para apps empacotados (MSIX com identidade). Exige mudar a forma de distribuir.
+- **D2 Plugins**: precisa de um desenho de segurança (área isolada e permissões) antes de abrir para terceiros.
+- **D5 Revisar inglês e chinês**: precisa de quem fala a língua.
+
 ### Ordem sugerida
 1. ✅ **A1 + A3** — liga sozinho na primeira abertura, o desinstalador limpa o registro; a ilha some em tela cheia no mesmo monitor (Configurações → Tela).
 2. ✅ **A2 + A8** — atualizador assinado (testado de 0.1.0 para 0.1.1 no PC), fluxos `CI` e `Release`; falta criar o repositório público e o segredo da chave no GitHub.
