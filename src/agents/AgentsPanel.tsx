@@ -4,7 +4,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome, ProgressRing } from "../island/PageChrome";
-import { AGENT_STALE_MS, currentStepOf, progressOf, type AgentBoard } from "./agentsStore";
+import { AGENT_STALE_MS, answerApproval, currentStepOf, pendingApproval, progressOf, type AgentBoard } from "./agentsStore";
 
 const AGENT_COLOR = "#bf8cff";
 
@@ -28,6 +28,7 @@ export function AgentsPanel<Page extends string>({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = agents.find((agent) => agent.id === selectedId) ?? agents[0] ?? null;
   const now = Date.now();
+  const approval = pendingApproval(board);
 
   const openSettings = () => {
     try {
@@ -49,6 +50,20 @@ export function AgentsPanel<Page extends string>({
       className="agents-panel"
       label={t.agents.title}
     >
+      {approval && (
+        <div className="agents-approval" role="alertdialog" aria-label={t.agents.asks(approval.agent, approval.question)}>
+          <span className="agents-approval__text">
+            <strong>{approval.agent}</strong>
+            {approval.question}
+          </span>
+          <button className="agents-approval__button agents-approval__button--primary" type="button" onClick={() => void answerApproval(approval.id, true)}>
+            {t.agents.approve}
+          </button>
+          <button className="agents-approval__button" type="button" onClick={() => void answerApproval(approval.id, false)}>
+            {t.agents.deny}
+          </button>
+        </div>
+      )}
       {selected ? (
         <div className="agents-panel__body">
           <div className="agents-panel__list" role="tablist" aria-label={t.agents.title}>

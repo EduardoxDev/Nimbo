@@ -28,6 +28,8 @@ const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAX_AGENTS: usize = 8;
 const MAX_STEPS: usize = 40;
 const MAX_TEXT: usize = 200;
+const MAX_APPROVALS: usize = 10;
+const APPROVAL_TTL_MS: i64 = 60 * 60 * 1000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +64,18 @@ pub(crate) struct AgentEntry {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AgentBoard {
     agents: Vec<AgentEntry>,
+    #[serde(default)]
+    approvals: Vec<Approval>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Approval {
+    id: String,
+    agent: String,
+    question: String,
+    status: String,
+    created_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -256,6 +270,24 @@ fn tool_definitions() -> Value {
             }
         },
         {
+            "name": "request_approval",
+            "description": "Ask the user to approve or deny something before you do it (e.g. deleting files, running a migration, sending a message). The question appears on the user's Nimbo island with Approve and Deny buttons. Returns an id right away; then call check_approval with that id every few seconds until the status is approved or denied. Keep the question under 120 characters.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "question": { "type": "string" }, "agent": agent },
+                "required": ["question"]
+            }
+        },
+        {
+            "name": "check_approval",
+            "description": "Read the user's answer to a request_approval call: pending, approved or denied.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "id": { "type": "string" } },
+                "required": ["id"]
+            }
+        },
+        {
             "name": "list_user_tasks",
             "description": "Read the user's to-do list in Nimbo (titles and whether each is done).",
             "inputSchema": { "type": "object", "properties": {} }
@@ -392,6 +424,34 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
             ),
             None => (text_result("`title` is required.", true), vec![]),
         },
+        "request_approval" => {
+            let Some(question) = text("question") else {
+                return (text_result("`question` is required.", true), vec![]);
+            };
+            prune_approvals(&mut runtime.board.approvals, now_millis());
+            if runtime.board.approvals.iter().filter(|approval| approval.status == "pending").count() >= MAX_APPROVALS {
+                return (text_result("Too many questions are waiting for the user.", true), vec![]);
+            }
+            let id = format!("{:x}{:04x}", now_millis(), runtime.board.approvals.len());
+            runtime.board.approvals.push(Approval {
+                id: id.clone(),
+                agent: agent_name,
+                question,
+                status: "pending".to_string(),
+                created_at: now_millis(),
+            });
+            (
+                text_result(format!("Asked the user. Call check_approval with id \"{id}\" until it is approved or denied."), false),
+                vec![Effect::BoardChanged],
+            )
+        }
+        "check_approval" => {
+            let id = args.get("id").and_then(Value::as_str).unwrap_or_default();
+            match runtime.board.approvals.iter().find(|approval| approval.id == id) {
+                Some(approval) => (text_result(approval.status.clone(), false), vec![]),
+                None => (text_result("Unknown or expired approval id.", true), vec![]),
+            }
+        }
         "list_user_tasks" => {
             let lines: Vec<String> = runtime
                 .todos
@@ -402,6 +462,24 @@ fn call_tool(runtime: &mut Runtime, session_agent: Option<&str>, name: &str, arg
             (text_result(body, false), vec![])
         }
         _ => (text_result(format!("Unknown tool: {name}"), true), vec![]),
+    }
+}
+
+fn prune_approvals(approvals: &mut Vec<Approval>, now: i64) {
+    approvals.retain(|approval| approval.status == "pending" || now - approval.created_at < APPROVAL_TTL_MS);
+    if approvals.len() > MAX_APPROVALS * 2 {
+        let excess = approvals.len() - MAX_APPROVALS * 2;
+        approvals.drain(..excess);
+    }
+}
+
+fn answer_approval(approvals: &mut [Approval], id: &str, approved: bool) -> bool {
+    match approvals.iter_mut().find(|approval| approval.id == id && approval.status == "pending") {
+        Some(approval) => {
+            approval.status = if approved { "approved" } else { "denied" }.to_string();
+            true
+        }
+        None => false,
     }
 }
 
@@ -653,6 +731,19 @@ pub(crate) fn agents_clear(app: AppHandle, agent_id: Option<String>) -> AgentBoa
     agents_board()
 }
 
+#[tauri::command]
+pub(crate) fn agents_answer_approval(app: AppHandle, id: String, approved: bool) -> Result<AgentBoard, String> {
+    let changed = runtime()
+        .lock()
+        .map(|mut guard| answer_approval(&mut guard.board.approvals, &id, approved))
+        .map_err(|error| error.to_string())?;
+    if !changed {
+        return Err("This question was already answered or expired.".to_string());
+    }
+    apply_effects(&app, vec![Effect::BoardChanged]);
+    Ok(agents_board())
+}
+
 /// The island keeps the user's to-dos; agents read them through this copy.
 #[tauri::command]
 pub(crate) fn agents_sync_todos(todos: Vec<UserTodo>) {
@@ -751,4 +842,33 @@ mod tests {
         assert_eq!(friendly_name("my_cool-agent"), "My Cool Agent");
         assert_eq!(clip(&"a".repeat(300)).chars().count(), MAX_TEXT + 1);
     }
+
+    #[test]
+    fn approvals_wait_for_the_user_and_can_be_answered_once() {
+        let mut runtime = fresh();
+        let args = json!({ "question": "Apagar a pasta build?", "agent": "Claude Code" });
+        let (result, effects) = call_tool(&mut runtime, None, "request_approval", args.as_object().unwrap());
+        assert_eq!(effects, vec![Effect::BoardChanged]);
+        let id = runtime.board.approvals[0].id.clone();
+        assert!(result.to_string().contains(&id));
+        let check = json!({ "id": id });
+        let (status, _) = call_tool(&mut runtime, None, "check_approval", check.as_object().unwrap());
+        assert!(status.to_string().contains("pending"));
+        assert!(answer_approval(&mut runtime.board.approvals, &id, true));
+        assert!(!answer_approval(&mut runtime.board.approvals, &id, false));
+        let (status, _) = call_tool(&mut runtime, None, "check_approval", check.as_object().unwrap());
+        assert!(status.to_string().contains("approved"));
+    }
+
+    #[test]
+    fn answered_approvals_expire() {
+        let mut approvals = vec![
+            Approval { id: "a".into(), agent: "x".into(), question: "q".into(), status: "approved".into(), created_at: 0 },
+            Approval { id: "b".into(), agent: "x".into(), question: "q".into(), status: "pending".into(), created_at: 0 },
+        ];
+        prune_approvals(&mut approvals, APPROVAL_TTL_MS + 1);
+        assert_eq!(approvals.len(), 1);
+        assert_eq!(approvals[0].id, "b");
+    }
 }
+

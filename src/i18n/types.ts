@@ -268,6 +268,9 @@ export type Translations = {
   };
   agents: {
     title: string;
+    asks: (agent: string, question: string) => string;
+    approve: string;
+    deny: string;
     done: string;
     working: string;
     dismiss: string;

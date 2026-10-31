@@ -1908,6 +1908,7 @@ pub fn run() {
             agents::agents_regenerate_token,
             agents::agents_clear,
             agents::agents_sync_todos,
+            agents::agents_answer_approval,
             assistant::assistant_has_key,
             assistant::assistant_save_key,
             assistant::assistant_delete_key,

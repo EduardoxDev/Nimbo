@@ -268,6 +268,9 @@ const zhCN: Translations = {
   },
   agents: {
     title: "智能体",
+    asks: (agent, question) => `${agent}：${question}`,
+    approve: "同意",
+    deny: "拒绝",
     done: "已完成",
     working: "工作中…",
     dismiss: "从灵动岛移除",

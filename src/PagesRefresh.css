@@ -698,3 +698,50 @@
 .island--expanded :is(.clipboard-list, .todo-list, .editor-panel) {
   scrollbar-width: none;
 }
+
+.agents-approval {
+  position: absolute;
+  z-index: 3;
+  top: 44px;
+  left: 48px;
+  right: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(36, 28, 52, 0.96);
+  border: 1px solid rgba(191, 140, 255, 0.55);
+  border-radius: 14px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+.agents-approval__text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.agents-approval__text strong {
+  color: #d4b8ff;
+  font-size: 11px;
+}
+
+.agents-approval__button {
+  padding: 6px 12px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.agents-approval__button--primary {
+  background: #8e5cf0;
+}

@@ -265,6 +265,9 @@ const ptBR: Translations = {
   },
   agents: {
     title: "Agentes",
+    asks: (agent, question) => `${agent}: ${question}`,
+    approve: "Aprovar",
+    deny: "Recusar",
     done: "Concluído",
     working: "Trabalhando…",
     dismiss: "Tirar da ilha",

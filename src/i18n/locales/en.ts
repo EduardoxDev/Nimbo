@@ -265,6 +265,9 @@ const en: Translations = {
   },
   agents: {
     title: "Agents",
+    asks: (agent, question) => `${agent}: ${question}`,
+    approve: "Approve",
+    deny: "Deny",
     done: "Done",
     working: "Working…",
     dismiss: "Remove from the island",

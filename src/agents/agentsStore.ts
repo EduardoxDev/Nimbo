@@ -18,7 +18,24 @@ export type AgentEntry = {
   updatedAt: number;
 };
 
-export type AgentBoard = { agents: AgentEntry[] };
+export type AgentApproval = {
+  id: string;
+  agent: string;
+  question: string;
+  status: "pending" | "approved" | "denied";
+  createdAt: number;
+};
+
+export type AgentBoard = { agents: AgentEntry[]; approvals?: AgentApproval[] };
+
+export function pendingApproval(board: AgentBoard): AgentApproval | null {
+  return (board.approvals ?? []).find((approval) => approval.status === "pending") ?? null;
+}
+
+export function answerApproval(id: string, approved: boolean) {
+  if (!isTauri()) return Promise.resolve();
+  return invoke("agents_answer_approval", { id, approved }).then(() => undefined);
+}
 
 export type AgentNotice = { agent: string; text: string; level: "info" | "success" | "warning" };
 
@@ -39,6 +56,9 @@ export const AGENTS_DEMO =
   new URLSearchParams(window.location.search).get("demo") === "agents";
 
 const DEMO_BOARD: AgentBoard = {
+  approvals: [
+    { id: "demo", agent: "Claude Code", question: "Posso apagar a pasta build/ e rodar a migração do banco?", status: "pending", createdAt: Date.now() },
+  ],
   agents: [
     {
       id: "claudecode",

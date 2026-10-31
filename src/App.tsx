@@ -124,8 +124,7 @@ import {
   AGENTS_DEMO,
   useAgentBoard,
   useAgentEvents,
-  type AgentNotice,
-} from "./agents/agentsStore";
+  type AgentNotice, answerApproval, pendingApproval } from "./agents/agentsStore";
 import "./App.css";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
@@ -4506,6 +4505,7 @@ function IslandApp({
     }).catch(() => {});
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
+  const approval = pendingApproval(agentBoard.board);
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
   useWeather(settings.weatherPlace);
@@ -4545,7 +4545,17 @@ function IslandApp({
     hud: islandHud.hud,
     label: activeAgent ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}` : null,
     ring: statusRing,
-    notice: agentNotice
+    notice: approval
+      ? {
+          text: t.agents.asks(approval.agent, approval.question),
+          color: "#bf8cff",
+          page: "agents",
+          actions: [
+            { label: t.agents.approve, primary: true, onClick: () => void answerApproval(approval.id, true) },
+            { label: t.agents.deny, onClick: () => void answerApproval(approval.id, false) },
+          ],
+        }
+      : agentNotice
       ? { text: agentNotice.text, color: "#bf8cff", page: "agents" }
       : focusNotice
       ? { text: focusNotice.text, color: focusColor, page: "focus" }
