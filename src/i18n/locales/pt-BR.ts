@@ -328,6 +328,14 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  week: {
+    title: "Sua semana",
+    days: "Dia a dia",
+    water: "meta de água",
+    focus: "focos",
+    todos: "tarefas",
+    agents: "pedidos ao Claude",
+  },
   waterMeter: {
     today: "Hoje",
     week: "Últimos 7 dias",

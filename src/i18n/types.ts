@@ -331,6 +331,14 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  week: {
+    title: string;
+    days: string;
+    water: string;
+    focus: string;
+    todos: string;
+    agents: string;
+  };
   waterMeter: {
     today: string;
     week: string;

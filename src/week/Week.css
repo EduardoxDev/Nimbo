@@ -1,0 +1,97 @@
+.week__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.week__totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week__totals li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.week__totals strong {
+  color: var(--g-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.week__totals span {
+  overflow: hidden;
+  color: var(--g-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week__chart {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week__day {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.week__stack {
+  position: relative;
+  flex: 1;
+  width: 12px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+  overflow: hidden;
+  background: var(--g-pill);
+  border-radius: 6px;
+}
+
+.week__stack i {
+  display: block;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 3px;
+}
+
+.week__drop {
+  width: 6px;
+  height: 6px;
+  background: var(--g-pill-border);
+  border-radius: 50%;
+}
+
+.week__drop--met {
+  background: #5ac8fa;
+}
+
+.week__weekday {
+  color: var(--g-text-3);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.week__day--today .week__weekday {
+  color: var(--g-text);
+}

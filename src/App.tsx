@@ -14,6 +14,7 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  BarChart3,
   AirVent,
   Archive,
   Bot,
@@ -133,6 +134,7 @@ import "./App.css";
 import { recordStat, useStats } from "./stats/useStats";
 import { useReminders } from "./reminders/useReminders";
 import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
+import { WeekPanel } from "./week/WeekPanel";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
@@ -143,7 +145,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "week" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -4462,6 +4464,7 @@ function IslandApp({
   const statsHistory = useStats();
   const evolution = useMemo(() => evolutionOf(statsHistory, water.daysMet), [statsHistory, water.daysMet]);
   const currentWeather = useSyncExternalStore(subscribeWeather, getWeather, getWeather);
+  const nimboAccessory = mascotAccessory(new Date().getHours(), currentWeather, evolution.level);
   const agentBoard = useAgentBoard();
   const [agentNotice, setAgentNotice] = useState<{ text: string; until: number } | null>(null);
   const handleAgentNotice = useCallback(
@@ -4666,7 +4669,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "system" || page === "hub" || page === "water"
+        : page === "system" || page === "hub" || page === "water" || page === "week"
           ? CARDS_EXPANDED_ISLAND_HEIGHT
           : page === "agents" || page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
@@ -5054,6 +5057,7 @@ function IslandApp({
     { id: "home", label: t.home.title, icon: AirVent },
     { id: "focus", label: t.focus.title, icon: Timer },
     { id: "water", label: t.water.title, icon: Droplet },
+    { id: "week", label: t.week.title, icon: BarChart3 },
     { id: "shelf", label: t.shelf.title, icon: Archive },
     { id: "agents", label: t.agents.title, icon: Bot },
     { id: "clipboard", label: t.island.clipboardTab, icon: Clipboard },
@@ -6433,7 +6437,7 @@ function IslandApp({
             })}
             lines={hubLines}
             pills={hubPills}
-            accessory={mascotAccessory(new Date().getHours(), currentWeather, evolution.level)}
+            accessory={nimboAccessory}
             evolution={evolution}
             agents={islandAgents.map((agent) => {
               const entry = agentBoard.board.agents.find((item) => item.id === agent.id);
@@ -6489,6 +6493,18 @@ function IslandApp({
             goalMl={settings.waterGoalMl}
             cupMl={settings.waterCupMl}
             reminderMinutes={settings.waterReminderMinutes}
+            pages={islandPageLinks}
+            currentPage={page}
+            showPageIcons={settings.showPageIcons}
+            onPageChange={openIslandPage}
+          />
+        )}
+        {page === "week" && (
+          <WeekPanel
+            stats={statsHistory}
+            waterDays={water.history}
+            evolution={evolution}
+            accessory={nimboAccessory}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

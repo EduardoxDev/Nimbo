@@ -331,6 +331,14 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  week: {
+    title: "本周",
+    days: "每日",
+    water: "喝水达标",
+    focus: "专注",
+    todos: "任务",
+    agents: "Claude 请求",
+  },
   waterMeter: {
     today: "今天",
     week: "最近 7 天",

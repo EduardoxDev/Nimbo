@@ -328,6 +328,14 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  week: {
+    title: "Your week",
+    days: "Day by day",
+    water: "water goal",
+    focus: "focus rounds",
+    todos: "tasks",
+    agents: "Claude requests",
+  },
   waterMeter: {
     today: "Today",
     week: "Last 7 days",
