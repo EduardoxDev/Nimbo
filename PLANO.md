@@ -155,8 +155,8 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 |---|---|---|---|
 | D1 | ✅ **Temas**: cores, formato, fonte e animação, com exportar/importar arquivo | Personalização é o centro do produto | M |
 | D2 | **Plugins**: página nova da ilha em área isolada (iframe sandbox) com permissões que o usuário aprova | Outras pessoas criam páginas sem mexer no núcleo | G |
-| D3 | **Site e downloads**: landing page, GitHub Releases, changelog | Para outras pessoas acharem e instalarem | M |
-| D4 | **Acessibilidade**: navegação por teclado, leitor de tela, contraste, "reduzir movimento" em tudo | Obrigatório para um app que fica sempre na tela | M |
+| D3 | ✅ **Site e downloads** (página em `docs/`, falta ligar o GitHub Pages): landing page, GitHub Releases, changelog | Para outras pessoas acharem e instalarem | M |
+| D4 | ✅ **Acessibilidade**: navegação por teclado, leitor de tela, contraste, "reduzir movimento" em tudo | Obrigatório para um app que fica sempre na tela | M |
 | D5 | **Revisar inglês e chinês** com quem fala a língua | Textos foram escritos sem revisão nativa | P |
 
 ### Ordem sugerida

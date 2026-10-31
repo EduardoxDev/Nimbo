@@ -4481,3 +4481,19 @@ input,
     animation: none;
   }
 }
+
+:is(
+    .system-toggle,
+    .system-app__mute,
+    .launcher-result,
+    .agents-approval__button,
+    .island__notice-action
+  ):focus-visible {
+  outline: 2px solid #64d2ff;
+  outline-offset: 2px;
+}
+
+.system-app input[type="range"]:focus-visible,
+.launcher-search input:focus-visible {
+  outline: none;
+}

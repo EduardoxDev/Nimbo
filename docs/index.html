@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nimbo — a ilha do seu Windows</title>
+    <meta name="description" content="Nimbo é uma ilha flutuante no topo do Windows: música com letras, agenda, foco, casa inteligente, lançador de apps e agentes de IA. Grátis e de código aberto." />
+    <meta property="og:title" content="Nimbo — a ilha do seu Windows" />
+    <meta property="og:description" content="Música, agenda, foco, casa e IA numa ilha flutuante no topo da tela." />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --bg: #0b0b10;
+        --surface: #15151c;
+        --line: rgba(255, 255, 255, 0.09);
+        --text: #f5f5f7;
+        --muted: rgba(245, 245, 247, 0.66);
+        --accent: #7f86ff;
+        --green: #35e985;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+        line-height: 1.55;
+        background: radial-gradient(1200px 600px at 50% -10%, rgba(127, 134, 255, 0.22), transparent 60%), var(--bg);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .wrap {
+        width: min(1080px, 100% - 32px);
+        margin: 0 auto;
+      }
+
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .brand img {
+        width: 30px;
+        height: 30px;
+      }
+
+      .top nav a {
+        margin-left: 18px;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      .top nav a:hover {
+        color: var(--text);
+      }
+
+      .hero {
+        padding: 56px 0 40px;
+        text-align: center;
+      }
+
+      .hero h1 {
+        max-width: 760px;
+        margin: 0 auto 16px;
+        font-size: clamp(34px, 6vw, 58px);
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+      }
+
+      .hero p {
+        max-width: 620px;
+        margin: 0 auto 28px;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        font-weight: 650;
+        text-decoration: none;
+        border-radius: 12px;
+      }
+
+      .button--primary {
+        color: #ffffff;
+        background: linear-gradient(160deg, #5a5ff0, #3a3fc2);
+        box-shadow: 0 10px 30px rgba(90, 95, 240, 0.35);
+      }
+
+      .button--quiet {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--line);
+      }
+
+      .note {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .island-demo {
+        position: relative;
+        width: min(560px, 100%);
+        margin: 48px auto 0;
+        padding: 22px 26px;
+        text-align: left;
+        background: linear-gradient(180deg, #1b1d26, #08080b);
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      }
+
+      .island-demo__top {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .island-demo__top strong {
+        color: var(--text);
+      }
+
+      .island-demo__track {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .cover {
+        width: 72px;
+        height: 72px;
+        flex: 0 0 auto;
+        background: linear-gradient(135deg, #ff6b8a, #7f86ff);
+        border-radius: 14px;
+      }
+
+      .island-demo__track b {
+        display: block;
+        font-size: 17px;
+      }
+
+      .island-demo__track span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .bar {
+        height: 4px;
+        margin-top: 16px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+      }
+
+      .bar span {
+        display: block;
+        width: 42%;
+        height: 100%;
+        background: #ffffff;
+        border-radius: inherit;
+      }
+
+      section {
+        padding: 56px 0;
+      }
+
+      section h2 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        text-align: center;
+      }
+
+      section > .wrap > p.lead {
+        max-width: 620px;
+        margin: 0 auto 32px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+
+      .card .tile {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 12px;
+        font-size: 18px;
+        border-radius: 10px;
+      }
+
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14.5px;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        counter-reset: step;
+      }
+
+      .steps li {
+        list-style: none;
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+
+      .steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        display: inline-grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        margin-bottom: 10px;
+        font-weight: 700;
+        background: rgba(127, 134, 255, 0.2);
+        border-radius: 999px;
+      }
+
+      .steps h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+
+      .steps p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .faq details {
+        max-width: 760px;
+        margin: 0 auto 10px;
+        padding: 16px 18px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .faq summary {
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      .faq p {
+        margin: 10px 0 0;
+        color: var(--muted);
+      }
+
+      footer {
+        padding: 32px 0 48px;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+        border-top: 1px solid var(--line);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 820px) {
+        .grid,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+
+        .top nav {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a class="brand" href="#"><img src="icon.svg" alt="" />Nimbo</a>
+        <nav aria-label="Seções">
+          <a href="#recursos">Recursos</a>
+          <a href="#como">Como funciona</a>
+          <a href="#perguntas">Perguntas</a>
+          <a href="https://github.com/EduardoxDev/Nimbo">GitHub</a>
+        </nav>
+      </header>
+    </div>
+
+    <main>
+      <div class="wrap hero">
+        <h1>A ilha que faltava no topo do seu Windows</h1>
+        <p>Música com letras, agenda, foco, casa inteligente, lançador de apps e agentes de IA numa ilha flutuante, bonita e leve.</p>
+        <div class="actions">
+          <a class="button button--primary" href="https://github.com/EduardoxDev/Nimbo/releases/latest">Baixar para Windows</a>
+          <a class="button button--quiet" href="https://github.com/EduardoxDev/Nimbo">Ver o código</a>
+        </div>
+        <p class="note">Grátis e de código aberto · Windows 10 e 11 · atualiza sozinho</p>
+
+        <div class="island-demo" aria-hidden="true">
+          <div class="island-demo__top"><span>sex 30 out</span><strong>21:40</strong><span>☁ 24°</span></div>
+          <div class="island-demo__track">
+            <span class="cover"></span>
+            <div><b>Nome da música</b><span>Artista · Álbum</span></div>
+          </div>
+          <div class="bar"><span></span></div>
+        </div>
+      </div>
+
+      <section id="recursos">
+        <div class="wrap">
+          <h2>Tudo num lugar só</h2>
+          <p class="lead">Passe o mouse na ilha e ela abre. Troque de página com as setas.</p>
+          <div class="grid">
+            <article class="card"><div class="tile" style="background: #ff375f">♪</div><h3>Música e letras</h3><p>Controla Spotify, YouTube e qualquer player do Windows, com capa e letra sincronizada.</p></article>
+            <article class="card"><div class="tile" style="background: #ff453a">📅</div><h3>Agenda</h3><p>Liga o Google Agenda ou o Outlook e avisa na ilha antes de cada compromisso.</p></article>
+            <article class="card"><div class="tile" style="background: #ff9f0a">⏱</div><h3>Foco e água</h3><p>Pomodoro com anel de progresso e lembrete para beber água.</p></article>
+            <article class="card"><div class="tile" style="background: #40c8e0">❄</div><h3>Casa inteligente</h3><p>Ar-condicionado em 3D, luzes e tomadas pelo Home Assistant ou infravermelho, com automações por horário.</p></article>
+            <article class="card"><div class="tile" style="background: #64d2ff">🚀</div><h3>Lançador e atalhos</h3><p>Alt+Shift+Espaço abre qualquer app. Atalhos de teclado para tudo.</p></article>
+            <article class="card"><div class="tile" style="background: #bf5af2">✦</div><h3>Agentes de IA</h3><p>Claude Code e outros agentes mostram o plano na ilha e pedem sua aprovação antes de agir.</p></article>
+            <article class="card"><div class="tile" style="background: #30d158">⚙</div><h3>Sistema</h3><p>Bateria, CPU, memória, Wi-Fi, Bluetooth, modo escuro e volume de cada app.</p></article>
+            <article class="card"><div class="tile" style="background: #ffb340">🗂</div><h3>Prateleira</h3><p>Arraste arquivos para a ilha e pegue de volta quando precisar.</p></article>
+            <article class="card"><div class="tile" style="background: #5e5ce6">🎨</div><h3>Do seu jeito</h3><p>Temas, vidro fosco, tamanho, posição e tela. Some sozinha em jogos e vídeos em tela cheia.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="como">
+        <div class="wrap">
+          <h2>Comece em um minuto</h2>
+          <p class="lead">Sem conta, sem cadastro.</p>
+          <ol class="steps">
+            <li><h3>Baixe o instalador</h3><p>Em Releases, baixe o <code>Nimbo_x64-setup.exe</code>. Ele instala só para o seu usuário.</p></li>
+            <li><h3>Abra a ilha</h3><p>Ela aparece no topo da tela e liga junto com o Windows.</p></li>
+            <li><h3>Personalize</h3><p>Pelo ícone perto do relógio: agenda, casa, temas e atalhos.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="perguntas" class="faq">
+        <div class="wrap">
+          <h2>Perguntas</h2>
+          <p class="lead">O que mais perguntam.</p>
+          <details><summary>O Windows mostra um aviso ao instalar. É seguro?</summary><p>O instalador ainda não tem assinatura digital paga, então o SmartScreen avisa. Clique em "Mais informações" e "Executar assim mesmo". O código é aberto para qualquer um conferir.</p></details>
+          <details><summary>Pesa no computador?</summary><p>Parado, o Nimbo usa menos de 1% da CPU. As consultas pausam quando a ilha está escondida.</p></details>
+          <details><summary>Meus dados vão para algum servidor?</summary><p>Não. Chaves e links da agenda ficam no Gerenciador de Credenciais do Windows. O Nimbo só fala com os serviços que você ligar (agenda, Home Assistant, Claude, tempo).</p></details>
+          <details><summary>Como recebo versões novas?</summary><p>Sozinho: o Nimbo avisa na ilha e atualiza com um clique.</p></details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">Nimbo · feito por EduardoxDev · licença MIT · baseado no fly-island</div>
+    </footer>
+  </body>
+</html>
