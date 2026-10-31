@@ -282,6 +282,10 @@ export type Translations = {
     newFile: string;
     undoAll: string;
     undoConfirm: string;
+    queuePlaceholder: string;
+    queuedShort: (count: number) => string;
+    queueClear: string;
+    queueAdd: string;
     approve: string;
     deny: string;
     done: string;

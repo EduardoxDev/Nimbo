@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUp, FileDiff, Folder, RotateCcw, Square, Undo2 } from "lucide-react";
+import { ArrowUp, FileDiff, Folder, ListPlus, RotateCcw, Square, Undo2 } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { ClaudeTask } from "./useClaudeTask";
@@ -35,7 +35,12 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
       className="claude-composer"
       onSubmit={(event) => {
         event.preventDefault();
-        if (claude.running || !prompt.trim()) return;
+        if (!prompt.trim()) return;
+        if (claude.running) {
+          claude.enqueue(prompt.trim());
+          setPrompt("");
+          return;
+        }
         void claude.start(prompt).then((started) => {
           if (started) setPrompt("");
         });
@@ -48,12 +53,17 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
       <input
         value={prompt}
         maxLength={4000}
-        placeholder={claude.running ? copy.working : claude.canResume ? copy.continuePlaceholder : copy.askPlaceholder}
+        placeholder={claude.running ? copy.queuePlaceholder : claude.canResume ? copy.continuePlaceholder : copy.askPlaceholder}
         aria-label={copy.askPlaceholder}
-        disabled={claude.running}
         spellCheck={false}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
+      {claude.queued.length > 0 && (
+        <button className="claude-composer__folder" type="button" title={[copy.queueClear, ...claude.queued].join(" · ")} onClick={claude.clearQueue}>
+          <ListPlus size={11} strokeWidth={2.4} aria-hidden="true" />
+          <span>{copy.queuedShort(claude.queued.length)}</span>
+        </button>
+      )}
       {claude.changes.length > 0 && !claude.running && (
         <button
           className="claude-composer__folder claude-composer__changes"
@@ -106,7 +116,11 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
           <span>{copy.newChatShort}</span>
         </button>
       )}
-      {claude.running ? (
+      {claude.running && prompt.trim() ? (
+        <button className="claude-composer__send" type="submit" title={copy.queueAdd} aria-label={copy.queueAdd}>
+          <ListPlus size={13} strokeWidth={2.6} />
+        </button>
+      ) : claude.running ? (
         <button className="claude-composer__send claude-composer__send--stop" type="button" title={copy.stop} aria-label={copy.stop} onClick={claude.stop}>
           <Square size={11} strokeWidth={3} fill="currentColor" />
         </button>
