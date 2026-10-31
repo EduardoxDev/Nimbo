@@ -87,7 +87,7 @@ npm run tauri build -- --no-bundle
 - Anel de status na ilha fechada mostrando o foco ou a meta de água.
 - Tarefas do dia, nota diária e histórico.
 - Histórico de copiados com favoritos e notas.
-- Tradução rápida (DeepSeek, com chave do próprio usuário).
+- Tradução rápida com o Claude Haiku (mesma chave da Anthropic do assistente): português, inglês, espanhol e chinês.
 - Idiomas: português (padrão), inglês e chinês.
 
 ## Créditos

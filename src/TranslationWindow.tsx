@@ -1,4 +1,4 @@
-import { useTranslation } from "./i18n";
+import { useLocale, useTranslation } from "./i18n";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { ArrowRight, Check, Clipboard, Copy, Grip, Languages, LoaderCircle, Settings2, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
@@ -6,7 +6,8 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./TranslationWindow.css";
 
-type Direction = "auto" | "zh-en" | "en-zh";
+type Direction = "auto" | "pt" | "en" | "es" | "zh";
+const DIRECTIONS: Direction[] = ["auto", "pt", "en", "es", "zh"];
 type TranslationSettings = { shortcut: string; direction: Direction };
 const STORAGE_KEY = "nimbo-translation-settings";
 const DEFAULT_SETTINGS: TranslationSettings = { shortcut: "Alt+C", direction: "auto" };
@@ -17,7 +18,7 @@ function loadSettings(): TranslationSettings {
     const shortcut = typeof stored?.shortcut === "string" ? stored.shortcut : DEFAULT_SETTINGS.shortcut;
     return {
       shortcut: shortcut === "Alt+Space" ? DEFAULT_SETTINGS.shortcut : shortcut,
-      direction: stored?.direction === "zh-en" || stored?.direction === "en-zh" ? stored.direction : "auto",
+      direction: DIRECTIONS.includes(stored?.direction as Direction) ? (stored?.direction as Direction) : "auto",
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -51,11 +52,15 @@ export default function TranslationWindow() {
   const requestId = useRef(0);
   const clipboardRequestId = useRef(0);
   const inputLength = Array.from(input).length;
-  const targetLanguage = settings.direction === "zh-en"
-    ? t.translator.english
-    : settings.direction === "en-zh"
-      ? t.translator.chinese
-      : t.translator.bilingual;
+  const { locale } = useLocale();
+  const primaryLanguage = locale === "zh-CN" ? "zh" : locale === "en" ? "en" : "pt";
+  const languageNames: Record<Exclude<Direction, "auto">, string> = {
+    pt: t.translator.portuguese,
+    en: t.translator.english,
+    es: t.translator.spanish,
+    zh: t.translator.chinese,
+  };
+  const targetLanguage = settings.direction === "auto" ? t.translator.bilingual : languageNames[settings.direction];
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); }, [settings]);
   useEffect(() => {
@@ -138,14 +143,16 @@ export default function TranslationWindow() {
     setOutput("");
     setIsLoading(true);
     try {
-      const translated = await invoke<string>("translate_text", { text, direction: settings.direction });
+      const target = settings.direction === "auto" ? primaryLanguage : settings.direction;
+      const alternate = settings.direction === "auto" ? (primaryLanguage === "en" ? "pt" : "en") : null;
+      const translated = await invoke<string>("translate_text", { text, target, alternate });
       if (currentId === requestId.current) setOutput(translated);
     } catch (failure) {
       if (currentId === requestId.current) setError(String(failure));
     } finally {
       if (currentId === requestId.current) setIsLoading(false);
     }
-  }, [input, settings.direction, t]);
+  }, [input, settings.direction, primaryLanguage, t]);
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -247,12 +254,15 @@ export default function TranslationWindow() {
             <div className="translation-window__toolbar">
               <div className="translation-window__languages">
                 <select id="translation-direction" aria-label={t.translator.direction} value={settings.direction} disabled={isLoading} onChange={(event) => setSettings({ ...settings, direction: event.target.value as Direction })}>
-                  <option value="auto">{t.translator.auto}</option><option value="zh-en">{t.translator.chinese}</option><option value="en-zh">{t.translator.english}</option>
+                  <option value="auto">{t.translator.auto}</option>
+                  {(Object.keys(languageNames) as Exclude<Direction, "auto">[]).map((code) => (
+                    <option key={code} value={code}>{languageNames[code]}</option>
+                  ))}
                 </select>
                 <ArrowRight size={15} aria-hidden="true" />
                 <span>{targetLanguage}</span>
               </div>
-              <span className="translation-window__provider">DeepSeek AI</span>
+              <span className="translation-window__provider">Claude</span>
             </div>
             <div className="translation-window__content">
               <section className="translation-window__panel translation-window__source">

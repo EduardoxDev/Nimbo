@@ -11,8 +11,8 @@ use std::time::Duration;
 
 const CREDENTIAL_SERVICE: &str = "com.nimbo.app.assistant";
 const CREDENTIAL_USER: &str = "anthropic";
-const API_URL: &str = "https://api.anthropic.com/v1/messages";
-const API_VERSION: &str = "2026-10-21";
+pub(crate) const API_URL: &str = "https://api.anthropic.com/v1/messages";
+pub(crate) const API_VERSION: &str = "2026-10-21";
 /// `fallbacks: "default"` re-runs a declined request on Anthropic's recommended model.
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 const MODEL: &str = "claude-opus-5-5";
@@ -36,7 +36,7 @@ fn credential() -> Result<Entry, String> {
     Entry::new(CREDENTIAL_SERVICE, CREDENTIAL_USER).map_err(|error| error.to_string())
 }
 
-fn read_key() -> Result<Option<String>, String> {
+pub(crate) fn read_key() -> Result<Option<String>, String> {
     match credential()?.get_password() {
         Ok(key) => Ok(Some(key)),
         Err(KeyringError::NoEntry) => Ok(None),

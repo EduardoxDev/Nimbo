@@ -36,8 +36,8 @@ export type Translations = {
     shortcutHint: string;
     direction: string;
     auto: string;
-    zhEn: string;
-    enZh: string;
+    portuguese: string;
+    spanish: string;
     chinese: string;
     english: string;
     bilingual: string;
