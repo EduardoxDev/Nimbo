@@ -277,6 +277,11 @@ export type Translations = {
     continuePlaceholder: string;
     newChat: string;
     newChatShort: string;
+    changesShort: (files: number) => string;
+    changesTitle: (files: number, added: number, removed: number) => string;
+    newFile: string;
+    undoAll: string;
+    undoConfirm: string;
     approve: string;
     deny: string;
     done: string;

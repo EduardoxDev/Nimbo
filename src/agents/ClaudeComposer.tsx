@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUp, Folder, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, FileDiff, Folder, RotateCcw, Square, Undo2 } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { ClaudeTask } from "./useClaudeTask";
@@ -12,6 +12,10 @@ function folderName(path: string) {
 export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
   const copy = useTranslation().agents;
   const [prompt, setPrompt] = useState("");
+  const [showChanges, setShowChanges] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const added = claude.changes.reduce((sum, change) => sum + change.added, 0);
+  const removed = claude.changes.reduce((sum, change) => sum + change.removed, 0);
 
   const openSettings = () => {
     try {
@@ -50,6 +54,52 @@ export function ClaudeComposer({ claude }: { claude: ClaudeTask }) {
         spellCheck={false}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
+      {claude.changes.length > 0 && !claude.running && (
+        <button
+          className="claude-composer__folder claude-composer__changes"
+          type="button"
+          aria-expanded={showChanges}
+          title={copy.changesTitle(claude.changes.length, added, removed)}
+          onClick={() => {
+            setShowChanges((open) => !open);
+            setConfirmUndo(false);
+          }}
+        >
+          <FileDiff size={11} strokeWidth={2.4} aria-hidden="true" />
+          <span>{copy.changesShort(claude.changes.length)}</span>
+        </button>
+      )}
+      {showChanges && claude.changes.length > 0 && (
+        <div className="claude-changes g-card" role="dialog" aria-label={copy.changesTitle(claude.changes.length, added, removed)}>
+          <ul>
+            {claude.changes.map((change) => (
+              <li key={change.path}>
+                <span className="claude-changes__path" title={change.path}>{change.path}</span>
+                {change.created && <span className="claude-changes__new">{copy.newFile}</span>}
+                <span className="claude-changes__added">+{change.added}</span>
+                <span className="claude-changes__removed">−{change.removed}</span>
+              </li>
+            ))}
+          </ul>
+          <button
+            className={`claude-changes__undo${confirmUndo ? " claude-changes__undo--confirm" : ""}`}
+            type="button"
+            onClick={() => {
+              if (!confirmUndo) {
+                setConfirmUndo(true);
+                return;
+              }
+              void claude.undo().then(() => {
+                setShowChanges(false);
+                setConfirmUndo(false);
+              });
+            }}
+          >
+            <Undo2 size={12} strokeWidth={2.4} aria-hidden="true" />
+            {confirmUndo ? copy.undoConfirm : copy.undoAll}
+          </button>
+        </div>
+      )}
       {claude.canResume && !claude.running && (
         <button className="claude-composer__folder" type="button" title={copy.newChat} onClick={claude.forget}>
           <RotateCcw size={11} strokeWidth={2.4} aria-hidden="true" />

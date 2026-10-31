@@ -227,7 +227,8 @@ fn watch(app: AppHandle, child: Child, goal: String, generation: u64) {
                             Some(answer.clone()),
                             Some((notice.to_string(), if failed { "warning" } else { "success" })),
                         );
-                        let _ = app.emit("claude-task-finished", serde_json::json!({ "text": answer, "failed": failed }));
+                        let changes = crate::task_changes::finish();
+                        let _ = app.emit("claude-task-finished", serde_json::json!({ "text": answer, "failed": failed, "changes": changes }));
                     }
                 }
             }
@@ -325,6 +326,10 @@ pub(crate) async fn claude_task_start(
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "Não achei o Claude Code neste PC.".to_string())?;
 
+    let snapshot_folder = folder.clone();
+    tauri::async_runtime::spawn_blocking(move || crate::task_changes::begin(&snapshot_folder))
+        .await
+        .map_err(|error| error.to_string())?;
     let resume_id = if resume.unwrap_or(false) { LAST_SESSION.lock().ok().and_then(|last| last.clone()) } else { None };
     let mut command = Command::new(exe);
     command

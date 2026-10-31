@@ -12,6 +12,7 @@ mod ir_climate;
 mod launcher;
 mod lyrics;
 mod sessions_watch;
+mod task_changes;
 mod shelf;
 mod shortcuts;
 mod system;
@@ -1920,6 +1921,8 @@ pub fn run() {
             claude_task::claude_task_start,
             claude_task::claude_task_stop,
             claude_task::claude_task_forget,
+            task_changes::claude_task_changes,
+            task_changes::claude_task_undo,
             sessions_watch::set_watch_claude_sessions,
             assistant::assistant_has_key,
             assistant::assistant_save_key,
