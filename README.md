@@ -14,6 +14,39 @@ usuário, sem pedir administrador.
 Como o instalador ainda não é assinado, o Windows mostra o aviso do SmartScreen na primeira vez:
 clique em "Mais informações" e depois em "Executar assim mesmo".
 
+O build com instalador assina o arquivo de atualização, então precisa da chave privada:
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw "$HOME\.tauri\nimbo-updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+npm run tauri build
+```
+
+## Atualizações
+
+O Nimbo procura versão nova 30 segundos depois de abrir e a cada 6 horas, em
+`https://github.com/EduardoxDev/Nimbo/releases/latest/download/latest.json`. Quando acha, a ilha
+mostra o aviso com **Atualizar**; também dá para procurar em Configurações → Sobre. Cada atualização é
+conferida com a chave pública que está em `src-tauri/tauri.conf.json`.
+
+A chave privada fica em `~/.tauri/nimbo-updater.key`, fora do Git. **Guarde uma cópia**: sem ela não
+dá para publicar atualizações, e trocar a chave obriga todo mundo a reinstalar na mão.
+
+### Publicar uma versão
+
+1. No GitHub, em Settings → Secrets and variables → Actions, crie o segredo
+   `TAURI_SIGNING_PRIVATE_KEY` com o conteúdo da chave privada (só na primeira vez).
+2. Suba a versão em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`.
+3. Faça o commit, crie a tag e envie:
+
+```powershell
+git tag v0.2.0
+git push origin main --tags
+```
+
+O fluxo `Release` do GitHub Actions gera o instalador, assina e publica a versão com o
+`latest.json`. Quem já tem o Nimbo recebe a atualização sozinho.
+
 ## Rodar em desenvolvimento
 
 Precisa de Node 20+ e Rust (stable).

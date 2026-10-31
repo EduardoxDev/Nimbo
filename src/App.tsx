@@ -87,6 +87,7 @@ import { ProgressRing } from "./island/PageChrome";
 import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
+import { useUpdater } from "./updates/useUpdater";
 import "./shelf/Shelf.css";
 import { AgentsPanel } from "./agents/AgentsPanel";
 import { AssistantPanel } from "./assistant/AssistantPanel";
@@ -4428,6 +4429,7 @@ function IslandApp({
     }).catch(() => {});
   }, [todos]);
   const activeAgent = activeAgentOf(agentBoard.board, Date.now());
+  const updater = useUpdater({ background: true });
   const shelf = useShelf({
     onDragEnter: () => openIslandPageRef.current?.("shelf"),
     onAdded: (count) => setAgentNotice({ text: t.shelf.added(count), until: Date.now() + 5_000 }),
@@ -4460,6 +4462,22 @@ function IslandApp({
       ? { text: agentNotice.text, color: "#bf8cff", page: "agents" }
       : focusNotice
       ? { text: focusNotice.text, color: focusColor, page: "focus" }
+      : updater.showNotice
+      ? {
+          text:
+            updater.state.status === "downloading"
+              ? t.updates.downloading(updater.state.percent)
+              : t.updates.available(updater.state.status === "available" ? updater.state.version : ""),
+          color: "#7f86ff",
+          page,
+          actions:
+            updater.state.status === "available"
+              ? [
+                  { label: t.updates.install, primary: true, onClick: () => void updater.install() },
+                  { label: t.updates.later, onClick: updater.dismiss },
+                ]
+              : undefined,
+        }
       : water.reminderDue
         ? {
             text: t.water.reminder,

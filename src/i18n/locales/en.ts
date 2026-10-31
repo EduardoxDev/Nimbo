@@ -300,6 +300,18 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  updates: {
+    available: (version) => `Version ${version}`,
+    downloading: (percent) => (percent === null ? "Downloading update…" : `Downloading update ${percent}%`),
+    install: "Update",
+    later: "Later",
+    check: "Check for updates",
+    checking: "Checking…",
+    latest: "You're on the latest version",
+    error: "Couldn't check for updates right now",
+    installVersion: (version) => `Install version ${version}`,
+    installHint: "Nimbo closes, installs and opens again on its own.",
+  },
   shelf: {
     title: "Shelf",
     emptyTitle: "Shelf is empty",

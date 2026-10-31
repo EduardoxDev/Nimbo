@@ -303,6 +303,18 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  updates: {
+    available: (version) => `新版本 ${version}`,
+    downloading: (percent) => (percent === null ? "正在下载更新…" : `正在下载更新 ${percent}%`),
+    install: "更新",
+    later: "稍后",
+    check: "检查更新",
+    checking: "正在检查…",
+    latest: "已是最新版本",
+    error: "暂时无法检查更新",
+    installVersion: (version) => `安装 ${version} 版本`,
+    installHint: "Nimbo 会自动关闭、安装并重新打开。",
+  },
   shelf: {
     title: "收纳架",
     emptyTitle: "收纳架是空的",

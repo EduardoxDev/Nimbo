@@ -303,6 +303,18 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  updates: {
+    available: (version: string) => string;
+    downloading: (percent: number | null) => string;
+    install: string;
+    later: string;
+    check: string;
+    checking: string;
+    latest: string;
+    error: string;
+    installVersion: (version: string) => string;
+    installHint: string;
+  };
   shelf: {
     title: string;
     emptyTitle: string;

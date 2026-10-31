@@ -17,6 +17,7 @@ import {
   Settings,
   Timer,
 } from "lucide-react";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -31,6 +32,7 @@ import { LOCALE_CODES, TRANSLATIONS, useLocale, useTranslation } from "./i18n";
 import { HomeSettingsPage } from "./home/HomeSettingsPage";
 import { AgentsSettings } from "./agents/AgentsSettings";
 import { SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
+import { useUpdater } from "./updates/useUpdater";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import "./SettingsWindow.css";
 
@@ -703,7 +705,31 @@ function SoonPageView({ page }: { page: SoonPage }) {
 }
 
 function AboutPage() {
-  const copy = useTranslation().prefs.about;
+  const t = useTranslation();
+  const copy = t.prefs.about;
+  const updates = t.updates;
+  const updater = useUpdater({ background: false });
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void getVersion().then(setVersion).catch(() => {});
+  }, []);
+
+  const status = updater.state;
+  const statusText =
+    status.status === "checking"
+      ? updates.checking
+      : status.status === "latest"
+        ? updates.latest
+        : status.status === "error"
+          ? updates.error
+          : status.status === "available"
+            ? updates.installHint
+            : status.status === "downloading"
+              ? updates.downloading(status.percent)
+              : null;
+
   return (
     <div className="prefs-about">
       <span className="prefs-about__logo" aria-hidden="true">
@@ -711,7 +737,7 @@ function AboutPage() {
       </span>
       <strong>Nimbo</strong>
       <span>{copy.tagline}</span>
-      <span className="prefs-about__meta">{copy.version} 0.1.0</span>
+      <span className="prefs-about__meta">{copy.version} {version}</span>
       <span className="prefs-about__meta">{copy.basedOn}</span>
       <button
         className="prefs-about__link"
@@ -721,6 +747,21 @@ function AboutPage() {
         {copy.github}
         <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
       </button>
+      <button
+        className="prefs-button"
+        type="button"
+        disabled={status.status === "checking" || status.status === "downloading"}
+        onClick={() =>
+          status.status === "available" ? void updater.install() : void updater.checkNow()
+        }
+      >
+        {status.status === "available" ? updates.installVersion(status.version) : updates.check}
+      </button>
+      {statusText && (
+        <span className="prefs-about__meta" role="status">
+          {statusText}
+        </span>
+      )}
     </div>
   );
 }

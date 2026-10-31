@@ -472,11 +472,11 @@ fn keep_launch_at_startup_current(app: AppHandle) {
         };
         let marker = dir.join(STARTUP_INITIALIZED_FILE_NAME);
         let first_run = !marker.exists();
-        if first_run || get_launch_at_startup().unwrap_or(false) {
-            if set_launch_at_startup(true).is_ok() && first_run {
-                let _ = fs::create_dir_all(&dir);
-                let _ = fs::write(marker, "");
-            }
+        let enabled = (first_run || get_launch_at_startup().unwrap_or(false))
+            && set_launch_at_startup(true).is_ok();
+        if enabled && first_run {
+            let _ = fs::create_dir_all(&dir);
+            let _ = fs::write(marker, "");
         }
     });
 }
@@ -1781,6 +1781,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| {
             if window.label() == "translation" || window.label() == SETTINGS_WINDOW_LABEL {
                 if let WindowEvent::CloseRequested { api, .. } = event {

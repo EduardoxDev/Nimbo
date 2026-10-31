@@ -300,6 +300,18 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  updates: {
+    available: (version) => `Versão ${version}`,
+    downloading: (percent) => (percent === null ? "Baixando atualização…" : `Baixando atualização ${percent}%`),
+    install: "Atualizar",
+    later: "Depois",
+    check: "Procurar atualizações",
+    checking: "Procurando…",
+    latest: "Você já está na versão mais recente",
+    error: "Não deu para procurar atualizações agora",
+    installVersion: (version) => `Instalar a versão ${version}`,
+    installHint: "O Nimbo fecha, instala e abre de novo sozinho.",
+  },
   shelf: {
     title: "Prateleira",
     emptyTitle: "Prateleira vazia",

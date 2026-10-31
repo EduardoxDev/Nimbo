@@ -25,3 +25,6 @@ src-tauri/gen
 *.sln
 *.sw?
 /demo.mp4
+
+# Chaves de assinatura
+*.key

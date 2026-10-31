@@ -120,13 +120,13 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 | # | Melhoria | Por quê | Tam. |
 |---|---|---|---|
 | A1 | ✅ **Iniciar com o Windows** (`tauri-plugin-autostart`), opção em Geral | Hoje a ilha some depois de reiniciar o PC | P |
-| A2 | **Atualização automática** (`tauri-plugin-updater` + GitHub Releases, assinatura própria do updater, grátis) | Sem isso, cada versão nova exige baixar e instalar de novo na mão | M |
+| A2 | ✅ **Atualização automática** (`tauri-plugin-updater` + GitHub Releases, assinatura própria do updater, grátis) | Sem isso, cada versão nova exige baixar e instalar de novo na mão | M |
 | A3 | ✅ **Tela cheia e jogos**: esconder a ilha quando um app está em tela cheia (vídeo, jogo, apresentação) | A ilha por cima de jogo/filme incomoda e pode atrapalhar cliques | P |
 | A4 | **Vários monitores**: escolher o monitor, ou seguir o monitor do mouse; testar DPI 100/125/150% | Risco já anotado na seção 5 e nunca testado | M |
 | A5 | **Leveza**: medir CPU/RAM parado, pausar animações e consultas quando a ilha está fechada ou oculta | App de fundo tem que ser quase invisível no Gerenciador de Tarefas | M |
 | A6 | **Quebrar arquivos gigantes**: `App.tsx` (6.265 linhas), `App.css` (4.483), `lib.rs` (1.866) em módulos por página | Cada mudança fica mais lenta e arriscada; facilita plugins depois | G |
 | A7 | **Registro de erros local** + botão "Copiar diagnóstico" em Sobre | Hoje, quando algo falha no PC de alguém, não há como saber o quê | P |
-| A8 | **CI no GitHub Actions**: testes, `cargo clippy`, tipos e instalador a cada push | Garante que nada quebra sem perceber e já gera o instalador | M |
+| A8 | ✅ **CI no GitHub Actions**: testes, `cargo clippy`, tipos e instalador a cada push | Garante que nada quebra sem perceber e já gera o instalador | M |
 | A9 | **Assinatura de código** do instalador | Tira o aviso do SmartScreen; tem custo anual, fazer quando for distribuir para outras pessoas | M |
 
 ### Fase B — Terminar o que está pela metade
@@ -161,7 +161,7 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 
 ### Ordem sugerida
 1. ✅ **A1 + A3** — liga sozinho na primeira abertura, o desinstalador limpa o registro; a ilha some em tela cheia no mesmo monitor (Configurações → Tela).
-2. **A2 + A8** (atualizar sem reinstalar, com testes automáticos).
+2. ✅ **A2 + A8** — atualizador assinado (testado de 0.1.0 para 0.1.1 no PC), fluxos `CI` e `Release`; falta criar o repositório público e o segredo da chave no GitHub.
 3. **B1 Agenda** e **B2 Tradução** (fecha as pontas soltas).
 4. **A6** (organizar o código antes das features grandes).
 5. **C1 Atividades ao vivo** e **C3 Lançador** (os maiores "uau").
