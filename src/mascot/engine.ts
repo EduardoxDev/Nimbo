@@ -1,6 +1,6 @@
-export type MascotMood = "idle" | "thinking" | "working" | "waiting" | "done" | "error" | "sleeping";
+export type MascotMood = "idle" | "greeting" | "thinking" | "working" | "waiting" | "done" | "error" | "sleeping" | "annoyed" | "dizzy";
 export type MascotShape = "cloud" | "pebble" | "round" | "blob" | "drop";
-export type EyeStyle = "open" | "happy" | "closed";
+export type EyeStyle = "open" | "happy" | "closed" | "spiral";
 
 export type MascotFrame = {
   body: string;
@@ -8,6 +8,7 @@ export type MascotFrame = {
   rotation: number;
   scale: number;
   eyes: { cx: number; cy: number; rx: number; ry: number; style: EyeStyle }[];
+  hands: { cx: number; cy: number; r: number }[];
   dot: string | null;
 };
 
@@ -26,6 +27,9 @@ export const MASCOT_COLORS = ["#5ac8fa", "#ff9f0a", "#ff6961", "#bf8cff", "#35e9
 
 const MOOD_DOTS: Record<MascotMood, string | null> = {
   idle: null,
+  greeting: null,
+  annoyed: null,
+  dizzy: "#ff6fb5",
   thinking: "#bf8cff",
   working: "#0a84ff",
   waiting: "#ff9f0a",
@@ -130,6 +134,18 @@ export function mascotFrame(options: {
     offsetY = 1.5;
     rotation = -6;
     wobble = 0.1;
+  } else if (mood === "greeting") {
+    look = { x: 0, y: -0.25 };
+    offsetY = -Math.abs(Math.sin(t * 2)) * 1.4;
+  } else if (mood === "annoyed") {
+    look = { x: 0, y: 0.15 };
+    eyeHeight = 0.42;
+    wobble = 0.1;
+  } else if (mood === "dizzy") {
+    style = "spiral";
+    rotation = Math.sin(t * 7) * 12;
+    offsetY = Math.sin(t * 5) * 1.5;
+    wobble = 1.2;
   } else if (mood === "sleeping") {
     style = "closed";
     offsetY = Math.sin(t * 0.9) * 1.2;
@@ -150,5 +166,14 @@ export function mascotFrame(options: {
     style,
   }));
 
-  return { body: bodyPath(shape, t, wobble), offsetY: round(offsetY), rotation: round(rotation), scale: round(scale * 1000) / 1000, eyes, dot: MOOD_DOTS[mood] };
+  const hands =
+    mood === "greeting"
+      ? [-1, 1].map((side) => ({
+          cx: round(CENTER + side * 46),
+          cy: round(58 - (side === 1 ? Math.abs(Math.sin(t * 6)) * 10 : Math.abs(Math.sin(t * 2)) * 3)),
+          r: 7.5,
+        }))
+      : [];
+
+  return { body: bodyPath(shape, t, wobble), offsetY: round(offsetY), rotation: round(rotation), scale: round(scale * 1000) / 1000, eyes, hands, dot: MOOD_DOTS[mood] };
 }

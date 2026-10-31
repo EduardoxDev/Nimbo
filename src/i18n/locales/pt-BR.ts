@@ -304,6 +304,21 @@ const ptBR: Translations = {
       toggle_device: "aparelho",
     },
   },
+  hub: {
+    title: "Início",
+    greeting: "Oi! Tudo tranquilo por aqui",
+    calm: "Use os ícones de cima para abrir música, agenda, foco e o resto.",
+    dizzy: "Ei! O Nimbo ficou tonto de tanto clique. Já já ele volta ao normal.",
+    nothingPlaying: "Nada tocando",
+    freeCalendar: "Agenda livre",
+    eventAt: (title, time) => `${title} às ${time}`,
+    startFocus: "Começar foco",
+    focusLeft: (time) => `Foco · faltam ${time}`,
+    focusLabel: "Foco em andamento",
+    focusDetail: (rounds) => (rounds === 1 ? "1 rodada hoje" : `${rounds} rodadas hoje`),
+    water: (drank, goal) => `${drank} de ${goal} ml`,
+    playing: (title, artist) => (artist ? `${title} · ${artist}` : title),
+  },
   welcome: {
     eyebrow: "Bem-vindo ao Nimbo",
     steps: [

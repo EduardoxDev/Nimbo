@@ -62,3 +62,24 @@ O personagem do Grok Bot é da xAI. Até os projetos MIT avisam que a licença c
 - **Sistema, Agenda, Lançador e Prateleira**: margens de 22 px, cartões e pílulas no mesmo estilo; botões ligados em branco.
 - **Tema "Noir"** (#0A0A0D) para o fundo quase preto da referência.
 - Música, Casa, Tarefas e Assistente também passaram para a barra nova (componente `IslandBar`); o player e o chat foram realinhados às margens de 22–26 px.
+
+## Engenharia reversa do vídeo completo (reel ab.workss × novra.design, 53 s)
+
+| Tempo | Estado | O que acontece | Como fica no Nimbo |
+|---|---|---|---|
+| 0 s | Normal | Mascote pequeno dentro do notch | Ilha fechada mínima com o mascote |
+| 3 s | **Greeting** | A ilha abre num cartão único; o mascote no centro acena com duas "mãozinhas", com brilho quente | Tela inicial sem nada acontecendo: cartão único com o mascote acenando |
+| 6 s | **Idle** | Pílula larga ao redor do notch: mascote com brilho azul à esquerda, grade 2×2 de pontos coloridos à direita | Ilha fechada: mascote sempre à esquerda e grade de pontos (agentes ou módulos ativos) à direita |
+| 10 s | **Working** | Cartão com o mascote e 3 passos (o atual em destaque) + cartão de pílulas coloridas | Tela inicial com coisas acontecendo e a página Agentes |
+| 14 s | **Slapp** | Clicar várias vezes no mascote deixa ele tonto; o cartão ganha degradê rosa-roxo e uma mensagem engraçada; os mini-mascotes ficam numa coluna à direita | Clique repetido no mascote = humor "tonto" com mensagem |
+| 22–25 s | **Error** | Mascote rosado, olhos fechados, ponto vermelho; cartão com degradê quente, título, subtítulo vermelho e botão redondo de tentar de novo | Já feito na página Agentes |
+| 29 s | **Uploading** | Cartão com degradê verde embaixo, "Uploading Project Files", barra de progresso com o mascote andando em cima, porcentagem | Foco e downloads: cartão de progresso com o mascote na barra |
+| 34–38 s | **Annoyed** | Cursor parado em cima do mascote: olhos semicerrados | Passar o mouse muito tempo em cima = olhos semicerrados |
+| 43 s | **Task finished** | Ilha fechada com o mascote olhando para cima, ponto verde e brilho verde | Humor "pronto" na ilha fechada |
+| 48 s | Drag and drop | O mascote sai do notch e vai para cima das janelas | Ideia para depois (precisa de janela própria) |
+
+Barra superior do painel aberto: **só 3 ícones à esquerda** (início ativo em disco branco, chat, "+") e, à direita, nuvem, engrenagem, bússola, "100%" e a bateria.
+
+## GrokBot Meter (popover da barra de menus)
+
+Cabeçalho com o ícone do bot, título, engrenagem e fechar. Cartão 1: rótulo pequeno em maiúsculas ("WEEKLY"), número grande (68%), ilustração no centro (copo), valor no canto ("$12.40 / $50.00 ON-DEMAND"), régua de nível (small, **regular**, large) e "dias para zerar" em 7 bolinhas, com a atual em verde; "Resets in 3d · Updated 9:54 PM". Cartão 2: "TODAY 12 msg", "12 messages · 3 agents", linhas com ponto verde, nome, selo verde com número e hora; seção "Recent" em cinza. Rodapé com 3 botões em pílula cinza (About, Refresh, Quit). Para o Nimbo: a página Água vira um "medidor" nesse estilo (o copo d'água já existe).

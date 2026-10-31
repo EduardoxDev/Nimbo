@@ -13,6 +13,7 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  AirVent,
   Archive,
   Bot,
   Check,
@@ -79,13 +80,13 @@ import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicD
 import { HOME_DEMO } from "./demo/homeDemo";
 import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
 import { CALENDAR_DEMO } from "./demo/calendarDemo";
+import { HUB_DEMO } from "./demo/hubDemo";
 import { HomePanel } from "./HomePanel";
-import { IslandTabs } from "./IslandTabs";
 import { FocusPanel } from "./focus/FocusPanel";
 import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
-import { IslandBar, ProgressRing } from "./island/PageChrome";
+import { IslandBar, IslandPageSwitcher, ProgressRing } from "./island/PageChrome";
 import { HUD_DEMO, useHud, type HudState } from "./hud/useHud";
 import { ShelfPanel } from "./shelf/ShelfPanel";
 import { SHELF_DEMO, useShelf } from "./shelf/useShelf";
@@ -95,8 +96,11 @@ import type { WeatherPlace } from "./weather/weather";
 import { DEFAULT_SHORTCUTS, normalizeShortcuts, shortcutRequests, type ShortcutAction, type Shortcuts } from "./settings/shortcut";
 import "./weather/Weather.css";
 import { Mascot } from "./mascot/Mascot";
+import { NIMBO_COLOR, nimboMood, statusDots } from "./mascot/nimboMood";
+import type { MascotMood } from "./mascot/engine";
 import { markWelcomeOpened, welcomeOpeningDue } from "./welcome/welcome";
 import { CalendarPanel } from "./calendar/CalendarPanel";
+import { HUB_LINE_ICONS, HubPanel, type HubLine, type HubPill } from "./hub/HubPanel";
 import { LauncherPanel } from "./launcher/LauncherPanel";
 import { SystemPanel } from "./system/SystemPanel";
 import { useSystem } from "./system/useSystem";
@@ -130,7 +134,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "shelf" | "agents" | "clipboard" | "layout";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -319,6 +323,8 @@ type CollapsedStatus = {
   /** Replaces the idle to-do count, e.g. what an AI agent is doing right now. */
   label: string | null;
   agents: IslandAgent[];
+  nimbo?: MascotMood;
+  dots?: string[];
 };
 
 type IslandShellProps = {
@@ -1467,6 +1473,8 @@ export function IslandShell({
                 size={24}
                 label={collapsedStatus.agents[0].name}
               />
+            ) : collapsedStatus.nimbo ? (
+              <Mascot mood={collapsedStatus.nimbo} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={24} label="Nimbo" glow />
             ) : collapsedStatus.ring ? (
               <ProgressRing
                 progress={collapsedStatus.ring.progress}
@@ -1508,10 +1516,10 @@ export function IslandShell({
               </span>
             </span>
             )}
-            {!collapsedStatus.hud && collapsedStatus.agents.length > 1 && (
-              <span className="island__agent-dots" aria-hidden="true">
-                {collapsedStatus.agents.slice(1).map((agent) => (
-                  <Mascot key={agent.id} mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={14} showDot={false} />
+            {!collapsedStatus.hud && collapsedStatus.dots && collapsedStatus.dots.length > 0 && (
+              <span className={`island__dot-grid island__dot-grid--${collapsedStatus.dots.length}`} aria-hidden="true">
+                {collapsedStatus.dots.map((color, index) => (
+                  <span key={index} style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
                 ))}
               </span>
             )}
@@ -1576,13 +1584,7 @@ export function IslandShell({
               {showTitle && <span>Nimbo</span>}
             </div>
 
-            <IslandTabs
-              tabs={pageTabs}
-              current={page}
-              label={t.island.editor}
-              variant="bar"
-              onChange={onPageChange}
-            />
+            <IslandPageSwitcher pages={pageTabs} currentPage={page} onPageChange={onPageChange} />
 
             <button
               className="island__collapse-target"
@@ -4259,7 +4261,7 @@ function IslandApp({
 }) {
   const t = useTranslation();
   const [mode, setMode] = useState<IslandMode>(
-    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO || LAUNCHER_DEMO || SYSTEM_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
+    (MUSIC_DEMO || HOME_DEMO || PAGES_DEMO || AGENTS_DEMO || ASSISTANT_DEMO || SHELF_DEMO || CALENDAR_DEMO || LAUNCHER_DEMO || SYSTEM_DEMO || HUB_DEMO) && !HUD_DEMO ? "expanded" : "collapsed",
   );
   const [isTucked, setIsTucked] = useState(false);
   const [isPositionDetached, setIsPositionDetached] = useState(() => loadIslandPosition() !== null);
@@ -4267,7 +4269,7 @@ function IslandApp({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [page, setPage] = useState<IslandPage>(
-    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : LAUNCHER_DEMO ? "launcher" : SYSTEM_DEMO ? "system" : "todo",
+    MUSIC_DEMO ? "music" : HOME_DEMO ? "home" : AGENTS_DEMO ? "agents" : ASSISTANT_DEMO ? "assistant" : SHELF_DEMO ? "shelf" : CALENDAR_DEMO ? "calendar" : LAUNCHER_DEMO ? "launcher" : SYSTEM_DEMO ? "system" : PAGES_DEMO ? "todo" : "hub",
   );
   const [mediaState, setMediaState] = useState<MediaState>(
     MUSIC_DEMO
@@ -4582,7 +4584,7 @@ function IslandApp({
           Math.max(0, visibleTodoRows - TODO_GROW_START_ROWS) * TODO_ROW_HEIGHT
       : page === "music"
         ? MUSIC_EXPANDED_ISLAND_HEIGHT
-        : page === "agents" || page === "system"
+        : page === "agents" || page === "system" || page === "hub"
           ? CARDS_EXPANDED_ISLAND_HEIGHT
           : page === "shelf" || page === "calendar" || page === "launcher"
           ? AGENTS_EXPANDED_ISLAND_HEIGHT
@@ -4960,13 +4962,14 @@ function IslandApp({
   const system = useSystem(mode === "expanded" && page === "system" && isPageVisible);
 
   const islandPageLinks: IslandPageLink[] = [
+    { id: "hub", label: t.hub.title, icon: House },
     { id: "todo", label: t.island.todoList, icon: ListTodo },
     { id: "assistant", label: t.assistant.title, icon: Sparkles },
     { id: "launcher", label: t.launcher.title, icon: Rocket },
     { id: "system", label: t.system.title, icon: Gauge },
     { id: "music", label: t.island.music, icon: Music },
     { id: "calendar", label: t.calendar.title, icon: CalendarDays },
-    { id: "home", label: t.home.title, icon: House },
+    { id: "home", label: t.home.title, icon: AirVent },
     { id: "focus", label: t.focus.title, icon: Timer },
     { id: "water", label: t.water.title, icon: Droplet },
     { id: "shelf", label: t.shelf.title, icon: Archive },
@@ -6183,6 +6186,24 @@ function IslandApp({
   }, [runMediaCommand, settings.waterGoalMl, toggleTodo]);
   const assistant = useAssistant(runAssistantTool, assistantContext);
 
+  const timeFormat = new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" });
+  const hubNow = Date.now();
+  const nextEvent = calendar.events.find((event) => !event.allDay && event.end > hubNow) ?? null;
+  const openTodoCount = todos.filter((todo) => !todo.completed).length;
+  const musicPlaying = mediaState.playbackStatus === "playing" && Boolean(mediaState.title);
+  const hubLines: HubLine[] = [
+    musicPlaying ? { key: "music", icon: HUB_LINE_ICONS.music, text: t.hub.playing(mediaState.title ?? "", mediaState.artist ?? "") } : null,
+    nextEvent ? { key: "calendar", icon: HUB_LINE_ICONS.calendar, text: t.hub.eventAt(nextEvent.title, timeFormat.format(nextEvent.start)) } : null,
+    openTodoCount > 0 ? { key: "todo", icon: HUB_LINE_ICONS.todo, text: t.island.pendingTodos(openTodoCount) } : null,
+    water.progress < 1 && water.day.cups > 0 ? { key: "water", icon: HUB_LINE_ICONS.water, text: t.hub.water(String(water.drankMl), String(settings.waterGoalMl)) } : null,
+  ].filter((line): line is HubLine => line !== null);
+  const hubPills: HubPill[] = [
+    { key: "music", active: musicPlaying, text: musicPlaying ? mediaState.title ?? "" : t.hub.nothingPlaying },
+    { key: "calendar", active: Boolean(calendar.reminder), text: nextEvent ? t.hub.eventAt(nextEvent.title, timeFormat.format(nextEvent.start)) : t.hub.freeCalendar },
+    { key: "focus", active: isFocusActive, text: isFocusActive ? formatClock(focusTimer.remainingMs) : t.hub.startFocus },
+    { key: "water", active: water.reminderDue, text: t.hub.water(String(water.drankMl), String(settings.waterGoalMl)) },
+  ];
+
   return (
     <main
       className={`stage stage--font-${settings.fontFamily}${
@@ -6204,7 +6225,27 @@ function IslandApp({
         mediaState={mediaState}
         agentVisualState={agentVisualState}
         agentStatusLabel={agentStatusLabel}
-        collapsedStatus={collapsedStatus}
+        collapsedStatus={{
+          ...collapsedStatus,
+          nimbo: settings.statusRing === "focus" || settings.statusRing === "water" ? undefined : nimboMood({
+            hour: new Date().getHours(),
+            focusRunning: isFocusActive,
+            assistantBusy: assistant.busy,
+            needsAttention: Boolean(approval || calendar.reminder || water.reminderDue),
+            justFinished: Boolean(focusNotice),
+            musicPlaying: mediaState.playbackStatus === "playing",
+          }),
+          dots: statusDots(
+            {
+              music: mediaState.playbackStatus === "playing",
+              focus: isFocusActive,
+              calendar: Boolean(calendar.reminder),
+              water: water.reminderDue,
+              assistant: assistant.busy,
+            },
+            islandAgents.slice(1).map((agent) => agent.color),
+          ),
+        }}
         onWheelVolume={settings.wheelVolume ? islandHud.nudgeVolume : undefined}
         onOpenPage={openIslandPage}
         onWindowDragStart={startIslandDrag}
@@ -6274,6 +6315,33 @@ function IslandApp({
             currentPage={page}
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
+          />
+        )}
+        {page === "hub" && (
+          <HubPanel
+            mood={nimboMood({
+              hour: new Date().getHours(),
+              focusRunning: isFocusActive,
+              assistantBusy: assistant.busy,
+              needsAttention: Boolean(approval || calendar.reminder || water.reminderDue),
+              justFinished: Boolean(focusNotice),
+              musicPlaying: mediaState.playbackStatus === "playing",
+            })}
+            lines={hubLines}
+            pills={hubPills}
+            progress={
+              isFocusActive
+                ? {
+                    label: t.hub.focusLeft(formatClock(focusTimer.remainingMs)),
+                    progress: focusTimer.progress,
+                    detail: t.hub.focusDetail(focusTimer.state.completed),
+                  }
+                : null
+            }
+            pages={islandPageLinks}
+            currentPage={page}
+            onPageChange={openIslandPage}
+            onOpen={(key) => openIslandPage(key === "music" ? "music" : key === "calendar" ? "calendar" : key)}
           />
         )}
         {page === "system" && (

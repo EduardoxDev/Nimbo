@@ -307,6 +307,21 @@ const zhCN: Translations = {
       toggle_device: "设备",
     },
   },
+  hub: {
+    title: "首页",
+    greeting: "嗨！一切安好",
+    calm: "用上方图标打开音乐、日程、专注等页面。",
+    dizzy: "哎呀！Nimbo 被点晕了，马上就恢复。",
+    nothingPlaying: "没有播放",
+    freeCalendar: "日程空闲",
+    eventAt: (title, time) => `${time} ${title}`,
+    startFocus: "开始专注",
+    focusLeft: (time) => `专注 · 剩余 ${time}`,
+    focusLabel: "专注进行中",
+    focusDetail: (rounds) => `今天 ${rounds} 轮`,
+    water: (drank, goal) => `${drank} / ${goal} ml`,
+    playing: (title, artist) => (artist ? `${title} · ${artist}` : title),
+  },
   welcome: {
     eyebrow: "欢迎使用 Nimbo",
     steps: [

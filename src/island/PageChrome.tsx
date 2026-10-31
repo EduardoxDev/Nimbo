@@ -1,10 +1,70 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Battery, BatteryCharging, BatteryLow, type LucideIcon } from "lucide-react";
+import { Battery, BatteryCharging, BatteryLow, Plus, Settings, type LucideIcon } from "lucide-react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import { IslandTabs, type IslandTab } from "../IslandTabs";
 import { WeatherChip } from "../weather/WeatherChip";
 import { useBattery } from "../system/useBattery";
 import "./IslandBar.css";
+
+const PINNED_PAGES: string[] = ["hub", "assistant"];
+
+export function IslandPageSwitcher<Page extends string>({
+  pages,
+  currentPage,
+  onPageChange,
+}: {
+  pages: IslandTab<Page>[];
+  currentPage: Page;
+  onPageChange: (page: Page) => void;
+}) {
+  const t = useTranslation();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pinned = pages.filter((page) => PINNED_PAGES.includes(page.id) || page.id === currentPage);
+
+  const choose = (page: Page) => {
+    setPickerOpen(false);
+    onPageChange(page);
+  };
+
+  return (
+    <span className="island-bar__left" data-window-drag="false">
+      <IslandTabs tabs={pinned} current={currentPage} label={t.island.editor} variant="bar" onChange={choose} />
+      <button
+        className={`island-bar__plus${pickerOpen ? " island-bar__plus--open" : ""}`}
+        type="button"
+        aria-expanded={pickerOpen}
+        aria-label={t.island.editor}
+        title={t.island.editor}
+        onClick={(event) => {
+          event.stopPropagation();
+          setPickerOpen((open) => !open);
+        }}
+      >
+        <Plus size={12} strokeWidth={2.6} />
+      </button>
+      {pickerOpen && (
+        <div className="island-bar__picker g-card" role="menu">
+          {pages.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={`island-bar__choice${id === currentPage ? " island-bar__choice--active" : ""}`}
+              type="button"
+              role="menuitem"
+              onClick={(event) => {
+                event.stopPropagation();
+                choose(id);
+              }}
+            >
+              <Icon size={14} strokeWidth={2.2} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
 
 export function IslandBar<Page extends string>({
   pages,
@@ -25,7 +85,7 @@ export function IslandBar<Page extends string>({
 
   return (
     <div className="island-bar">
-      <IslandTabs tabs={pages} current={currentPage} label={t.island.editor} variant="bar" onChange={onPageChange} />
+      <IslandPageSwitcher pages={pages} currentPage={currentPage} onPageChange={onPageChange} />
       <span className="island-bar__status">
         {extra}
         <WeatherChip />
@@ -36,6 +96,17 @@ export function IslandBar<Page extends string>({
           </span>
         )}
         <strong>{time}</strong>
+        <button
+          className="island-bar__icon"
+          type="button"
+          title={t.prefs.windowTitle}
+          aria-label={t.prefs.windowTitle}
+          onClick={() => {
+            if (isTauri()) void invoke("open_settings_window").catch(() => {});
+          }}
+        >
+          <Settings size={13} strokeWidth={2.2} />
+        </button>
       </span>
     </div>
   );

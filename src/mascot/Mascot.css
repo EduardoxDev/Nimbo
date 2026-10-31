@@ -77,3 +77,31 @@
     animation: none;
   }
 }
+
+.mascot--interactive {
+  cursor: pointer;
+}
+
+.mascot--interactive:active {
+  transform: scale(0.94);
+}
+
+.island__dot-grid {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, 6px);
+  gap: 3px;
+  margin-left: 8px;
+}
+
+.island__dot-grid--1,
+.island__dot-grid--2 {
+  grid-template-columns: repeat(2, 6px);
+  grid-template-rows: 6px;
+}
+
+.island__dot-grid span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}

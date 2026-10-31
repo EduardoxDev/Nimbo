@@ -36,6 +36,9 @@ const MOOD_PRIORITY: Record<MascotMood, number> = {
   thinking: 3,
   done: 4,
   idle: 5,
+  greeting: 5,
+  annoyed: 5,
+  dizzy: 5,
   sleeping: 6,
 };
 

@@ -4,6 +4,11 @@ import "./Mascot.css";
 
 type Listener = (time: number) => void;
 
+const DIZZY_CLICKS = 5;
+const DIZZY_WINDOW_MS = 2_000;
+const DIZZY_MS = 4_500;
+const ANNOYED_AFTER_MS = 4_000;
+
 const listeners = new Set<Listener>();
 let frame = 0;
 let pointer: { x: number; y: number; at: number } | null = null;
@@ -42,6 +47,8 @@ export function Mascot({
   seed = "nimbo",
   showDot = true,
   glow = false,
+  interactive = false,
+  onReaction,
   label,
 }: {
   mood: MascotMood;
@@ -51,12 +58,58 @@ export function Mascot({
   seed?: string;
   showDot?: boolean;
   glow?: boolean;
+  interactive?: boolean;
+  onReaction?: (reaction: "dizzy" | "annoyed") => void;
   label?: string;
 }) {
   const maskId = `mascot-${useId().replace(/:/g, "")}`;
   const ref = useRef<SVGSVGElement>(null);
   const [time, setTime] = useState(0);
   const numericSeed = hashSeed(seed);
+  const [reaction, setReaction] = useState<"dizzy" | "annoyed" | null>(null);
+  const clicksRef = useRef<number[]>([]);
+  const hoverTimerRef = useRef(0);
+  const reactionTimerRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(hoverTimerRef.current);
+      window.clearTimeout(reactionTimerRef.current);
+    },
+    [],
+  );
+
+  const react = (next: "dizzy" | "annoyed", duration: number | null) => {
+    setReaction(next);
+    onReaction?.(next);
+    window.clearTimeout(reactionTimerRef.current);
+    if (duration !== null) reactionTimerRef.current = window.setTimeout(() => setReaction(null), duration);
+  };
+
+  const interactions = interactive
+    ? {
+        onClick: () => {
+          const now = performance.now();
+          clicksRef.current = [...clicksRef.current.filter((time) => now - time < DIZZY_WINDOW_MS), now];
+          if (clicksRef.current.length >= DIZZY_CLICKS) {
+            clicksRef.current = [];
+            react("dizzy", DIZZY_MS);
+          }
+        },
+        onPointerEnter: () => {
+          window.clearTimeout(hoverTimerRef.current);
+          hoverTimerRef.current = window.setTimeout(() => {
+            setReaction((current) => current ?? "annoyed");
+            onReaction?.("annoyed");
+          }, ANNOYED_AFTER_MS);
+        },
+        onPointerLeave: () => {
+          window.clearTimeout(hoverTimerRef.current);
+          setReaction((current) => (current === "annoyed" ? null : current));
+        },
+      }
+    : {};
+  const shownMood: MascotMood = reaction ?? mood;
 
   useEffect(() => {
     if (reducedMotion()) return;
@@ -77,12 +130,13 @@ export function Mascot({
     gaze = { x: Math.max(-1, Math.min(1, dx / 220)), y: Math.max(-1, Math.min(1, dy / 140)) };
   }
 
-  const current = mascotFrame({ shape, mood, t: time, seed: numericSeed, gaze });
+  const current = mascotFrame({ shape, mood: shownMood, t: time, seed: numericSeed, gaze });
 
   return (
     <svg
       ref={ref}
-      className={`mascot mascot--${mood}`}
+      className={`mascot mascot--${shownMood}${interactive ? " mascot--interactive" : ""}`}
+      {...interactions}
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -100,6 +154,8 @@ export function Mascot({
           {current.eyes.map((eye, index) =>
             eye.style === "open" ? (
               <ellipse key={index} cx={eye.cx} cy={eye.cy} rx={eye.rx} ry={Math.max(0.6, eye.ry)} fill="#000" />
+            ) : eye.style === "spiral" ? (
+              <circle key={index} cx={eye.cx} cy={eye.cy} r="4.6" fill="none" stroke="#000" strokeWidth="2.6" strokeDasharray="20 6" />
             ) : eye.style === "happy" ? (
               <path
                 key={index}
@@ -128,10 +184,13 @@ export function Mascot({
       <g transform={`translate(0 ${current.offsetY}) rotate(${current.rotation} 50 50) translate(50 50) scale(${current.scale}) translate(-50 -50)`}>
         <path d={current.body} fill={color} mask={`url(#${maskId})`} />
       </g>
+      {current.hands.map((hand, index) => (
+        <circle key={index} className="mascot__hand" cx={hand.cx} cy={hand.cy + current.offsetY} r={hand.r} fill={color} />
+      ))}
       {showDot && current.dot && (
         <circle className="mascot__dot" cx="20" cy="20" r="8" fill={current.dot} stroke="#0b0b0f" strokeWidth="3.5" />
       )}
-      {mood === "sleeping" && (
+      {shownMood === "sleeping" && (
         <text className="mascot__z" x="76" y="24" fontSize="18" fontWeight="700" fill={color}>
           z
         </text>

@@ -307,6 +307,21 @@ export type Translations = {
       toggle_device: string;
     };
   };
+  hub: {
+    title: string;
+    greeting: string;
+    calm: string;
+    dizzy: string;
+    nothingPlaying: string;
+    freeCalendar: string;
+    eventAt: (title: string, time: string) => string;
+    startFocus: string;
+    focusLeft: (time: string) => string;
+    focusLabel: string;
+    focusDetail: (rounds: number) => string;
+    water: (drank: string, goal: string) => string;
+    playing: (title: string, artist: string) => string;
+  };
   welcome: {
     eyebrow: string;
     steps: { title: string; text: string }[];

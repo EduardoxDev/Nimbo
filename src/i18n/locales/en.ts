@@ -304,6 +304,21 @@ const en: Translations = {
       toggle_device: "device",
     },
   },
+  hub: {
+    title: "Home",
+    greeting: "Hi! All quiet here",
+    calm: "Use the icons above to open music, calendar, focus and more.",
+    dizzy: "Hey! Nimbo got dizzy from all that clicking. It'll be back to normal in a moment.",
+    nothingPlaying: "Nothing playing",
+    freeCalendar: "Calendar is free",
+    eventAt: (title, time) => `${title} at ${time}`,
+    startFocus: "Start focus",
+    focusLeft: (time) => `Focus · ${time} left`,
+    focusLabel: "Focus in progress",
+    focusDetail: (rounds) => (rounds === 1 ? "1 round today" : `${rounds} rounds today`),
+    water: (drank, goal) => `${drank} of ${goal} ml`,
+    playing: (title, artist) => (artist ? `${title} · ${artist}` : title),
+  },
   welcome: {
     eyebrow: "Welcome to Nimbo",
     steps: [
