@@ -23,7 +23,17 @@ import {
   AudioLines,
   Check,
   Copy,
+  Disc,
+  Ellipsis,
+  GripVertical,
   Gauge,
+  ListEnd,
+  ListMusic,
+  ListPlus,
+  ListStart,
+  MicVocal,
+  Pencil,
+  Plus,
   Minus,
   MoonStar,
   Music2,
@@ -38,6 +48,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  User,
   Volume1,
   Volume2,
   VolumeX,
@@ -63,11 +74,26 @@ import {
   type Album,
   type Artist,
   type ExternalService,
+  type LyricsAnswer,
   type MotionPreference,
   type Track,
 } from "./catalog";
 import { usePreviewPlayer, type PreviewPlayer } from "./usePreviewPlayer";
 import { PauseGlyph, PlayGlyph, ServiceMark, SkipGlyph } from "./icons";
+import {
+  addToPlaylist,
+  createPlaylist,
+  loadPlaylists,
+  mosaicOf,
+  moveInPlaylist,
+  PENDING_KEY,
+  PLAYLISTS_KEY,
+  removeFromPlaylist,
+  savePlaylists,
+  takePending,
+  type Playlist,
+} from "./library";
+import { parseLrc } from "../utils/lyrics";
 import {
   ACCENTS,
   EQ_BANDS,
@@ -89,7 +115,8 @@ type View =
   | { kind: "album"; id: number }
   | { kind: "likes" }
   | { kind: "recent" }
-  | { kind: "settings" };
+  | { kind: "settings" }
+  | { kind: "playlist"; id: string };
 
 type Music = {
   t: Translations["musicApp"];
@@ -114,7 +141,14 @@ type Music = {
   clearLibrary: (which: "likes" | "recent") => void;
   /** Hides explicit songs when the setting asks for it. */
   shownTracks: (tracks: Track[]) => Track[];
+  playlists: Playlist[];
+  editPlaylists: (change: (playlists: Playlist[]) => Playlist[]) => void;
+  notify: (text: string) => void;
+  panel: Panel;
+  setPanel: (panel: Panel) => void;
 };
+
+type Panel = "lyrics" | "queue" | null;
 
 type SleepState = { kind: "off" } | { kind: "end" } | { kind: "at"; endsAt: number; minutes: number };
 
@@ -152,6 +186,8 @@ function useAsync<T>(load: () => Promise<T>, key: string) {
 function sameView(a: View, b: View) {
   return a.kind === b.kind && ("id" in a ? a.id : 0) === ("id" in b ? b.id : 0);
 }
+
+const viewKey = (view: View) => `${view.kind}${"id" in view ? view.id : ""}`;
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
@@ -204,6 +240,16 @@ export default function MusicWindow() {
     });
   }, []);
   const [sleep, setSleepState] = useState<SleepState>({ kind: "off" });
+  const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
+  const [panel, setPanel] = useState<Panel>(null);
+  const editPlaylists = useCallback((change: (playlists: Playlist[]) => Playlist[]) => {
+    setPlaylists((current) => {
+      const next = change(current);
+      savePlaylists(next);
+      return next;
+    });
+  }, []);
+  const notify = useCallback((text: string) => setToast({ text, id: Date.now() }), []);
   const sound = useMemo(
     () => ({ eqGains: settings.eqGains, normalize: settings.normalize, fade: settings.fade, speed: settings.speed }),
     [settings.eqGains, settings.normalize, settings.fade, settings.speed],
@@ -267,6 +313,27 @@ export default function MusicWindow() {
     return () => window.clearTimeout(timer);
   }, [sleep, player.pause, t]);
 
+  // Requests from the island and the voice assistant (see library.ts).
+  const playRef = useRef(player.play);
+  playRef.current = player.play;
+  useEffect(() => {
+    const consume = () => {
+      const pending = takePending();
+      if (pending) void playRef.current(pending.tracks, pending.index);
+    };
+    consume();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === PENDING_KEY && event.newValue) consume();
+      if (event.key === PLAYLISTS_KEY) setPlaylists(loadPlaylists());
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", consume);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", consume);
+    };
+  }, []);
+
   // "End of song" finished on its own.
   useEffect(() => {
     if (sleep.kind === "end" && !player.stopAfterCurrent) setSleepState({ kind: "off" });
@@ -324,6 +391,12 @@ export default function MusicWindow() {
   }, []);
 
   const back = useCallback(() => setHistory((items) => (items.length > 1 ? items.slice(0, -1) : items)), []);
+
+  useEffect(() => {
+    if (view.kind === "playlist" && !playlists.some((playlist) => playlist.id === view.id)) {
+      setHistory((items) => [...items.filter((item) => !(item.kind === "playlist" && item.id === view.id)), { kind: "home" }]);
+    }
+  }, [view, playlists]);
 
   // Every page change starts at the top.
   useEffect(() => {
@@ -404,6 +477,11 @@ export default function MusicWindow() {
     recent,
     clearLibrary,
     shownTracks,
+    playlists,
+    editPlaylists,
+    notify,
+    panel,
+    setPanel,
   };
 
   return (
@@ -420,7 +498,7 @@ export default function MusicWindow() {
         }
       >
         <Sidebar view={view} likes={likes.length} recent={recent.length} onOpen={open} onSearch={() => searchRef.current?.focus()} />
-        <div className="mm-body">
+        <div className={`mm-body${panel ? " mm-body--panel" : ""}`}>
           <header className="mm-top" data-tauri-drag-region>
             <button className="mm-round" type="button" title={t.back} aria-label={t.back} disabled={history.length < 2} onClick={back}>
               <ChevronLeft size={18} />
@@ -459,7 +537,7 @@ export default function MusicWindow() {
 
           <main className="mm-main" ref={mainRef}>
             <div className="mm-glow" aria-hidden="true" />
-            <div className="mm-page" key={history.length + view.kind + ("id" in view ? view.id : "")}>
+            <div className="mm-page" key={history.length + viewKey(view)}>
               {view.kind === "home" && <HomeView />}
               {view.kind === "search" && <SearchView query={debounced} />}
               {view.kind === "artist" && <ArtistView id={view.id} />}
@@ -467,9 +545,11 @@ export default function MusicWindow() {
               {view.kind === "likes" && <LibraryView kind="likes" tracks={likes} />}
               {view.kind === "recent" && <LibraryView kind="recent" tracks={recent} />}
               {view.kind === "settings" && <SettingsView />}
+              {view.kind === "playlist" && <PlaylistView id={view.id} />}
             </div>
           </main>
         </div>
+        {panel && <NowPanel />}
         <PlayerBar />
         {toast && (
           <div className="mm-toast" role="status" key={toast.id}>
@@ -537,7 +617,7 @@ function Sidebar({
   onOpen: (view: View) => void;
   onSearch: () => void;
 }) {
-  const { t } = useMusic();
+  const { t, playlists, editPlaylists } = useMusic();
   const items: { id: View["kind"]; label: string; icon: typeof House; count?: number; run: () => void }[] = [
     { id: "home", label: t.home, icon: House, run: () => onOpen({ kind: "home" }) },
     {
@@ -589,6 +669,42 @@ function Sidebar({
         {items.map(renderItem)}
         <p className="mm-nav__heading">{t.library}</p>
         {library.map(renderItem)}
+        <p className="mm-nav__heading mm-nav__heading--row">
+          {t.playlists}
+          <button
+            type="button"
+            className="mm-nav__add"
+            title={t.newPlaylist}
+            aria-label={t.newPlaylist}
+            onClick={() => {
+              const next = createPlaylist(playlists, t.playlistDefault(playlists.length + 1));
+              editPlaylists(() => next);
+              onOpen({ kind: "playlist", id: next[0].id });
+            }}
+          >
+            <Plus size={14} strokeWidth={2.6} />
+          </button>
+        </p>
+        <div className="mm-nav__playlists">
+          {playlists.map((playlist, index) => {
+            const active = view.kind === "playlist" && view.id === playlist.id;
+            return (
+              <button
+                key={playlist.id}
+                type="button"
+                className={`mm-nav__item mm-nav__item--playlist${active ? " mm-nav__item--active" : ""}`}
+                aria-current={active ? "page" : undefined}
+                title={playlist.name}
+                style={stagger(index)}
+                onClick={() => onOpen({ kind: "playlist", id: playlist.id })}
+              >
+                <Mosaic tracks={playlist.tracks} size="nav" />
+                <span className="mm-nav__label">{playlist.name}</span>
+                {playlist.tracks.length ? <span className="mm-nav__count">{playlist.tracks.length}</span> : null}
+              </button>
+            );
+          })}
+        </div>
         <span className="mm-nav__gap" />
         {more.map(renderItem)}
       </nav>
@@ -787,17 +903,24 @@ function TrackList({
   showAlbum = true,
   showCover = true,
   limit,
+  onRemove,
+  onMove,
 }: {
   tracks: Track[];
   numbered?: boolean;
   showAlbum?: boolean;
   showCover?: boolean;
   limit?: number;
+  /** Shows "remove from this playlist" in the row menu. */
+  onRemove?: (track: Track, index: number) => void;
+  /** Lets rows be dragged to a new position. */
+  onMove?: (from: number, to: number) => void;
 }) {
   const { player, open, t, shownTracks } = useMusic();
   const [expanded, setExpanded] = useState(false);
   tracks = shownTracks(tracks);
   const visible = limit && !expanded ? tracks.slice(0, limit) : tracks;
+  const drag = useDragOrder(onMove);
   return (
     <>
       <ol className={`mm-tracks${showAlbum ? "" : " mm-tracks--no-album"}${numbered ? "" : " mm-tracks--plain"}`}>
@@ -805,7 +928,7 @@ function TrackList({
           const isCurrent = player.current?.id === track.id;
           const isPlaying = isCurrent && player.playing;
           return (
-            <li key={`${track.id}-${index}`} style={stagger(index)}>
+            <li key={`${track.id}-${index}`} style={stagger(index)} {...drag.item(index)}>
               <div
                 className={`mm-track${isCurrent ? " mm-track--current" : ""}`}
                 role="button"
@@ -867,6 +990,7 @@ function TrackList({
                 )}
                 <LikeButton track={track} />
                 <span className="mm-track__time">{formatDuration(track.duration)}</span>
+                <TrackMenu track={track} onRemove={onRemove ? () => onRemove(track, index) : undefined} />
               </div>
             </li>
           );
@@ -1458,7 +1582,7 @@ function Visualizer() {
 }
 
 function PlayerBar() {
-  const { t, player, open } = useMusic();
+  const { t, player, open, panel, setPanel } = useMusic();
   const track = player.current;
   const progress = player.length > 0 ? (player.time / player.length) * 100 : 0;
   const volumeLevel = player.muted ? 0 : player.volume;
@@ -1559,11 +1683,27 @@ function PlayerBar() {
 
         <div className="mm-player__side">
           <SleepChip />
-          {track && (
-            <span className="mm-badge mm-badge--preview" title={t.previewNote}>
-              {t.previewBadge}
-            </span>
-          )}
+          <button
+            type="button"
+            className={`mm-icon${panel === "lyrics" ? " mm-icon--on" : ""}`}
+            title={t.lyrics}
+            aria-label={t.lyrics}
+            aria-pressed={panel === "lyrics"}
+            disabled={!track}
+            onClick={() => setPanel(panel === "lyrics" ? null : "lyrics")}
+          >
+            <MicVocal size={17} />
+          </button>
+          <button
+            type="button"
+            className={`mm-icon${panel === "queue" ? " mm-icon--on" : ""}`}
+            title={t.queue}
+            aria-label={t.queue}
+            aria-pressed={panel === "queue"}
+            onClick={() => setPanel(panel === "queue" ? null : "queue")}
+          >
+            <ListMusic size={17} />
+          </button>
           {track && <ListenFullMenu track={track} compact />}
           <button type="button" className="mm-icon" title={player.muted ? t.unmute : t.mute} aria-label={player.muted ? t.unmute : t.mute} onClick={player.toggleMute}>
             <VolumeIcon size={17} />
@@ -1926,6 +2066,453 @@ function SettingsView() {
           <span />
         </SettingRow>
       </section>
+    </div>
+  );
+}
+
+// ---------- Drag to reorder ----------
+
+/** HTML drag and drop for lists; the music window turns off Tauri's file-drop handler so these events arrive. */
+function useDragOrder(onMove?: (from: number, to: number) => void) {
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  return {
+    item: (index: number) =>
+      onMove
+        ? {
+            draggable: true,
+            "data-dragging": dragging === index || undefined,
+            "data-over": over === index && dragging !== index ? (dragging !== null && dragging < index ? "after" : "before") : undefined,
+            onDragStart: (event: React.DragEvent) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", String(index));
+              setDragging(index);
+            },
+            onDragOver: (event: React.DragEvent) => {
+              if (dragging === null) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              if (over !== index) setOver(index);
+            },
+            onDrop: (event: React.DragEvent) => {
+              event.preventDefault();
+              if (dragging !== null && dragging !== index) onMove(dragging, index);
+              setDragging(null);
+              setOver(null);
+            },
+            onDragEnd: () => {
+              setDragging(null);
+              setOver(null);
+            },
+          }
+        : {},
+  };
+}
+
+// ---------- Playlist covers ----------
+
+function Mosaic({ tracks, size }: { tracks: Track[]; size: "nav" | "xl" }) {
+  const covers = mosaicOf(tracks);
+  return (
+    <span className={`mm-mosaic mm-mosaic--${size} mm-mosaic--${covers.length >= 4 ? 4 : covers.length ? 1 : 0}`} aria-hidden="true">
+      {covers.length >= 4
+        ? covers.map((src) => <img key={src} src={src} alt="" draggable={false} />)
+        : covers.length
+          ? <img src={covers[0]} alt="" draggable={false} />
+          : <ListMusic size={size === "nav" ? 14 : 64} strokeWidth={1.8} />}
+    </span>
+  );
+}
+
+// ---------- Row menu ----------
+
+function TrackMenu({ track, onRemove }: { track: Track; onRemove?: () => void }) {
+  const { t, player, open, playlists, editPlaylists, notify } = useMusic();
+  const [place, setPlace] = useState<CSSProperties | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!place) return;
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
+      if (event.type === "pointerdown" && (menuRef.current?.contains(event.target as Node) || buttonRef.current?.contains(event.target as Node))) return;
+      setPlace(null);
+      setChoosing(false);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", close);
+    window.addEventListener("resize", close);
+    document.querySelector(".mm-main")?.addEventListener("scroll", close, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("resize", close);
+      document.querySelector(".mm-main")?.removeEventListener("scroll", close);
+    };
+  }, [place]);
+
+  const toggle = () => {
+    if (place) {
+      setPlace(null);
+      setChoosing(false);
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Fixed position so the list's scroll box never clips it; opens upwards near the player.
+    const upwards = window.innerHeight - rect.bottom < 330;
+    setPlace({
+      right: Math.max(8, window.innerWidth - rect.right),
+      ...(upwards ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
+    });
+  };
+
+  const run = (action: () => void) => () => {
+    action();
+    setPlace(null);
+    setChoosing(false);
+  };
+
+  const addTo = (id: string, name: string) =>
+    run(() => {
+      editPlaylists((current) => addToPlaylist(current, id, track));
+      notify(t.addedToPlaylist(name));
+    });
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`mm-more-btn${place ? " mm-more-btn--open" : ""}`}
+        title={t.more}
+        aria-label={`${t.more}: ${track.title}`}
+        aria-haspopup="menu"
+        aria-expanded={Boolean(place)}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggle();
+        }}
+      >
+        <Ellipsis size={17} />
+      </button>
+      {place && (
+        <div className="mm-menu mm-menu--track" role="menu" ref={menuRef} style={place} onClick={(event) => event.stopPropagation()}>
+          {!choosing ? (
+            <>
+              <button type="button" role="menuitem" className="mm-menu__item" style={stagger(0)} onClick={run(() => { player.enqueue(track, true); notify(t.addedToQueue(track.title)); })}>
+                <ListStart size={16} /> {t.playNext}
+              </button>
+              <button type="button" role="menuitem" className="mm-menu__item" style={stagger(1)} onClick={run(() => { player.enqueue(track); notify(t.addedToQueue(track.title)); })}>
+                <ListEnd size={16} /> {t.addToQueue}
+              </button>
+              <button type="button" role="menuitem" className="mm-menu__item" style={stagger(2)} onClick={() => setChoosing(true)}>
+                <ListPlus size={16} /> {t.addToPlaylist}
+                <ChevronRight size={15} className="mm-menu__check" />
+              </button>
+              <span className="mm-menu__line" />
+              <button type="button" role="menuitem" className="mm-menu__item" style={stagger(3)} onClick={run(() => open({ kind: "artist", id: track.artistId }))}>
+                <User size={16} /> {t.goToArtist}
+              </button>
+              <button type="button" role="menuitem" className="mm-menu__item" style={stagger(4)} onClick={run(() => open({ kind: "album", id: track.albumId }))}>
+                <Disc size={16} /> {t.goToAlbum}
+              </button>
+              {onRemove && (
+                <>
+                  <span className="mm-menu__line" />
+                  <button type="button" role="menuitem" className="mm-menu__item mm-menu__item--danger" style={stagger(5)} onClick={run(onRemove)}>
+                    <Trash2 size={16} /> {t.removeFromPlaylist}
+                  </button>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <button type="button" className="mm-menu__item mm-menu__back" onClick={() => setChoosing(false)}>
+                <ChevronLeft size={16} /> {t.addToPlaylist}
+              </button>
+              <span className="mm-menu__line" />
+              <button
+                type="button"
+                role="menuitem"
+                className="mm-menu__item"
+                style={stagger(0)}
+                onClick={run(() => {
+                  const name = t.playlistDefault(playlists.length + 1);
+                  editPlaylists((current) => createPlaylist(current, name, track));
+                  notify(t.addedToPlaylist(name));
+                })}
+              >
+                <span className="mm-menu__new" aria-hidden="true">
+                  <Plus size={14} strokeWidth={2.6} />
+                </span>
+                {t.newPlaylist}
+              </button>
+              <div className="mm-menu__scroll">
+                {playlists.map((playlist, index) => (
+                  <button key={playlist.id} type="button" role="menuitem" className="mm-menu__item" style={stagger(index + 1)} onClick={addTo(playlist.id, playlist.name)}>
+                    <Mosaic tracks={playlist.tracks} size="nav" />
+                    <span className="mm-menu__label">{playlist.name}</span>
+                    {playlist.tracks.some((item) => item.id === track.id) && <Check size={14} className="mm-menu__check" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---------- Lyrics and queue panel ----------
+
+type LyricsView = { status: "loading" } | { status: "missing" } | { status: "ready"; lines: string[]; instrumental: boolean };
+
+function linesOf(answer: LyricsAnswer | null): LyricsView {
+  if (!answer) return { status: "missing" };
+  if (answer.instrumental) return { status: "ready", lines: [], instrumental: true };
+  const lines = answer.plain
+    ? answer.plain.split(/\r?\n/).map((line) => line.trim())
+    : answer.synced
+      ? parseLrc(answer.synced).map((line) => line.text)
+      : [];
+  return lines.some(Boolean) ? { status: "ready", lines, instrumental: false } : { status: "missing" };
+}
+
+function LyricsPane() {
+  const { player, t } = useMusic();
+  const track = player.current;
+  const [view, setView] = useState<LyricsView>({ status: "loading" });
+
+  useEffect(() => {
+    if (!track) return;
+    let cancelled = false;
+    setView({ status: "loading" });
+    catalog
+      .lyrics(track)
+      .then((answer) => !cancelled && setView(linesOf(answer)))
+      .catch(() => !cancelled && setView({ status: "missing" }));
+    return () => {
+      cancelled = true;
+    };
+    // The id names the song; the rest of the object changes when its preview refreshes.
+  }, [track?.id]);
+
+  if (!track) return null;
+  return (
+    <div className="mm-lyrics">
+      <header className="mm-lyrics__track">
+        <Cover src={track.cover} size="md" />
+        <span>
+          <strong>{track.title}</strong>
+          <small>{track.artistName}</small>
+        </span>
+      </header>
+      {view.status === "loading" ? (
+        <NimboState mood="thinking" text={t.lyricsLoading} />
+      ) : view.status === "missing" ? (
+        <NimboState mood="annoyed" text={t.lyricsMissing} />
+      ) : view.instrumental ? (
+        <NimboState mood="done" text={t.lyricsInstrumental} />
+      ) : (
+        <>
+          <ol className="mm-lyrics__lines" key={track.id}>
+            {view.lines.map((line, index) =>
+              line ? (
+                <li key={index} style={stagger(index)}>
+                  {line}
+                </li>
+              ) : (
+                <li key={index} className="mm-lyrics__gap" aria-hidden="true" />
+              ),
+            )}
+          </ol>
+          <p className="mm-lyrics__note">
+            {t.lyricsNote} · {t.lyricsCredit}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function QueuePane() {
+  const { player, t } = useMusic();
+  const upcoming = player.queue.slice(player.index + 1);
+  const offset = player.index + 1;
+  const drag = useDragOrder((from, to) => player.moveInQueue(from + offset, to + offset));
+  return (
+    <div className="mm-queue">
+      {player.current && (
+        <>
+          <h3>{t.nowPlaying}</h3>
+          <div className="mm-queue__row mm-queue__row--now">
+            <Cover src={player.current.cover} size="sm" />
+            <span className="mm-queue__text">
+              <strong>{player.current.title}</strong>
+              <small>{player.current.artistName}</small>
+            </span>
+            {player.playing && <Equalizer />}
+          </div>
+        </>
+      )}
+      <h3>
+        {t.upNext}
+        {upcoming.length > 0 && (
+          <button type="button" className="mm-queue__clear" onClick={player.clearUpcoming}>
+            {t.clearQueue}
+          </button>
+        )}
+      </h3>
+      {upcoming.length === 0 ? (
+        <p className="mm-queue__empty">{t.queueEmpty}</p>
+      ) : (
+        <ol className="mm-queue__list">
+          {upcoming.map((track, index) => (
+            <li key={`${track.id}-${index + offset}`} style={stagger(index)} {...drag.item(index)}>
+              <div className="mm-queue__row">
+                <span className="mm-queue__grip" title={t.dragToReorder} aria-hidden="true">
+                  <GripVertical size={14} />
+                </span>
+                <button type="button" className="mm-queue__jump" onClick={() => player.jump(index + offset)} aria-label={`${t.play}: ${track.title}`}>
+                  <Cover src={track.cover} size="sm" />
+                  <span className="mm-queue__text">
+                    <strong>{track.title}</strong>
+                    <small>{track.artistName}</small>
+                  </span>
+                </button>
+                <button type="button" className="mm-icon mm-queue__remove" title={t.removeFromQueue} aria-label={`${t.removeFromQueue}: ${track.title}`} onClick={() => player.removeFromQueue(index + offset)}>
+                  <X size={15} />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function NowPanel() {
+  const { panel, setPanel, t } = useMusic();
+  if (!panel) return null;
+  return (
+    <aside className="mm-now" aria-label={panel === "lyrics" ? t.lyrics : t.queue}>
+      <header className="mm-now__head">
+        <Segmented
+          label={t.nowPlaying}
+          value={panel}
+          options={[
+            { value: "lyrics", label: t.lyrics },
+            { value: "queue", label: t.queue },
+          ]}
+          onChange={(value) => setPanel(value)}
+        />
+        <button type="button" className="mm-icon" title={t.closePanel} aria-label={t.closePanel} onClick={() => setPanel(null)}>
+          <X size={16} />
+        </button>
+      </header>
+      <div className="mm-now__body" key={panel}>
+        {panel === "lyrics" ? <LyricsPane /> : <QueuePane />}
+      </div>
+    </aside>
+  );
+}
+
+// ---------- Playlist page ----------
+
+function PlaylistView({ id }: { id: string }) {
+  const { t, playlists, editPlaylists, setTint } = useMusic();
+  const playlist = playlists.find((item) => item.id === id);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    setTint(playlist?.tracks[0]?.cover ?? null);
+  }, [playlist?.tracks, setTint]);
+
+  useEffect(() => {
+    if (!confirming) return;
+    const timer = window.setTimeout(() => setConfirming(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [confirming]);
+
+  if (!playlist) return null;
+  const total = playlist.tracks.reduce((sum, track) => sum + track.duration, 0);
+  const saveName = () => {
+    const name = draft.trim();
+    if (name) editPlaylists((current) => current.map((item) => (item.id === id ? { ...item, name: name.slice(0, 80) } : item)));
+    setEditing(false);
+  };
+
+  return (
+    <div className="mm-view mm-view--flush">
+      <header className="mm-banner mm-banner--playlist">
+        {playlist.tracks[0]?.coverXl && <img className="mm-backdrop" src={playlist.tracks[0].coverXl} alt="" aria-hidden="true" />}
+        <span className="mm-banner__art">
+          <Mosaic tracks={playlist.tracks} size="xl" />
+        </span>
+        <div className="mm-banner__text">
+          <span className="mm-eyebrow">{t.playlist}</span>
+          {editing ? (
+            <input
+              className="mm-rename"
+              value={draft}
+              autoFocus
+              maxLength={80}
+              aria-label={t.playlistName}
+              onChange={(event) => setDraft(event.currentTarget.value)}
+              onBlur={saveName}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") saveName();
+                if (event.key === "Escape") setEditing(false);
+              }}
+            />
+          ) : (
+            <h1>
+              <button
+                type="button"
+                className="mm-rename-btn"
+                title={t.rename}
+                onClick={() => {
+                  setDraft(playlist.name);
+                  setEditing(true);
+                }}
+              >
+                {playlist.name}
+                <Pencil size={20} aria-hidden="true" />
+              </button>
+            </h1>
+          )}
+          <p>{[t.trackCount(playlist.tracks.length), total ? formatDuration(total) : null].filter(Boolean).join(" · ")}</p>
+        </div>
+      </header>
+      <div className="mm-view__pad">
+        <div className="mm-actions mm-actions--bar">
+          <PlayButton tracks={playlist.tracks} />
+          <button
+            type="button"
+            className={`mm-pill mm-pill--ghost mm-pill--danger${confirming ? " mm-pill--confirm" : ""}`}
+            onClick={() => (confirming ? editPlaylists((current) => current.filter((item) => item.id !== id)) : setConfirming(true))}
+          >
+            <Trash2 size={15} />
+            {confirming ? t.confirm : t.deletePlaylist}
+          </button>
+        </div>
+        {playlist.tracks.length === 0 ? (
+          <NimboState mood="waiting" text={t.emptyPlaylist} />
+        ) : (
+          <TrackList
+            tracks={playlist.tracks}
+            onRemove={(track) => editPlaylists((current) => removeFromPlaylist(current, id, track.id))}
+            onMove={(from, to) => editPlaylists((current) => moveInPlaylist(current, id, from, to))}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -311,6 +311,44 @@ export function usePreviewPlayer({
 
   const pause = useCallback(() => audioRef.current?.pause(), []);
 
+  // Queue edits keep `index` on the song that is playing.
+  const moveInQueue = useCallback((from: number, to: number) => {
+    const list = [...queueRef.current];
+    if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
+    const [item] = list.splice(from, 1);
+    list.splice(to, 0, item);
+    const at = indexRef.current;
+    const nextIndex = from === at ? to : from < at && to >= at ? at - 1 : from > at && to <= at ? at + 1 : at;
+    setQueue(list);
+    setIndex(nextIndex);
+  }, []);
+
+  const removeFromQueue = useCallback((position: number) => {
+    const at = indexRef.current;
+    if (position === at) return;
+    setQueue((list) => list.filter((_, item) => item !== position));
+    if (position < at) setIndex(at - 1);
+  }, []);
+
+  /** "Play next" puts the song right after the current one; otherwise it goes last. */
+  const enqueue = useCallback(
+    (track: Track, next = false) => {
+      const list = queueRef.current;
+      if (list.length === 0 || indexRef.current < 0) {
+        void start([track], 0);
+        return;
+      }
+      const at = next ? indexRef.current + 1 : list.length;
+      setQueue([...list.slice(0, at), track, ...list.slice(at)]);
+    },
+    [start],
+  );
+
+  const clearUpcoming = useCallback(() => {
+    const at = indexRef.current;
+    setQueue((list) => list.slice(0, at + 1));
+  }, []);
+
   const seek = useCallback((seconds: number) => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -370,6 +408,11 @@ export function usePreviewPlayer({
     readLevels,
     toggle,
     pause,
+    moveInQueue,
+    removeFromQueue,
+    enqueue,
+    clearUpcoming,
+    jump: (position: number) => void start(queueRef.current, position),
     next: () => step(1),
     previous: () => {
       // Like most players: restart the song unless it just began.

@@ -66,6 +66,12 @@ fn tools() -> Value {
         strict("log_water", "Record glasses of water the user just drank.", json!({ "glasses": { "type": "integer", "minimum": 1, "maximum": 5 } }), json!(["glasses"])),
         strict("music", "Control the music currently playing on the computer.", json!({ "action": { "type": "string", "enum": ["play_pause", "next", "previous"] } }), json!(["action"])),
         strict(
+            "play_song",
+            "Find a song or artist in the Nimbo Music catalog and start playing it (30-second previews). Use for requests like 'play Anitta' or 'put on Bohemian Rhapsody'.",
+            json!({ "query": { "type": "string", "description": "Song and/or artist name, as the user said it." } }),
+            json!(["query"])
+        ),
+        strict(
             "air_conditioner",
             "Control the user's air conditioner: turn it on or off, set the target temperature in °C, or change the mode.",
             json!({

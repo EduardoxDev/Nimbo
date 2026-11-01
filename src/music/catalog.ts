@@ -43,7 +43,9 @@ export type Shelf = { tracks: Track[]; albums: Album[]; artists: Artist[] };
 export type ArtistPage = { artist: Artist; top: Track[]; albums: Album[]; related: Artist[] };
 export type AlbumPage = { album: Album; tracks: Track[] };
 
-export type ExternalService = "spotify" | "spotifyWeb" | "youtube" | "deezer";
+export type LyricsAnswer = { synced: string | null; plain: string | null; instrumental: boolean };
+
+export type ExternalService ="spotify" | "spotifyWeb" | "youtube" | "deezer";
 
 type Commands = {
   music_chart: [{ genreId: number; locale: string }, Shelf];
@@ -89,6 +91,26 @@ export const catalog = {
     cached(`search:${query.toLowerCase()}:${locale}`, () => call("music_search", { query, locale })),
   artist: (id: number, locale: string) => cached(`artist:${id}:${locale}`, () => call("music_artist", { id, locale })),
   album: (id: number, locale: string) => cached(`album:${id}:${locale}`, () => call("music_album", { id, locale })),
+  /** Lyrics from LRCLIB (the same source as the island). Only title, artist, album and length leave the PC. */
+  lyrics: (track: Track) =>
+    cached(`lyrics:${track.id}`, async (): Promise<LyricsAnswer | null> => {
+      if (isTauri()) {
+        return invoke<LyricsAnswer | null>("fetch_lyrics", {
+          title: track.title,
+          artist: track.artistName,
+          album: track.albumTitle || null,
+          durationMs: track.duration * 1000,
+        });
+      }
+      const query = new URLSearchParams({ track_name: track.title, artist_name: track.artistName });
+      const found = (await (await fetch(`https://lrclib.net/api/search?${query}`)).json()) as {
+        syncedLyrics?: string | null;
+        plainLyrics?: string | null;
+        instrumental?: boolean;
+      }[];
+      const best = found.find((item) => item.plainLyrics || item.syncedLyrics || item.instrumental);
+      return best ? { synced: best.syncedLyrics ?? null, plain: best.plainLyrics ?? null, instrumental: Boolean(best.instrumental) } : null;
+    }),
   /** Never cached: it exists to get a preview link that has not expired. */
   track: (id: number) => call("music_track", { id }),
   openExternal: async (service: ExternalService, track: Pick<Track, "title" | "artistName">) => {

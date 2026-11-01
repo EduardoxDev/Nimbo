@@ -79,6 +79,8 @@ import {
 } from "./i18n";
 import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
+import { playByQuery, playRequestOf } from "./music/library";
+import { IslandDiscover } from "./music/IslandDiscover";
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import { HOME_DEMO } from "./demo/homeDemo";
 import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
@@ -3631,6 +3633,8 @@ function MusicPlayerPanel({
             </p>
           )}
         </div>
+      ) : !hasTrack ? (
+        <IslandDiscover />
       ) : (
         <div className="np-hero" key={trackKey ?? "empty"}>
           <div className="np-art" aria-hidden="true">
@@ -6386,6 +6390,12 @@ function IslandApp({
         for (let index = 0; index < glasses; index += 1) current.water.add();
         return `Logged ${glasses} glass(es).`;
       }
+      case "play_song": {
+        const query = String(input.query ?? "");
+        const found = await playByQuery(query, t.localeTag);
+        if (!found) throw new Error(`Nothing in the catalog matches "${query}".`);
+        return `Playing "${found.title}" by ${found.artist} in Nimbo Music (30-second preview).`;
+      }
       case "music": {
         const action = String(input.action);
         const command =
@@ -6648,12 +6658,24 @@ function IslandApp({
           <AssistantPanel
             entries={assistant.entries}
             busy={assistant.busy}
-            onSend={(text) =>
+            onSend={(text) => {
+              // "Toca …" is answered on the PC: no Claude key needed, nothing leaves but the search.
+              const query = playRequestOf(text);
+              if (query) {
+                void assistant.handleLocally(text, async () => {
+                  const found = await playByQuery(query, t.localeTag);
+                  return {
+                    text: found ? t.musicApp.voicePlaying(found.title, found.artist) : t.musicApp.voiceNotFound(query),
+                    action: "play_song",
+                  };
+                });
+                return;
+              }
               void assistant.send(text, {
                 refused: t.assistant.refused,
                 longConversation: t.assistant.longConversation,
-              })
-            }
+              });
+            }}
             voiceToken={voiceToken}
             onReset={assistant.reset}
             pages={islandPageLinks}

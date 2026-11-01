@@ -122,5 +122,24 @@ export function useAssistant(execute: ToolExecutor, context: () => string) {
     [busy, context, execute],
   );
 
-  return { entries, busy, send, reset };
+  /**
+   * A request answered on the PC without Claude (like "toca Anitta"). It is
+   * shown in the chat but kept out of the API history.
+   */
+  const handleLocally = useCallback(async (text: string, answer: () => Promise<{ text: string; action: string }>) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setEntries((current) => [...current, { id: newId(), role: "user", text: trimmed }]);
+    setBusy(true);
+    try {
+      const result = await answer();
+      setEntries((current) => [...current, { id: newId(), role: "assistant", text: result.text, actions: [result.action] }]);
+    } catch (error) {
+      setEntries((current) => [...current, { id: newId(), role: "notice", text: String(error) }]);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  return { entries, busy, send, reset, handleLocally };
 }

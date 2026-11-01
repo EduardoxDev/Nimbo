@@ -75,6 +75,9 @@ npm run tauri build -- --no-bundle
   no ritmo do grave e o player é uma ilha com visualizador. Ajustes: equalizador de 5 faixas com
   estilos prontos, volume uniforme, transição suave, velocidade, Rádio do Nimbo, timer para dormir,
   filtro de conteúdo explícito, serviço padrão, cor de destaque, estilo do visualizador e animações.
+  Tem também letra (LRCLIB) e fila num painel lateral, menu ⋯ em cada música (tocar a seguir, fila,
+  playlist), playlists com capa em mosaico e arrastar para reordenar, capas em alta na página Música
+  da ilha quando nada toca, e "Ei Nimbo, toca Anitta" (funciona até sem a chave da Anthropic).
 - Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
   [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.

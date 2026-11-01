@@ -216,3 +216,16 @@
     animation: none;
   }
 }
+
+/* Without a key the chat is hidden, but "toca …" still works by voice. */
+.assistant-panel__music-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-top: 6px;
+  color: var(--g-text-2, rgba(235, 238, 245, 0.58));
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+}

@@ -448,6 +448,8 @@ pub(crate) fn show_music_window(app: &AppHandle) -> Result<(), String> {
             .transparent(true)
             .resizable(true)
             .shadow(true)
+            // Lets the page reorder the queue and playlists with HTML drag and drop.
+            .disable_drag_drop_handler()
             .visible(false)
             .build()
             .map_err(|error| error.to_string())?,

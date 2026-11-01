@@ -101,6 +101,19 @@ export function AssistantPanel<Page extends string>({
           <button className="home-empty__button" type="button" onClick={openSettings}>
             {copy.addKey}
           </button>
+          <span className="assistant-panel__music-hint">
+            <MicButton
+              disabled={busy}
+              startToken={voiceToken}
+              onText={(text) => {
+                setVoiceError("");
+                spokenRef.current = true;
+                submit(undefined, text);
+              }}
+              onError={setVoiceError}
+            />
+            {voiceError || (entries[entries.length - 1]?.role === "assistant" ? entries[entries.length - 1].text : copy.noKeyMusic)}
+          </span>
         </div>
       ) : (
         <>
