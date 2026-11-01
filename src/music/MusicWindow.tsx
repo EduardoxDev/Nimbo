@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Clock3,
   ExternalLink,
+  Headphones,
   Heart,
   History,
   House,
@@ -146,6 +147,8 @@ type Music = {
   notify: (text: string) => void;
   panel: Panel;
   setPanel: (panel: Panel) => void;
+  /** Page name shown in the top bar once the page header scrolls away. */
+  setHeading: (name: string | null) => void;
 };
 
 type Panel = "lyrics" | "queue" | null;
@@ -211,8 +214,10 @@ export default function MusicWindow() {
   const tAll = useTranslation();
   const t = tAll.musicApp;
   const locale = tAll.localeTag;
-  const [history, setHistory] = useState<View[]>([{ kind: "home" }]);
-  const view = history[history.length - 1];
+  // Browser-style history: back and forward move `at`; opening a page drops what was ahead.
+  const [nav, setNav] = useState<{ stack: View[]; at: number }>({ stack: [{ kind: "home" }], at: 0 });
+  const view = nav.stack[nav.at];
+  const [heading, setHeading] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [likes, setLikes] = useState<Track[]>(() => loadTracks(LIKES_KEY));
@@ -224,6 +229,7 @@ export default function MusicWindow() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const bandsRef = useRef<number[]>([]);
+  const [scrolled, setScrolled] = useState(false);
   const [motion, setMotion] = useState<MotionPreference>(loadMotion);
   const systemReduced = useSystemReducedMotion();
   const animate = motion === "on" || (motion === "system" && !systemReduced);
@@ -387,16 +393,35 @@ export default function MusicWindow() {
   }, [playing, readLevels, animate]);
 
   const open = useCallback((next: View) => {
-    setHistory((items) => (sameView(items[items.length - 1], next) ? items : [...items, next].slice(-40)));
+    setNav(({ stack, at }) => {
+      if (sameView(stack[at], next)) return { stack, at };
+      const kept = [...stack.slice(0, at + 1), next].slice(-40);
+      return { stack: kept, at: kept.length - 1 };
+    });
   }, []);
 
-  const back = useCallback(() => setHistory((items) => (items.length > 1 ? items.slice(0, -1) : items)), []);
+  const back = useCallback(() => setNav(({ stack, at }) => ({ stack, at: Math.max(0, at - 1) })), []);
+  const forward = useCallback(() => setNav(({ stack, at }) => ({ stack, at: Math.min(stack.length - 1, at + 1) })), []);
+
+  // A deleted playlist leaves the history too; if it was on screen, go home.
+  useEffect(() => {
+    const gone = (item: View) => item.kind === "playlist" && !playlists.some((playlist) => playlist.id === item.id);
+    if (!nav.stack.some(gone)) return;
+    setNav(({ stack, at }) => {
+      const current = stack[at];
+      const kept = stack.filter((item) => !gone(item));
+      if (gone(current)) {
+        const list: View[] = [...kept, { kind: "home" }];
+        return { stack: list, at: list.length - 1 };
+      }
+      return { stack: kept, at: Math.max(0, kept.indexOf(current)) };
+    });
+  }, [nav.stack, playlists]);
 
   useEffect(() => {
-    if (view.kind === "playlist" && !playlists.some((playlist) => playlist.id === view.id)) {
-      setHistory((items) => [...items.filter((item) => !(item.kind === "playlist" && item.id === view.id)), { kind: "home" }]);
-    }
-  }, [view, playlists]);
+    setHeading(null);
+    setScrolled(false);
+  }, [view]);
 
   // Every page change starts at the top.
   useEffect(() => {
@@ -439,11 +464,23 @@ export default function MusicWindow() {
       } else if (event.altKey && event.key === "ArrowLeft") {
         event.preventDefault();
         back();
+      } else if (event.altKey && event.key === "ArrowRight") {
+        event.preventDefault();
+        forward();
       }
     };
+    // The mouse's side buttons go back and forward too.
+    const onMouse = (event: MouseEvent) => {
+      if (event.button === 3) back();
+      if (event.button === 4) forward();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [back, player]);
+    window.addEventListener("mouseup", onMouse);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mouseup", onMouse);
+    };
+  }, [back, forward, player]);
 
   const clearLibrary = (which: "likes" | "recent") => {
     if (which === "likes") {
@@ -482,6 +519,7 @@ export default function MusicWindow() {
     notify,
     panel,
     setPanel,
+    setHeading,
   };
 
   return (
@@ -499,12 +537,27 @@ export default function MusicWindow() {
       >
         <Sidebar view={view} likes={likes.length} recent={recent.length} onOpen={open} onSearch={() => searchRef.current?.focus()} />
         <div className={`mm-body${panel ? " mm-body--panel" : ""}`}>
-          <header className="mm-top" data-tauri-drag-region>
-            <button className="mm-round" type="button" title={t.back} aria-label={t.back} disabled={history.length < 2} onClick={back}>
-              <ChevronLeft size={18} />
-            </button>
+          <header className={`mm-top${scrolled ? " mm-top--scrolled" : ""}`} data-tauri-drag-region>
+            <div className="mm-top__left" data-tauri-drag-region>
+              <button className="mm-nav-btn" type="button" title={`${t.back} (Alt+←)`} aria-label={t.back} disabled={nav.at === 0} onClick={back}>
+                <ChevronLeft size={19} strokeWidth={2.4} />
+              </button>
+              <button
+                className="mm-nav-btn"
+                type="button"
+                title={`${t.forward} (Alt+→)`}
+                aria-label={t.forward}
+                disabled={nav.at >= nav.stack.length - 1}
+                onClick={forward}
+              >
+                <ChevronRight size={19} strokeWidth={2.4} />
+              </button>
+              <span className={`mm-top__heading${scrolled && heading ? " mm-top__heading--on" : ""}`} data-tauri-drag-region aria-hidden="true">
+                {heading}
+              </span>
+            </div>
             <label className="mm-search">
-              <Search size={17} aria-hidden="true" />
+              <Search size={16} strokeWidth={2.4} aria-hidden="true" />
               <input
                 ref={searchRef}
                 type="search"
@@ -523,21 +576,32 @@ export default function MusicWindow() {
               />
               {query ? (
                 <button type="button" className="mm-search__clear" title={t.clearSearch} aria-label={t.clearSearch} onClick={() => setQuery("")}>
-                  <X size={15} />
+                  <X size={14} strokeWidth={2.6} />
                 </button>
               ) : (
                 <kbd className="mm-search__key" aria-hidden="true">
-                  /
+                  Ctrl K
                 </kbd>
               )}
             </label>
-            <span className="mm-top__spacer" data-tauri-drag-region />
-            <WindowControls />
+            <div className="mm-top__right" data-tauri-drag-region>
+              <button
+                type="button"
+                className={`mm-nav-btn${view.kind === "settings" ? " mm-nav-btn--on" : ""}`}
+                title={t.settings}
+                aria-label={t.settings}
+                onClick={() => open({ kind: "settings" })}
+              >
+                <SlidersHorizontal size={16} strokeWidth={2.4} />
+              </button>
+              <span className="mm-top__divider" aria-hidden="true" />
+              <WindowControls />
+            </div>
           </header>
 
-          <main className="mm-main" ref={mainRef}>
+          <main className="mm-main" ref={mainRef} onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 140)}>
             <div className="mm-glow" aria-hidden="true" />
-            <div className="mm-page" key={history.length + viewKey(view)}>
+            <div className="mm-page" key={`${nav.at}-${viewKey(view)}`}>
               {view.kind === "home" && <HomeView />}
               {view.kind === "search" && <SearchView query={debounced} />}
               {view.kind === "artist" && <ArtistView id={view.id} />}
@@ -562,20 +626,20 @@ export default function MusicWindow() {
   );
 }
 
+/** Round window buttons in a capsule, like the island; close turns red on hover. */
 function WindowControls() {
   const { t } = useMusic();
-  if (!isTauri()) return null;
-  const win = getCurrentWindow();
+  const win = isTauri() ? getCurrentWindow() : null;
   return (
-    <div className="mm-window">
-      <button type="button" title={t.minimize} aria-label={t.minimize} onClick={() => void win.minimize()}>
-        <Minus size={15} />
+    <div className="mm-window" data-tauri-drag-region>
+      <button type="button" title={t.minimize} aria-label={t.minimize} onClick={() => void win?.minimize()}>
+        <Minus size={13} strokeWidth={2.6} />
       </button>
-      <button type="button" title={t.maximize} aria-label={t.maximize} onClick={() => void win.toggleMaximize()}>
-        <Square size={12} />
+      <button type="button" title={t.maximize} aria-label={t.maximize} onClick={() => void win?.toggleMaximize()}>
+        <Square size={10} strokeWidth={2.6} />
       </button>
-      <button type="button" className="mm-window__close" title={t.close} aria-label={t.close} onClick={() => void win.close()}>
-        <X size={16} />
+      <button type="button" className="mm-window__close" title={t.close} aria-label={t.close} onClick={() => void win?.close()}>
+        <X size={14} strokeWidth={2.6} />
       </button>
     </div>
   );
@@ -632,7 +696,7 @@ function Sidebar({
   ];
   const library: typeof items = [
     { id: "likes", label: t.likes, icon: Heart, count: likes, run: () => onOpen({ kind: "likes" }) },
-    { id: "recent", label: t.recent, icon: History, count: recent, run: () => onOpen({ kind: "recent" }) },
+    { id: "recent", label: t.recentShort, icon: History, count: recent, run: () => onOpen({ kind: "recent" }) },
   ];
   const more: typeof items = [{ id: "settings", label: t.settings, icon: SlidersHorizontal, run: () => onOpen({ kind: "settings" }) }];
   const renderItem = ({ id, label, icon: Icon, count, run }: (typeof items)[number]) => {
@@ -662,7 +726,6 @@ function Sidebar({
           <strong>
             Nimbo <em>Music</em>
           </strong>
-          <small>{t.tagline}</small>
         </span>
       </div>
       <nav className="mm-nav" aria-label={t.title}>
@@ -708,9 +771,9 @@ function Sidebar({
         <span className="mm-nav__gap" />
         {more.map(renderItem)}
       </nav>
-      <footer className="mm-side__foot">
-        <p>{t.previewNote}</p>
-        <p className="mm-side__credit">{t.credit}</p>
+      <footer className="mm-side__foot" title={t.previewNote}>
+        <Headphones size={13} strokeWidth={2.4} aria-hidden="true" />
+        <span>{t.footNote}</span>
       </footer>
     </aside>
   );
@@ -803,6 +866,30 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
       </header>
       {children}
     </section>
+  );
+}
+
+/** A titled row of cards that "Show all" turns into a full grid. */
+function Shelf({ title, children }: { title: string; children: ReactNode }) {
+  const { t } = useMusic();
+  const [all, setAll] = useState(false);
+  return (
+    <Section
+      title={title}
+      action={
+        <button type="button" className="mm-link-btn" onClick={() => setAll((value) => !value)}>
+          {all ? t.showLess : t.showAll}
+        </button>
+      }
+    >
+      {all ? (
+        <div className="mm-grid-cards" key="grid">
+          {children}
+        </div>
+      ) : (
+        <Rail key="rail">{children}</Rail>
+      )}
+    </Section>
   );
 }
 
@@ -1142,23 +1229,19 @@ function HomeView() {
           </Section>
 
           {chart.state.data.albums.length > 0 && (
-            <Section title={t.hotAlbums}>
-              <Rail>
-                {chart.state.data.albums.map((album, index) => (
-                  <AlbumCard key={album.id} album={album} index={index} />
-                ))}
-              </Rail>
-            </Section>
+            <Shelf title={t.hotAlbums}>
+              {chart.state.data.albums.map((album, index) => (
+                <AlbumCard key={album.id} album={album} index={index} />
+              ))}
+            </Shelf>
           )}
 
           {chart.state.data.artists.length > 0 && (
-            <Section title={t.hotArtists}>
-              <Rail>
-                {chart.state.data.artists.map((artist, index) => (
-                  <ArtistCard key={artist.id} artist={artist} index={index} />
-                ))}
-              </Rail>
-            </Section>
+            <Shelf title={t.hotArtists}>
+              {chart.state.data.artists.map((artist, index) => (
+                <ArtistCard key={artist.id} artist={artist} index={index} />
+              ))}
+            </Shelf>
           )}
         </>
       )}
@@ -1224,23 +1307,19 @@ function SearchView({ query }: { query: string }) {
       </div>
 
       {data.artists.length > 0 && (
-        <Section title={t.artists}>
-          <Rail>
-            {data.artists.map((artist, index) => (
-              <ArtistCard key={artist.id} artist={artist} index={index} />
-            ))}
-          </Rail>
-        </Section>
+        <Shelf title={t.artists}>
+          {data.artists.map((artist, index) => (
+            <ArtistCard key={artist.id} artist={artist} index={index} />
+          ))}
+        </Shelf>
       )}
 
       {data.albums.length > 0 && (
-        <Section title={t.albums}>
-          <Rail>
-            {data.albums.map((album, index) => (
-              <AlbumCard key={album.id} album={album} index={index} />
-            ))}
-          </Rail>
-        </Section>
+        <Shelf title={t.albums}>
+          {data.albums.map((album, index) => (
+            <AlbumCard key={album.id} album={album} index={index} />
+          ))}
+        </Shelf>
       )}
 
       {data.tracks.length > 5 && (
@@ -1259,9 +1338,11 @@ function ArtistView({ id }: { id: number }) {
   const [filter, setFilter] = useState<string>("all");
   const data = page.state.status === "ready" ? page.state.data : null;
 
+  const { setHeading } = useMusic();
   useEffect(() => {
     setTint(data?.artist.picture ?? null);
-  }, [data, setTint]);
+    setHeading(data?.artist.name ?? null);
+  }, [data, setTint, setHeading]);
 
   const types = useMemo(() => {
     const present = new Set((data?.albums ?? []).map((album) => album.recordType ?? "album"));
@@ -1334,13 +1415,11 @@ function ArtistView({ id }: { id: number }) {
         )}
 
         {data.related.length > 0 && (
-          <Section title={t.related}>
-            <Rail>
-              {data.related.map((artist, index) => (
-                <ArtistCard key={artist.id} artist={artist} index={index} />
-              ))}
-            </Rail>
-          </Section>
+          <Shelf title={t.related}>
+            {data.related.map((artist, index) => (
+              <ArtistCard key={artist.id} artist={artist} index={index} />
+            ))}
+          </Shelf>
         )}
       </div>
     </div>
@@ -1352,9 +1431,11 @@ function AlbumView({ id }: { id: number }) {
   const page = useAsync(() => catalog.album(id, locale), `album:${id}:${locale}`);
   const data = page.state.status === "ready" ? page.state.data : null;
 
+  const { setHeading } = useMusic();
   useEffect(() => {
     setTint(data?.album.cover ?? null);
-  }, [data, setTint]);
+    setHeading(data?.album.title ?? null);
+  }, [data, setTint, setHeading]);
 
   if (page.state.status === "loading") return <div className="mm-view"><Loading /></div>;
   if (!data) return <div className="mm-view"><Failed onRetry={page.retry} /></div>;
@@ -1404,6 +1485,8 @@ function LibraryView({ kind, tracks }: { kind: "likes" | "recent"; tracks: Track
     setTint(tracks[0]?.cover ?? null);
   }, [tracks, setTint]);
   const Icon = kind === "likes" ? Heart : Clock3;
+  const { setHeading } = useMusic();
+  useEffect(() => setHeading(kind === "likes" ? t.likes : t.recent), [kind, setHeading, t]);
   return (
     <div className="mm-view mm-view--flush">
       <header className={`mm-banner mm-banner--${kind}`}>
@@ -1592,6 +1675,7 @@ function PlayerBar() {
   return (
     <footer className={`mm-player${track ? "" : " mm-player--idle"}${player.playing ? " mm-player--on" : ""}`} aria-label={t.title}>
       <div className="mm-player__island">
+        <span className="mm-player__line" style={{ "--progress": `${progress}%` } as CSSProperties} aria-hidden="true" />
         <Visualizer />
         <div className="mm-player__now">
           {track ? (
@@ -1703,6 +1787,9 @@ function PlayerBar() {
             onClick={() => setPanel(panel === "queue" ? null : "queue")}
           >
             <ListMusic size={17} />
+            {player.queue.length - player.index - 1 > 0 && (
+              <span className="mm-icon__count">{Math.min(99, player.queue.length - player.index - 1)}</span>
+            )}
           </button>
           {track && <ListenFullMenu track={track} compact />}
           <button type="button" className="mm-icon" title={player.muted ? t.unmute : t.mute} aria-label={player.muted ? t.unmute : t.mute} onClick={player.toggleMute}>
@@ -2431,9 +2518,11 @@ function PlaylistView({ id }: { id: string }) {
   const [draft, setDraft] = useState("");
   const [confirming, setConfirming] = useState(false);
 
+  const { setHeading } = useMusic();
   useEffect(() => {
     setTint(playlist?.tracks[0]?.cover ?? null);
-  }, [playlist?.tracks, setTint]);
+    setHeading(playlist?.name ?? null);
+  }, [playlist?.tracks, playlist?.name, setTint, setHeading]);
 
   useEffect(() => {
     if (!confirming) return;

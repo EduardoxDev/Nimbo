@@ -1814,7 +1814,12 @@ fn build_tray(app: &App) -> tauri::Result<()> {
 pub fn run() {
     let context = tauri::generate_context!();
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // `nimbo.exe --music` (a shortcut, say) opens Nimbo Music instead of the island.
+            if args.iter().any(|arg| arg == "--music") {
+                let _ = music_catalog::show_music_window(app);
+                return;
+            }
             fullscreen::user_changed_visibility();
             let _ = show_island(app);
         }))

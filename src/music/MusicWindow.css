@@ -4,7 +4,7 @@
    `--beat` (0..1) is written every frame by MusicWindow while music plays. */
 .mm {
   --mm-bg: #08080a;
-  --mm-side: #0d0d10;
+  --mm-side: var(--mm-bg);
   --mm-card: linear-gradient(180deg, #1d1e22, #16171a);
   --mm-card-flat: #1a1b1f;
   --mm-card-hover: linear-gradient(180deg, #25262b, #1c1d21);
@@ -66,7 +66,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px 12px 112px;
+  padding: 8px 12px 112px;
   background: var(--mm-side);
   border-right: 1px solid var(--mm-border);
 }
@@ -75,12 +75,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 6px 22px;
+  height: 44px;
+  margin-bottom: 18px;
+  padding: 0 6px;
 }
 
 .mm-brand__name strong {
   display: block;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
@@ -226,19 +228,23 @@
 }
 
 .mm-side__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: auto;
-  padding: 12px 10px 0;
+  padding: 9px 12px;
   color: var(--mm-text-3);
+  background: #0f1013;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
   font-size: 11px;
-  line-height: 1.5;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.mm-side__foot p {
-  margin: 0 0 6px;
-}
-
-.mm-side__credit {
-  opacity: 0.7;
+.mm-side__foot svg {
+  flex: none;
+  color: var(--mm-accent);
 }
 
 /* ---------- Top bar ---------- */
@@ -252,70 +258,139 @@
   min-height: 0;
 }
 
+/* The top bar is part of the window: same colour as the page, a hairline
+   only once content scrolls under it. Back/forward left, search centred,
+   window buttons right. */
 .mm-top {
-  position: absolute;
-  inset: 0 0 auto;
+  position: relative;
   z-index: 5;
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  height: 60px;
+  padding: 0 12px 0 16px;
+  background: var(--mm-bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.mm-top--scrolled {
+  border-bottom-color: var(--mm-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.mm-top__left,
+.mm-top__right {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 64px;
-  padding: 0 12px 0 24px;
-  background: linear-gradient(to bottom, rgba(8, 8, 10, 0.92) 30%, rgba(8, 8, 10, 0));
-  pointer-events: none;
+  gap: 4px;
+  min-width: 0;
+  height: 100%;
 }
 
-.mm-top > * {
-  pointer-events: auto;
+.mm-top__right {
+  justify-content: flex-end;
 }
 
-.mm-top__spacer {
-  flex: 1;
-  align-self: stretch;
-}
-
-.mm-round {
+.mm-nav-btn {
+  position: relative;
   display: grid;
   place-items: center;
   width: 34px;
   height: 34px;
   flex: none;
   color: var(--mm-text);
-  background: var(--mm-pill);
+  background: #121316;
   border: 1px solid var(--mm-border);
   border-radius: 999px;
-  transition: background 160ms ease, transform 260ms var(--mm-spring);
+  transition: background 160ms ease, color 160ms ease, transform 260ms var(--mm-spring);
 }
 
-.mm-round:not(:disabled):hover {
-  background: var(--mm-pill-hover);
-  transform: translateX(-2px);
+.mm-nav-btn:not(:disabled):hover {
+  background: #1c1d21;
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: scale(1.06);
+}
+
+.mm-nav-btn--on {
+  color: #08080a;
+  background: #f5f5f7;
+  border-color: transparent;
+}
+
+.mm-nav-btn--on:not(:disabled):hover {
+  background: #fff;
+}
+
+.mm-top__left {
+  gap: 6px;
+}
+
+.mm-top__divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px 0 8px;
+  background: var(--mm-border);
+}
+
+.mm-nav-btn:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+.mm .mm-nav-btn:disabled {
+  color: var(--mm-text-3);
+  background: transparent;
+  opacity: 1;
+}
+
+/* The page's name slides in once its own header has scrolled away. */
+.mm-top__heading {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  color: var(--mm-text);
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 220ms ease, transform 320ms var(--mm-ease);
+  pointer-events: none;
+}
+
+.mm-top__heading--on {
+  opacity: 1;
+  transform: none;
 }
 
 .mm-search {
   display: flex;
   align-items: center;
   gap: 9px;
-  width: 360px;
-  max-width: 100%;
-  height: 40px;
-  padding: 0 7px 0 14px;
+  width: clamp(240px, 34vw, 420px);
+  height: 38px;
+  padding: 0 6px 0 14px;
   color: var(--mm-text-3);
-  background: rgba(34, 35, 39, 0.88);
+  background: #121316;
   border: 1px solid var(--mm-border);
   border-radius: 999px;
-  backdrop-filter: blur(16px);
-  transition: width 360ms var(--mm-ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  cursor: text;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 220ms ease, color 180ms ease;
 }
 
 .mm-search:hover {
-  background: rgba(44, 45, 50, 0.92);
+  background: #17181b;
+  border-color: rgba(255, 255, 255, 0.11);
 }
 
 .mm-search:focus-within {
-  width: 460px;
   color: var(--mm-text);
-  border-color: rgba(var(--mm-accent-rgb), 0.5);
+  background: #17181b;
+  border-color: rgba(var(--mm-accent-rgb), 0.55);
   box-shadow: 0 0 0 4px rgba(var(--mm-accent-rgb), 0.12);
 }
 
@@ -327,7 +402,7 @@
   background: transparent;
   border: 0;
   outline: none;
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--mm-text);
 }
 
@@ -346,12 +421,20 @@
 .mm-search__key {
   display: grid;
   place-items: center;
-  min-width: 24px;
   height: 24px;
+  padding: 0 8px;
   color: var(--mm-text-3);
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 7px;
-  font: 600 12px/1 "Segoe UI", system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  font: 650 10.5px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: opacity 160ms ease;
+}
+
+.mm-search:focus-within .mm-search__key {
+  opacity: 0;
 }
 
 .mm-search__clear {
@@ -359,8 +442,9 @@
   place-items: center;
   width: 26px;
   height: 26px;
+  flex: none;
   color: var(--mm-text-2);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.07);
   border: 0;
   border-radius: 999px;
   animation: mm-pop-in 240ms var(--mm-spring) backwards;
@@ -368,29 +452,31 @@
 
 .mm-search__clear:hover {
   color: var(--mm-text);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
 }
 
+/* Window buttons: plain round icons on the page colour. */
 .mm-window {
   display: flex;
+  align-items: center;
   gap: 2px;
 }
 
 .mm-window button {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   color: var(--mm-text-2);
   background: transparent;
   border: 0;
-  border-radius: 9px;
-  transition: background 140ms ease, color 140ms ease;
+  border-radius: 999px;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .mm-window button:hover {
   color: var(--mm-text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--mm-pill);
 }
 
 .mm-window .mm-window__close:hover {
@@ -416,6 +502,8 @@
   background:
     radial-gradient(120% 90% at 30% 0%, color-mix(in srgb, var(--mm-tint) 55%, transparent), transparent 70%);
   opacity: 0.85;
+  /* Fades in under the solid top bar instead of starting on a hard edge. */
+  mask-image: linear-gradient(to bottom, transparent, #000 90px);
   transition: background 900ms ease;
   pointer-events: none;
 }
@@ -427,7 +515,7 @@
 
 .mm-view {
   position: relative;
-  padding: 72px 28px 132px;
+  padding: 18px 28px 132px;
 }
 
 .mm-view--flush {
@@ -745,8 +833,8 @@
   display: flex;
   align-items: flex-end;
   gap: 28px;
-  min-height: 310px;
-  padding: 84px 28px 26px;
+  min-height: 260px;
+  padding: 36px 28px 26px;
   overflow: hidden;
   isolation: isolate;
 }
@@ -1290,6 +1378,23 @@
   background: var(--mm-pill-hover);
 }
 
+.mm-link-btn {
+  padding: 4px 2px;
+  color: var(--mm-text-2);
+  background: transparent;
+  border: 0;
+  font-size: 12.5px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  transition: color 140ms ease;
+}
+
+.mm-link-btn:hover {
+  color: var(--mm-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ---------- Search ---------- */
 .mm-search-top {
   display: grid;
@@ -1568,6 +1673,8 @@
 
 .mm-player__island {
   position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(170px, 1fr) minmax(300px, 1.5fr) minmax(170px, 1fr);
   align-items: center;
@@ -1591,6 +1698,48 @@
     0 18px 40px rgba(0, 0, 0, 0.55),
     0 0 calc(18px + var(--beat) * 26px) rgba(var(--mm-accent-rgb), calc(0.12 + var(--beat) * 0.22)),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Thin progress line on the island's top edge, readable at a glance. */
+.mm-player__line {
+  position: absolute;
+  top: -1px;
+  left: 26px;
+  right: 26px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.mm-player__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--progress);
+  background: linear-gradient(90deg, rgba(var(--mm-accent-rgb), 0.2), var(--mm-accent));
+  box-shadow: 0 0 10px rgba(var(--mm-accent-rgb), 0.8);
+  border-radius: inherit;
+  transition: width 240ms linear;
+}
+
+.mm-icon__count {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  color: #fff;
+  background: var(--mm-accent);
+  border: 2px solid #0b0b0e;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 11px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  animation: mm-pop-in 260ms var(--mm-spring) backwards;
 }
 
 .mm-visualizer {
@@ -1696,7 +1845,7 @@
 }
 
 .mm-progress__time {
-  color: var(--mm-text-3);
+  color: var(--mm-text-2);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2034,8 +2183,32 @@
   .mm-brand__name,
   .mm-nav__label,
   .mm-nav__count,
-  .mm-nav__heading,
+  .mm-nav__heading:not(.mm-nav__heading--row),
   .mm-side__foot {
+    display: none;
+  }
+
+  /* Only the "+" of the playlists heading stays, centred. */
+  .mm-nav__heading--row {
+    justify-content: center;
+    margin: 16px 0 6px;
+    font-size: 0;
+  }
+
+  .mm-nav__item--playlist {
+    justify-content: center;
+    padding: 4px 0;
+  }
+
+  .mm-top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .mm-search {
+    width: 100%;
+  }
+
+  .mm-top__heading {
     display: none;
   }
 
@@ -2756,7 +2929,7 @@
 .mm-now {
   position: absolute;
   /* Below the top bar, so the window buttons stay reachable. */
-  top: 60px;
+  top: 70px;
   right: 12px;
   bottom: 112px;
   z-index: 8;

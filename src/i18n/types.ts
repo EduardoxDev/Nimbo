@@ -922,10 +922,14 @@ export type Translations = {
     minimize: string;
     maximize: string;
     back: string;
+    forward: string;
     home: string;
     search: string;
     likes: string;
     recent: string;
+    recentShort: string;
+    showAll: string;
+    footNote: string;
     library: string;
     searchPlaceholder: string;
     clearSearch: string;
