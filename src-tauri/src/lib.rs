@@ -13,6 +13,7 @@ mod hud;
 mod ir_climate;
 mod launcher;
 mod lyrics;
+mod music_catalog;
 mod sessions_watch;
 mod task_changes;
 mod shelf;
@@ -1763,8 +1764,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
     let hide_item = MenuItem::with_id(app, "hide", "Esconder ilha", true, None::<&str>)?;
     let settings_item =
         MenuItem::with_id(app, "settings", "Configurações…", true, None::<&str>)?;
+    let music_item = MenuItem::with_id(app, "music", "Nimbo Music", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &settings_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &music_item, &settings_item, &quit_item])?;
 
     let mut tray = TrayIconBuilder::new()
         .tooltip("Nimbo")
@@ -1781,6 +1783,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
             }
             "settings" => {
                 let _ = show_settings(app);
+            }
+            "music" => {
+                let _ = music_catalog::show_music_window(app);
             }
             "quit" => app.exit(0),
             _ => {}
@@ -1817,7 +1822,7 @@ pub fn run() {
         .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| {
-            if window.label() == SETTINGS_WINDOW_LABEL {
+            if window.label() == SETTINGS_WINDOW_LABEL || window.label() == music_catalog::MUSIC_WINDOW_LABEL {
                 return;
             }
             if window.label() == "translation" {
@@ -1901,6 +1906,14 @@ pub fn run() {
             get_system_volume,
             set_system_volume,
             lyrics::fetch_lyrics,
+            music_catalog::music_chart,
+            music_catalog::music_genres,
+            music_catalog::music_search,
+            music_catalog::music_artist,
+            music_catalog::music_album,
+            music_catalog::music_track,
+            music_catalog::music_open_external,
+            music_catalog::open_music_window,
             home_assistant::home_assistant_status,
             home_assistant::connect_home_assistant,
             home_assistant::disconnect_home_assistant,

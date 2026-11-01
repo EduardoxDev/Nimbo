@@ -68,6 +68,13 @@ npm run tauri build -- --no-bundle
 - Player de música do Windows (qualquer app que apareça no controle de mídia: Spotify, YouTube no navegador…):
   capa, título, artista e álbum, barra de progresso (clique para pular), volume do sistema e
   letras sincronizadas do [LRCLIB](https://lrclib.net) (só título, artista, álbum e duração saem do PC).
+- Nimbo Music: janela com o catálogo da [Deezer](https://developers.deezer.com/api) (grátis, sem conta):
+  músicas em alta por gênero, busca de músicas, artistas e álbuns, discografia completa, prévias de
+  30 segundos, curtidas e recentes guardadas no PC, e "Ouvir completa" no Spotify, YouTube Music ou
+  Deezer. Abre pelo disco colorido na página Música da ilha ou pela bandeja. O Nimbo de fones dança
+  no ritmo do grave e o player é uma ilha com visualizador. Ajustes: equalizador de 5 faixas com
+  estilos prontos, volume uniforme, transição suave, velocidade, Rádio do Nimbo, timer para dormir,
+  filtro de conteúdo explícito, serviço padrão, cor de destaque, estilo do visualizador e animações.
 - Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
   [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.

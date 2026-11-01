@@ -36,6 +36,7 @@ import {
   Languages,
   ListTodo,
   MessageSquareQuote,
+  Disc3,
   CalendarDays,
   Gauge,
   Minus,
@@ -3569,6 +3570,18 @@ function MusicPlayerPanel({
         currentPage={currentPage}
         onPageChange={onPageChange}
         extra={
+          <>
+          <button
+            className="island-bar__icon np-library"
+            type="button"
+            title={t.musicApp.openFromIsland}
+            aria-label={t.musicApp.openFromIsland}
+            onClick={() => {
+              if (isTauri()) void invoke("open_music_window").catch((error) => console.error("Failed to open Nimbo Music", error));
+            }}
+          >
+            <Disc3 size={13} strokeWidth={2.2} />
+          </button>
           <span className={`np-bars np-bars--inline${isPlaying ? " np-bars--live" : ""}`} aria-hidden="true">
             <span />
             <span />
@@ -3576,6 +3589,7 @@ function MusicPlayerPanel({
             <span />
             <span />
           </span>
+          </>
         }
       />
       <span className="visually-hidden" aria-live="polite">{statusLabel}</span>

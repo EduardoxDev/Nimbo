@@ -5,6 +5,7 @@ import TranslationWindow from "./TranslationWindow";
 import SettingsWindow from "./SettingsWindow";
 import BuddyWindow from "./buddy/BuddyWindow";
 import DrawWindow from "./draw/DrawWindow";
+import MusicWindow from "./music/MusicWindow";
 import MascotGallery from "./demo/MascotGallery";
 import { I18nProvider } from "./i18n";
 import { installDiagnostics } from "./diagnostics";
@@ -42,6 +43,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <BuddyWindow />
       ) : windowKind === "draw" ? (
         <DrawWindow />
+      ) : windowKind === "music" ? (
+        <MusicWindow />
       ) : windowKind === "mascots" && import.meta.env.DEV ? (
         <MascotGallery />
       ) : (

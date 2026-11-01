@@ -24,6 +24,14 @@ export default defineConfig(async () => ({
           port: 1421,
         }
       : undefined,
+    // Lets Nimbo Music browse the catalog in a plain browser (`npm run dev`).
+    proxy: {
+      "/deezer-api": {
+        target: "https://api.deezer.com",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/deezer-api/, ""),
+      },
+    },
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
