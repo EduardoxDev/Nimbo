@@ -348,6 +348,13 @@ const ptBR: Translations = {
     summaryHint: "Mostra o que você fez no dia e deixa você ouvir em voz alta.",
     wakeTitle: "Ei Nimbo",
     wakeHint: "Deixa o microfone ligado esperando você dizer \"Ei Nimbo\". A palavra é reconhecida no seu PC; o pedido que você fala depois usa o reconhecimento online do Windows.",
+    speechStatus: "Reconhecimento de fala online",
+    speechStatusHint: "Necessário para o microfone e para o pedido depois do Ei Nimbo. Liga em Configurações do Windows > Privacidade e segurança > Fala.",
+    clipStatus: "Gravação em segundo plano (clipes)",
+    clipStatusHint: "Necessário para \"grava os últimos 30 segundos\". Liga em Configurações do Windows > Jogos > Capturas > Gravar o que aconteceu.",
+    on: "Ligado",
+    off: "Desligado",
+    openWindows: "Abrir no Windows",
   },
   draw: {
     title: "Pintar na tela",

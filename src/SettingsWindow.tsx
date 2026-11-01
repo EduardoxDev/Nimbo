@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { WindowsFeatureRows } from "./life/WindowsFeatureRows";
 import {
   Archive,
   Bell,
@@ -458,6 +459,7 @@ function GeneralPage({ settings, update }: PageProps) {
       <Row title={t.life.wakeTitle} hint={t.life.wakeHint}>
         <Toggle label={t.life.wakeTitle} checked={settings.wakeWord} onChange={(wakeWord) => update({ wakeWord })} />
       </Row>
+      <WindowsFeatureRows />
     </Section>
     <Section title={t.buddy.section}>
       <Row title={t.buddy.mode} hint={t.buddy.hints[settings.buddyMode]}>

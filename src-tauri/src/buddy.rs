@@ -16,8 +16,9 @@ use windows::{
         System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION},
         UI::WindowsAndMessaging::{
             EnumWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextLengthW,
-            GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetWindowLongPtrW, SystemParametersInfoW,
-            GWL_EXSTYLE, SPI_GETWORKAREA, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+            GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetWindowLongPtrW, SetWindowPos, SystemParametersInfoW,
+            GWL_EXSTYLE, HWND_TOPMOST, SPI_GETWORKAREA, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WS_EX_NOACTIVATE,
+            WS_EX_TOOLWINDOW,
         },
     },
 };
@@ -237,6 +238,14 @@ fn make_passive(window: &WebviewWindow) {
     }
 }
 
+fn raise_above_docks(window: &WebviewWindow) {
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+}
+
 fn watch(app: AppHandle) {
     let mut ignoring = true;
     let mut last_cursor = (i32::MIN, i32::MIN);
@@ -252,6 +261,9 @@ fn watch(app: AppHandle) {
                 }
             } else if !covered && HIDDEN_FOR_FULLSCREEN.swap(false, Ordering::SeqCst) {
                 let _ = window.show();
+            }
+            if !covered {
+                raise_above_docks(&window);
             }
         }
         let mut point = POINT::default();

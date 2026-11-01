@@ -348,6 +348,13 @@ const en: Translations = {
     summaryHint: "Shows what you did today and lets you hear it out loud.",
     wakeTitle: "Hey Nimbo",
     wakeHint: "Keeps the microphone on, waiting for \"Hey Nimbo\". The phrase is recognized on your PC; the request you say next uses Windows online speech recognition.",
+    speechStatus: "Online speech recognition",
+    speechStatusHint: "Needed for the microphone and for the request after Hey Nimbo. Turn it on in Windows Settings > Privacy & security > Speech.",
+    clipStatus: "Background recording (clips)",
+    clipStatusHint: "Needed for \"record the last 30 seconds\". Turn it on in Windows Settings > Gaming > Captures > Record what happened.",
+    on: "On",
+    off: "Off",
+    openWindows: "Open in Windows",
   },
   draw: {
     title: "Draw on the screen",

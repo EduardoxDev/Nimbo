@@ -351,6 +351,13 @@ const zhCN: Translations = {
     summaryHint: "显示你今天完成的事，并可朗读。",
     wakeTitle: "嘿 Nimbo",
     wakeHint: "保持麦克风开启，等待你说“嘿 Nimbo”。唤醒词在本机识别；之后说的请求使用 Windows 在线语音识别。",
+    speechStatus: "在线语音识别",
+    speechStatusHint: "麦克风和“嘿 Nimbo”之后的请求需要它。在 Windows 设置 > 隐私和安全性 > 语音 中开启。",
+    clipStatus: "后台录制（剪辑）",
+    clipStatusHint: "“录制最近 30 秒”需要它。在 Windows 设置 > 游戏 > 捕获 > 录制刚刚发生的事情 中开启。",
+    on: "已开启",
+    off: "已关闭",
+    openWindows: "在 Windows 中打开",
   },
   draw: {
     title: "在屏幕上画画",

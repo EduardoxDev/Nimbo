@@ -351,6 +351,13 @@ export type Translations = {
     summaryHint: string;
     wakeTitle: string;
     wakeHint: string;
+    speechStatus: string;
+    speechStatusHint: string;
+    clipStatus: string;
+    clipStatusHint: string;
+    on: string;
+    off: string;
+    openWindows: string;
   };
   draw: {
     title: string;

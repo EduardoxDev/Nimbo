@@ -1936,6 +1936,8 @@ pub fn run() {
             capture::draw_background,
             capture::draw_finish,
             capture::record_last_clip,
+            capture::windows_features,
+            capture::open_windows_settings,
             launcher::open_program,
             speech::speech_listen,
             speech::speech_cancel,

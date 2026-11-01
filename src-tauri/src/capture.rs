@@ -2,7 +2,10 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use image::{ImageFormat, RgbaImage};
 use std::{fs, io::Cursor, path::PathBuf};
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
+use serde::Serialize;
+use windows::core::{w, PCWSTR};
 use windows::Win32::{
+    System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD},
     Graphics::Gdi::{
         BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits, ReleaseDC, SelectObject,
         BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
@@ -151,6 +154,9 @@ fn key(code: VIRTUAL_KEY, up: bool) -> INPUT {
 
 #[tauri::command]
 pub(crate) fn record_last_clip() -> Result<(), String> {
+    if !background_recording_on() {
+        return Err("Ligue a gravação em segundo plano do Xbox Game Bar (Configurações > Jogos > Capturas) para eu gravar os últimos 30 segundos.".to_string());
+    }
     let g = VIRTUAL_KEY(b'G' as u16);
     let inputs = [key(VK_LWIN, false), key(VK_MENU, false), key(g, false), key(g, true), key(VK_MENU, true), key(VK_LWIN, true)];
     let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
@@ -159,6 +165,44 @@ pub(crate) fn record_last_clip() -> Result<(), String> {
     } else {
         Err("O Windows não aceitou o atalho do Game Bar.".to_string())
     }
+}
+
+fn user_dword(key: PCWSTR, name: PCWSTR) -> Option<u32> {
+    let mut value = 0u32;
+    let mut size = std::mem::size_of::<u32>() as u32;
+    let result = unsafe { RegGetValueW(HKEY_CURRENT_USER, key, name, RRF_RT_REG_DWORD, None, Some(&mut value as *mut u32 as *mut _), Some(&mut size)) };
+    result.is_ok().then_some(value)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WindowsFeatures {
+    online_speech: bool,
+    background_recording: bool,
+}
+
+pub(crate) fn background_recording_on() -> bool {
+    let key = w!(r"Software\Microsoft\Windows\CurrentVersion\GameDVR");
+    user_dword(key, w!("AppCaptureEnabled")) == Some(1) && user_dword(key, w!("HistoricalCaptureEnabled")) == Some(1)
+}
+
+#[tauri::command]
+pub(crate) fn windows_features() -> WindowsFeatures {
+    WindowsFeatures {
+        online_speech: user_dword(w!(r"Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy"), w!("HasAccepted")) == Some(1),
+        background_recording: background_recording_on(),
+    }
+}
+
+#[tauri::command]
+pub(crate) fn open_windows_settings(page: String) -> Result<(), String> {
+    let uri = match page.as_str() {
+        "speech" => "ms-settings:privacy-speech",
+        "captures" => "ms-settings:gaming-captures",
+        "microphone" => "ms-settings:privacy-microphone",
+        _ => return Err("Página desconhecida.".to_string()),
+    };
+    std::process::Command::new("explorer.exe").arg(uri).spawn().map(|_| ()).map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
