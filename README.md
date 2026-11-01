@@ -1,59 +1,140 @@
+<div align="center">
+
+<img src="docs/icon.svg" width="104" alt="Ícone do Nimbo" />
+
 # Nimbo
 
-Uma ilha flutuante no topo da tela do Windows: música, tarefas, histórico de copiados e, em breve,
-controle de apps, do sistema e da casa (ar-condicionado, luzes).
+**A ilha do seu Windows.**
+Música, tarefas, foco, agenda, casa inteligente e agentes de IA numa ilha flutuante no topo da tela.
+Grátis e de código aberto.
 
-O plano completo está em [PLANO.md](PLANO.md).
+[![Windows 10 e 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows11&logoColor=white)](#baixar)
+[![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-35e985)](LICENSE)
+[![Última versão](https://img.shields.io/github/v/release/EduardoxDev/Nimbo?label=vers%C3%A3o&color=ff375f)](https://github.com/EduardoxDev/Nimbo/releases/latest)
 
-## Instalar
+[Baixar](#baixar) · [O que ele faz](#o-que-ele-faz) · [Nimbo Music](#nimbo-music) · [Rodar o código](#rodar-o-código) · [Créditos](#créditos)
 
-Rode `npm run tauri build`. O instalador sai em
-`src-tauri/target/release/bundle/nsis/Nimbo_<versão>_x64-setup.exe`. Ele instala só para o seu
-usuário, sem pedir administrador.
+<br />
 
-Como o instalador ainda não é assinado, o Windows mostra o aviso do SmartScreen na primeira vez:
-clique em "Mais informações" e depois em "Executar assim mesmo".
+<img src="docs/screenshots/island-music.jpg" width="560" alt="A ilha do Nimbo aberta no topo da tela, tocando uma música com capa, tempo e controles" />
 
-O build com instalador assina o arquivo de atualização, então precisa da chave privada:
+</div>
 
-```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw "$HOME\.tauri\nimbo-updater.key"
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
-npm run tauri build
-```
+<br />
 
-## Atualizações
+## Por que o Nimbo
 
-O Nimbo procura versão nova 30 segundos depois de abrir e a cada 6 horas, em
-`https://github.com/EduardoxDev/Nimbo/releases/latest/download/latest.json`. Quando acha, a ilha
-mostra o aviso com **Atualizar**; também dá para procurar em Configurações → Sobre. Cada atualização é
-conferida com a chave pública que está em `src-tauri/tauri.conf.json`.
+A Dynamic Island do iPhone mostra o que importa sem atrapalhar. O Nimbo leva essa ideia para o
+Windows: uma ilha discreta no topo da tela que **abre quando você passa o mouse** e mostra a música,
+o foco, a próxima reunião ou o que o seu agente de IA está fazendo. Fechada, ela vira um fio com o
+mascote, um anel de progresso e os avisos que chegam.
 
-A chave privada fica em `~/.tauri/nimbo-updater.key`, fora do Git. **Guarde uma cópia**: sem ela não
-dá para publicar atualizações, e trocar a chave obriga todo mundo a reinstalar na mão.
+Ele é leve (Tauri + Rust, nada de Electron), fala português, inglês e chinês, e **guarda tudo no seu
+PC**: senhas e chaves ficam no Gerenciador de Credenciais do Windows.
 
-### Publicar uma versão
+## O que ele faz
 
-1. No GitHub, em Settings → Secrets and variables → Actions, crie o segredo
-   `TAURI_SIGNING_PRIVATE_KEY` com o conteúdo da chave privada (só na primeira vez).
-2. Suba a versão em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`.
-3. Faça o commit, crie a tag e envie:
+<table>
+<tr>
+<td width="50%" valign="top">
 
-```powershell
-git tag v0.2.0
-git push origin main --tags
-```
+### 🎵 Música
+- Controla **qualquer player do Windows** (Spotify, YouTube, apps de música): capa, tempo, volume.
+- **Letras sincronizadas** pelo [LRCLIB](https://lrclib.net).
+- **Nimbo Music**: um app de música completo, [mais abaixo](#nimbo-music).
 
-O fluxo `Release` do GitHub Actions gera o instalador, assina e publica a versão com o
-`latest.json`. Quem já tem o Nimbo recebe a atualização sozinho.
+### ✅ Produtividade
+- **Tarefas do dia**, nota diária e histórico.
+- **Foco (Pomodoro)** com anel de progresso, rodadas e som no fim.
+- **Água**: meta do dia, copo que enche e lembretes.
+- **Agenda** do Google ou Outlook com aviso antes de cada compromisso e **modo reunião**.
+- **Lançador de apps** (Alt+Shift+Espaço) com lembretes em linguagem natural.
+- **Histórico de copiados** com favoritos e notas.
+- **Prateleira**: arraste arquivos para a ilha e pegue de volta depois.
 
-## Rodar em desenvolvimento
+</td>
+<td width="50%" valign="top">
 
-Precisa de Node 20+ e Rust (stable).
+### 🤖 IA
+- **Assistente na ilha** (Claude): “liga o ar em 22 e começa um foco”.
+- **“Ei Nimbo”**: peça por voz.
+- **Agentes de IA** (Claude Code, Cursor, Codex…) mostram o plano na ilha, pedem aprovação e avisam
+  quando terminam, por um servidor MCP local.
+- **Tradução rápida** em português, inglês, espanhol e chinês.
+
+### 🏠 Casa e sistema
+- **Ar-condicionado, luzes, tomadas** pelo [Home Assistant](https://www.home-assistant.io/), com
+  automações por horário.
+- **Ar só de controle remoto** com um Broadlink RM4 Mini, sem nuvem.
+- **Sistema**: bateria, CPU, memória, Wi‑Fi, Bluetooth, modo escuro e volume por app.
+- **HUD na ilha**: volume e brilho no lugar dos pop-ups do Windows.
+- **Tempo** da sua cidade no topo da ilha.
+
+</td>
+</tr>
+</table>
+
+E ainda: **mascote** que reage ao que acontece (dorme à noite, comemora metas, fica tonto de tanto
+clique), temas, atalhos globais configuráveis, ilha clássica ou de vidro e atualização automática.
+
+## Nimbo Music
+
+Um app de música inteiro dentro do Nimbo: **todas as músicas, inteiras e de graça**, sem conta e
+sem configurar nada. Abre pelo disco colorido na página Música da ilha ou pela bandeja.
+
+<p align="center">
+  <img src="docs/screenshots/music-home.jpg" width="900" alt="Nimbo Music: início com saudação do mascote, gêneros, a música número 1 com disco de vinil e o player em forma de ilha" />
+</p>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/music-about.jpg" alt="Painel Sobre com capa, artistas, álbum, duração, lançamento e gênero" /></td>
+<td width="50%"><img src="docs/screenshots/music-sources.jpg" alt="Ajustes com a escolha da fonte das músicas: YouTube, Spotify ou prévias" /></td>
+</tr>
+<tr>
+<td align="center"><sub>Créditos e links de cada música</sub></td>
+<td align="center"><sub>Você escolhe de onde vem a música</sub></td>
+</tr>
+</table>
+
+- **Catálogo completo** da [Deezer](https://developers.deezer.com/api): em alta por gênero, busca de
+  músicas, artistas e álbuns, discografia e artistas parecidos.
+- **Músicas inteiras pelo YouTube** (tocador oficial, sem precisar de chave), ou pelo **Spotify
+  Premium**, ou prévias de 30 s. O Nimbo acha a versão certa (estúdio ou ao vivo) e deixa trocar.
+- **Só o som por padrão**, com o **videoclipe** ao lado quando você quiser: pequeno, grande ou em
+  modo cinema.
+- **Sobre a música**: artistas, álbum, lançamento, gênero, gravadora e links do YouTube e do Spotify.
+- **Letra sincronizada**, **fila** com arrastar para reordenar, **playlists** com capa em mosaico,
+  curtidas e recentes.
+- **Rádio do Nimbo**, timer para dormir, equalizador, filtro de conteúdo explícito e cor de destaque.
+- **O mascote dança** com a música, de fones de ouvido.
+- **“Ei Nimbo, toca Anitta”** funciona até sem a chave da Anthropic.
+
+> As músicas pertencem aos artistas e gravadoras. O Nimbo toca pelo tocador oficial do YouTube ou
+> pelo app do Spotify, mostra os créditos de cada faixa e **não baixa áudio**.
+
+## Baixar
+
+Pegue o instalador `Nimbo_<versão>_x64-setup.exe` na
+**[página de versões](https://github.com/EduardoxDev/Nimbo/releases/latest)**. Ele instala só para o
+seu usuário, sem pedir administrador, e se atualiza sozinho.
+
+O instalador ainda não é assinado, então o Windows mostra o aviso do SmartScreen na primeira vez:
+clique em **Mais informações** e depois em **Executar assim mesmo**.
+
+## Rodar o código
+
+Precisa de **Node 20+** e **Rust** (stable).
 
 ```powershell
 npm install
-npm run tauri dev
+npm run tauri dev       # o app de verdade, com recarga ao vivo
+npm run dev             # só a interface, no navegador
+npm test                # testes
 ```
 
 Gerar o executável sem instalador:
@@ -62,57 +143,76 @@ Gerar o executável sem instalador:
 npm run tauri build -- --no-bundle
 ```
 
-## O que já funciona
+Abrir direto no Nimbo Music (bom para atalhos): `nimbo.exe --music`.
 
-- Ilha fechada e aberta, nos estilos clássico (colada no topo) e vidro (flutuante).
-- Player de música do Windows (qualquer app que apareça no controle de mídia: Spotify, YouTube no navegador…):
-  capa, título, artista e álbum, barra de progresso (clique para pular), volume do sistema e
-  letras sincronizadas do [LRCLIB](https://lrclib.net) (só título, artista, álbum e duração saem do PC).
-- Nimbo Music: janela com o catálogo da [Deezer](https://developers.deezer.com/api) (grátis, sem conta):
-  músicas em alta por gênero, busca de músicas, artistas e álbuns, discografia completa, prévias de
-  30 segundos, curtidas e recentes guardadas no PC, e "Ouvir completa" no Spotify, YouTube Music ou
-  Deezer. Abre pelo disco colorido na página Música da ilha ou pela bandeja. O Nimbo de fones dança
-  no ritmo do grave e o player é uma ilha com visualizador. Ajustes: equalizador de 5 faixas com
-  estilos prontos, volume uniforme, transição suave, velocidade, Rádio do Nimbo, timer para dormir,
-  filtro de conteúdo explícito, serviço padrão, cor de destaque, estilo do visualizador e animações.
-  Tem também letra (LRCLIB) e fila num painel lateral, menu ⋯ em cada música (tocar a seguir, fila,
-  playlist), playlists com capa em mosaico e arrastar para reordenar, capas em alta na página Música
-  da ilha quando nada toca, e "Ei Nimbo, toca Anitta" (funciona até sem a chave da Anthropic).
-  Músicas inteiras: pelo YouTube (grátis, com o vídeo pequeno na tela, pelo tocador oficial) ou pelo
-  Spotify Premium (o som sai do app do Spotify). O YouTube funciona sem configurar nada: o Nimbo acha
-  cada música na busca pública do YouTube e guarda o resultado no PC. Uma chave da YouTube Data API é
-  opcional (Ajustes, ou `$env:NIMBO_YOUTUBE_KEY="AIza..."` na hora de gerar o app).
-- Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
-  [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
-  do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.
-- Ar-condicionado só de controle remoto: com um Broadlink RM4 Mini na mesma rede, o Nimbo
-  fala direto com ele (sem nuvem) e usa os códigos do modelo escolhido na biblioteca SmartIR.
-- Prateleira: arraste arquivos até a ilha e arraste de volta para qualquer app depois
-  (guarda atalhos, não cópias; miniatura para imagens). Usa o tauri-plugin-drag (MIT/Apache).
-- HUD na ilha fechada: volume, brilho do notebook e música nova; rolar o mouse sobre a ilha muda o volume.
-- Assistente na ilha (Claude Opus 5.5, com a sua chave da Anthropic): converse em português e ele
-  cria e conclui tarefas, liga o ar, inicia o foco, marca a água e controla a música.
-- Agentes de IA (Claude Code, Codex, Claude Desktop, Cursor…): servidor MCP local onde eles
-  mostram o próprio plano na ilha, avisam quando terminam e te passam tarefas. Configurações >
-  Agentes de IA tem o comando pronto para conectar.
-- Janela de configurações (bandeja > Configurações… ou engrenagem na ilha).
-- Foco (Pomodoro) com anel de progresso, rodadas e som ao fim de cada fase.
-- Água: meta do dia, copo que enche e lembretes na ilha fechada ("Bebi" / "Depois").
-- Anel de status na ilha fechada mostrando o foco ou a meta de água.
-- Tarefas do dia, nota diária e histórico.
-- Histórico de copiados com favoritos e notas.
-- Tempo: escolha a cidade em Configurações → Geral e a temperatura aparece no topo da ilha (dados do Open-Meteo).
-- Agentes de IA (MCP) podem pedir aprovação: a pergunta aparece na ilha com Aprovar e Recusar (`request_approval` e `check_approval`).
-- Lançador de apps (Alt+Shift+Espaço), atalhos globais configuráveis e página Sistema (bateria, CPU, memória, Wi-Fi, Bluetooth, modo escuro, volume por app).
-- Automações da Casa: ligar ou desligar o ar em horários e dias escolhidos.
-- Agenda: liga o Google Agenda ou o Outlook pelo link ICS secreto, mostra os próximos 7 dias e avisa na ilha antes de cada compromisso.
-- Tradução rápida com o Claude Haiku (mesma chave da Anthropic do assistente): português, inglês, espanhol e chinês.
-- Idiomas: português (padrão), inglês e chinês.
+<details>
+<summary><b>Onde está cada coisa</b></summary>
+
+| Pasta ou arquivo | O que tem |
+|---|---|
+| `src/App.tsx` | A ilha: estado, páginas e quase toda a interface |
+| `src/music/` | Nimbo Music (janela, tocadores do YouTube, Spotify e prévias, playlists) |
+| `src/mascot/` | O mascote: forma, olhos, humores e acessórios |
+| `src/i18n/` | Textos em português, inglês e chinês |
+| `src-tauri/src/lib.rs` | Janela, bandeja, comandos e inicialização com o Windows |
+| `src-tauri/src/media_control.rs` | Música do Windows (SMTC) |
+| `src-tauri/src/music_catalog.rs`, `youtube.rs`, `spotify.rs` | Catálogo, busca de vídeos e Spotify |
+| `src-tauri/src/agents.rs` | Servidor MCP para agentes de IA |
+
+Guia para quem mexe no código: [AGENTS.md](AGENTS.md). Plano e próximos passos: [PLANO.md](PLANO.md).
+
+</details>
+
+<details>
+<summary><b>Publicar uma versão</b></summary>
+
+O Nimbo procura versão nova 30 segundos depois de abrir e a cada 6 horas, em
+`https://github.com/EduardoxDev/Nimbo/releases/latest/download/latest.json`, e confere cada
+atualização com a chave pública que está em `src-tauri/tauri.conf.json`.
+
+1. No GitHub, em Settings → Secrets and variables → Actions, crie o segredo
+   `TAURI_SIGNING_PRIVATE_KEY` com o conteúdo da chave privada (só na primeira vez).
+2. Suba a versão em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`.
+3. Faça o commit, crie a tag e envie:
+
+```powershell
+git tag v0.5.0
+git push origin main --tags
+```
+
+O fluxo `Release` do GitHub Actions gera o instalador, assina e publica a versão com o
+`latest.json`. Quem já tem o Nimbo recebe a atualização sozinho.
+
+Para gerar o instalador no seu PC, a chave privada (em `~/.tauri/nimbo-updater.key`, fora do Git)
+precisa estar no ambiente. **Guarde uma cópia dela**: sem ela não dá para publicar atualizações.
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw "$HOME\.tauri\nimbo-updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+npm run tauri build
+```
+
+</details>
+
+## Privacidade
+
+- Chaves e tokens (Anthropic, Home Assistant, agenda, Spotify) ficam só no **Gerenciador de
+  Credenciais do Windows**.
+- Tarefas, curtidas, playlists e ajustes ficam **no seu PC**.
+- O que sai do PC é só o necessário para cada recurso: o nome da música para achar a letra ou o
+  vídeo, a cidade para o tempo, e o que você escreve para o assistente quando conversa com ele.
 
 ## Créditos
 
-O Nimbo começou como um fork do [fly-island](https://github.com/flyl1u/fly-island) (licença MIT),
-de flyl1u e colaboradores. Removemos as integrações de QQ, WeChat e QQ Mail.
+- Começou como um fork do [fly-island](https://github.com/flyl1u/fly-island) (MIT), de flyl1u e
+  colaboradores. As integrações de QQ, WeChat e QQ Mail foram removidas.
+- Códigos infravermelhos de ar-condicionado: [SmartIR](https://github.com/smartHomeHub/SmartIR) (MIT),
+  baixados só quando você escolhe o seu modelo.
+- Catálogo e prévias: [Deezer](https://developers.deezer.com/api). Letras: [LRCLIB](https://lrclib.net).
+  Tempo: [Open-Meteo](https://open-meteo.com).
+- Arrastar arquivos para fora: [tauri-plugin-drag](https://github.com/crabnebula-dev/drag-rs) (MIT/Apache-2.0).
 
-Os códigos infravermelhos de ar-condicionado vêm do [SmartIR](https://github.com/smartHomeHub/SmartIR)
-(licença MIT) e são baixados só quando você escolhe o seu modelo.
+<div align="center">
+<br />
+<sub>Feito por <a href="https://github.com/EduardoxDev">Eduardo Maciel Wanka</a> · Licença <a href="LICENSE">MIT</a></sub>
+</div>
