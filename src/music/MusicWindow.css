@@ -487,6 +487,8 @@
 /* ---------- Main area ---------- */
 .mm-main {
   position: relative;
+  container-type: inline-size;
+  container-name: page;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
@@ -1658,7 +1660,8 @@
   grid-column: 2;
   grid-row: 2;
   position: relative;
-  z-index: 10;
+  /* Above the video, so cinema mode never dims the controls. */
+  z-index: 13;
   padding: 0 14px 14px;
   pointer-events: none;
 }
@@ -1676,7 +1679,8 @@
   max-width: 1180px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) minmax(300px, 1.5fr) minmax(170px, 1fr);
+  /* The middle keeps its width; the sides share what is left. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   height: 84px;
@@ -1840,8 +1844,7 @@
   grid-template-columns: 38px minmax(0, 1fr) 38px;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  max-width: 520px;
+  width: clamp(240px, 26vw, 460px);
 }
 
 .mm-progress__time {
@@ -1910,7 +1913,7 @@
 }
 
 .mm-range--volume {
-  width: 96px;
+  width: 80px;
   flex: none;
 }
 
@@ -3162,6 +3165,806 @@
   .mm-now {
     width: min(360px, calc(100% - 100px));
   }
+}
+
+/* ---------- Spotify ---------- */
+.mm-side__foot--full {
+  color: var(--mm-text-2);
+}
+
+.mm-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  margin-right: 4px;
+  padding: 3px 9px 3px 4px;
+  overflow: hidden;
+  color: #1ed760;
+  background: rgba(30, 215, 96, 0.12);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mm-device span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mm-group__note {
+  margin: -2px 14px 6px;
+  color: var(--mm-text-3);
+  font-size: 12px;
+}
+
+.mm-group--spotify {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(30, 215, 96, 0.12), transparent 60%),
+    var(--mm-card);
+}
+
+.mm-spotify {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 14px;
+  padding: 8px 14px 14px;
+}
+
+.mm-spotify__mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  background: rgba(30, 215, 96, 0.1);
+  border-radius: 16px;
+}
+
+.mm-spotify__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mm-spotify__body > strong {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.mm-spotify__body > p {
+  margin: 0;
+  color: var(--mm-text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mm-spotify__warn {
+  margin: 0;
+  padding: 8px 12px;
+  color: #ffb340 !important;
+  background: rgba(255, 159, 10, 0.1);
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.mm-spotify__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 10px 12px;
+  background: #121316;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
+}
+
+.mm-spotify__row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mm-spotify__row b {
+  font-size: 13.5px;
+}
+
+.mm-spotify__row small {
+  color: var(--mm-text-2);
+  font-size: 12px;
+}
+
+.mm-spotify__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-spotify__steps li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--mm-text);
+  font-size: 13px;
+}
+
+.mm-spotify__copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.mm-spotify__copy code {
+  padding: 8px 12px;
+  overflow: hidden;
+  color: #1ed760;
+  background: #0d0e10;
+  border: 1px solid var(--mm-border);
+  border-radius: 10px;
+  font: 600 12.5px/1.2 "Cascadia Mono", Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.mm-spotify__form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.mm-spotify__input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  color: var(--mm-text);
+  background: #0d0e10;
+  border: 1px solid var(--mm-border);
+  border-radius: 999px;
+  outline: none;
+  font: 600 13px "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
+.mm-spotify__input:focus {
+  border-color: rgba(30, 215, 96, 0.6);
+  box-shadow: 0 0 0 4px rgba(30, 215, 96, 0.12);
+}
+
+.mm-pill--spotify {
+  color: #08080a;
+  background: #1ed760;
+}
+
+.mm-pill--spotify:not(:disabled):hover {
+  background: #3be477;
+}
+
+/* Lyrics that follow the whole song */
+.mm-lyrics__lines--synced li {
+  color: var(--mm-text-3);
+  cursor: pointer;
+  transform-origin: left center;
+  transition: color 260ms ease, transform 360ms var(--mm-spring), opacity 260ms ease;
+}
+
+.mm-lyrics__lines--synced li.mm-lyrics__past {
+  color: rgba(235, 238, 245, 0.5);
+}
+
+.mm-lyrics__lines--synced li.mm-lyrics__now {
+  color: var(--mm-text);
+  transform: scale(1.04);
+  text-shadow: 0 0 18px rgba(var(--mm-accent-rgb), 0.45);
+}
+
+.mm-lyrics__lines--synced li:hover {
+  color: var(--mm-accent);
+}
+
+/* ---------- YouTube video ---------- */
+/* YouTube's terms want the embedded player visible and at least 200 px tall,
+   so the video floats above the player like a picture-in-picture. */
+.mm-video {
+  position: absolute;
+  right: 26px;
+  bottom: 112px;
+  z-index: 9;
+  width: 356px;
+  height: 200px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  transform-origin: bottom right;
+  transition: width 420ms var(--mm-ease), height 420ms var(--mm-ease), opacity 260ms ease, transform 420ms var(--mm-spring);
+  animation: mm-pop-in 460ms var(--mm-spring) backwards;
+}
+
+.mm-video--big {
+  width: 640px;
+  height: 360px;
+}
+
+/* Nothing loaded yet: out of the way (nothing plays, so nothing to show). */
+.mm-video--idle {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85) translateY(12px);
+}
+
+.mm-video__frame,
+.mm-video__frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Sits on the frame's corner, outside the video picture's controls. */
+.mm-video__tools {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.mm-video:hover .mm-video__tools,
+.mm-video__tools:focus-within {
+  opacity: 1;
+}
+
+.mm-video__size {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: background 160ms ease, transform 240ms var(--mm-spring);
+}
+
+.mm-video__size--on {
+  color: #08080a;
+  background: #f5f5f7;
+}
+
+.mm-video__size:hover {
+  transform: scale(1.1);
+}
+
+/* The lyrics/queue panel stops above the video. */
+.mm:has(.mm-video:not(.mm-video--idle)) .mm-now {
+  bottom: 326px;
+}
+
+.mm:has(.mm-video--big:not(.mm-video--idle)) .mm-now {
+  bottom: 486px;
+}
+
+/* ---------- Where songs come from ---------- */
+.mm-group--source .mm-group__note {
+  margin-bottom: 10px;
+}
+
+.mm-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 0 8px 10px;
+}
+
+.mm-source {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  background: #121316;
+  border: 1px solid var(--mm-border);
+  border-radius: 18px;
+  transition: border-color 220ms ease, background 220ms ease, transform 300ms var(--mm-spring), box-shadow 220ms ease;
+}
+
+.mm-source:hover {
+  background: #17181b;
+  transform: translateY(-2px);
+}
+
+.mm-source--on {
+  background: linear-gradient(180deg, rgba(var(--mm-accent-rgb), 0.12), rgba(var(--mm-accent-rgb), 0.03));
+  border-color: rgba(var(--mm-accent-rgb), 0.55);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.mm-source__mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  color: var(--mm-accent);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 13px;
+}
+
+.mm-source__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 18px;
+}
+
+.mm-source__text strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 750;
+}
+
+.mm-source__text em {
+  padding: 2px 8px;
+  color: var(--mm-text-2);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.mm-source--youtube .mm-source__text em {
+  color: #35e985;
+  background: rgba(53, 233, 133, 0.12);
+}
+
+.mm-source__text small {
+  color: var(--mm-text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mm-source__state {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--mm-text-2);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  animation: mm-pop-in 260ms var(--mm-spring) backwards;
+}
+
+.mm-source__state--live {
+  color: #fff;
+  background: var(--mm-accent);
+}
+
+/* Not set up yet: spins until the chosen source is ready. */
+.mm-source__state:not(.mm-source__state--live) svg {
+  animation: mm-spin 1.4s linear infinite;
+}
+
+.mm-group--source .mm-spotify {
+  margin: 0 8px 8px;
+  padding: 14px;
+  background: #0f1013;
+  border: 1px solid var(--mm-border);
+  border-radius: 18px;
+}
+
+.mm-youtube .mm-spotify__mark {
+  background: rgba(255, 0, 51, 0.1);
+}
+
+.mm-pill--youtube {
+  color: #fff;
+  background: #ff0033;
+}
+
+.mm-pill--youtube:not(:disabled):hover {
+  background: #ff2a55;
+}
+
+.mm-video__close:hover {
+  background: #ff453a;
+}
+
+/* ---------- About this song ---------- */
+.mm-about {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.mm-about__cover {
+  align-self: center;
+  animation: mm-pop-in 460ms var(--mm-spring) backwards;
+}
+
+.mm-about__cover .mm-cover--xl {
+  width: 220px;
+  height: 220px;
+}
+
+.mm-about__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.mm-about__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  background: var(--mm-border);
+  border: 1px solid var(--mm-border);
+  border-radius: 16px;
+}
+
+.mm-about__facts > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #121316;
+}
+
+.mm-about__facts dt {
+  color: var(--mm-text-3);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mm-about__facts dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.mm-about__artists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-about__artists .mm-chip {
+  padding: 5px 11px;
+  font-size: 12.5px;
+  animation: none;
+}
+
+.mm-about__source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-about__links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mm-about__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  color: var(--mm-text);
+  background: #121316;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
+  transition: background 160ms ease, border-color 160ms ease, transform 260ms var(--mm-spring);
+}
+
+.mm-about__link:hover {
+  background: #1a1b1f;
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.mm-about__link > span:not(.mm-about__icon) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mm-about__link strong {
+  font-size: 13.5px;
+}
+
+.mm-about__link small {
+  overflow: hidden;
+  color: var(--mm-text-3);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-about__link > svg:last-child {
+  flex: none;
+  color: var(--mm-text-3);
+}
+
+.mm-about__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--mm-accent);
+}
+
+.mm-about__link--on {
+  border-color: rgba(var(--mm-accent-rgb), 0.55);
+  background: rgba(var(--mm-accent-rgb), 0.1);
+}
+
+.mm-about__credit {
+  margin: 2px 2px 0;
+  color: var(--mm-text-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Smaller windows: the volume slider and the player's mascot step aside
+   (mute stays; Nimbo is still in the sidebar). */
+@media (max-width: 1240px) {
+  .mm-range--volume {
+    display: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .mm-player__side .mm-nimbo {
+    display: none;
+  }
+}
+
+/* Narrow page (window small or the side panel open): the hero drops its
+   record and cover so the title has room. */
+@container page (max-width: 640px) {
+  .mm-hero .mm-hero__art {
+    display: none;
+  }
+
+  .mm-hero h2 {
+    font-size: 30px;
+  }
+
+  .mm-banner {
+    gap: 18px;
+  }
+
+  .mm-banner .mm-cover--xl,
+  .mm-banner .mm-mosaic--xl,
+  .mm-banner .mm-library-art {
+    width: 132px;
+    height: 132px;
+  }
+
+  .mm-banner .mm-vinyl {
+    display: none;
+  }
+
+  .mm-search-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cinema: the video takes the page area, above the content, below the bars. */
+.mm-video--cinema {
+  top: 70px;
+  left: 258px;
+  right: 14px;
+  bottom: 112px;
+  width: auto;
+  height: auto;
+  z-index: 12;
+  border-radius: 22px;
+  box-shadow: 0 0 0 100vmax rgba(8, 8, 10, 0.72), 0 30px 70px rgba(0, 0, 0, 0.7);
+}
+
+.mm-video--cinema.mm-video--idle {
+  box-shadow: none;
+}
+
+@media (max-width: 1000px) {
+  .mm-video--cinema {
+    left: 90px;
+  }
+}
+
+/* ---------- Player groups ---------- */
+.mm-player__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mm-player__divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 6px;
+  background: var(--mm-border);
+}
+
+.mm-player__title {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--mm-text);
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-player__title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- About: video and versions ---------- */
+.mm-about__video {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px;
+  background: #121316;
+  border: 1px solid var(--mm-border);
+  border-radius: 16px;
+}
+
+.mm-about__label {
+  color: var(--mm-text-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mm-about__video > strong {
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.mm-about__video > small {
+  color: var(--mm-text-2);
+  font-size: 12px;
+}
+
+.mm-about__video .mm-link-btn {
+  margin-top: 4px;
+  color: var(--mm-accent);
+}
+
+.mm-about__versions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-about__versions li {
+  animation: mm-rise 320ms calc(var(--i, 0) * 40ms) var(--mm-ease) backwards;
+}
+
+.mm-about__version {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  text-align: left;
+  color: var(--mm-text);
+  background: #0d0e10;
+  border: 1px solid var(--mm-border);
+  border-radius: 12px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.mm-about__version:hover {
+  background: #17181b;
+}
+
+.mm-about__version--on {
+  border-color: rgba(var(--mm-accent-rgb), 0.55);
+}
+
+.mm-about__version--on > svg {
+  flex: none;
+  color: var(--mm-accent);
+}
+
+.mm-about__version img {
+  width: 64px;
+  height: 36px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.mm-about__version span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mm-about__version strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-about__version small {
+  color: var(--mm-text-3);
+  font-size: 11px;
+}
+
+.mm-about__pair {
+  display: flex;
+  gap: 6px;
+}
+
+.mm-about__pair .mm-about__link {
+  flex: 1;
+  min-width: 0;
+}
+
+.mm-about__copy {
+  width: 44px;
+  height: auto;
+  background: #121316;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
 }
 
 /* Animations off (Windows setting or Settings > Look). */

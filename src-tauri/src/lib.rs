@@ -14,6 +14,8 @@ mod ir_climate;
 mod launcher;
 mod lyrics;
 mod music_catalog;
+mod spotify;
+mod youtube;
 mod sessions_watch;
 mod task_changes;
 mod shelf;
@@ -1919,6 +1921,17 @@ pub fn run() {
             music_catalog::music_track,
             music_catalog::music_open_external,
             music_catalog::open_music_window,
+            spotify::spotify_status,
+            spotify::spotify_connect,
+            spotify::spotify_disconnect,
+            spotify::spotify_play,
+            spotify::spotify_queue,
+            spotify::spotify_state,
+            spotify::spotify_control,
+            youtube::youtube_status,
+            youtube::youtube_save_key,
+            youtube::youtube_delete_key,
+            youtube::youtube_find,
             home_assistant::home_assistant_status,
             home_assistant::connect_home_assistant,
             home_assistant::disconnect_home_assistant,

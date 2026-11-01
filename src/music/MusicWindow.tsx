@@ -14,11 +14,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   ChevronLeft,
   ChevronRight,
+  Clapperboard,
+  Expand,
+  Link,
   Clock3,
   ExternalLink,
   Headphones,
   Heart,
   History,
+  Info,
   House,
   Loader2,
   AudioLines,
@@ -35,6 +39,8 @@ import {
   MicVocal,
   Pencil,
   Plus,
+  Maximize2,
+  Minimize2,
   Minus,
   MoonStar,
   Music2,
@@ -80,6 +86,11 @@ import {
   type Track,
 } from "./catalog";
 import { usePreviewPlayer, type PreviewPlayer } from "./usePreviewPlayer";
+import { useSpotifyPlayer, type SpotifyPlayer } from "./useSpotifyPlayer";
+import { useYouTubePlayer, type YouTubePlayer } from "./useYouTubePlayer";
+import { GOOGLE_CONSOLE, youtube, youtubeErrorCode, type YouTubeStatus } from "./youtube";
+import { SPOTIFY_DASHBOARD, spotify, spotifyErrorCode, type SpotifyStatus } from "./spotify";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { PauseGlyph, PlayGlyph, ServiceMark, SkipGlyph } from "./icons";
 import {
   addToPlaylist,
@@ -94,7 +105,7 @@ import {
   takePending,
   type Playlist,
 } from "./library";
-import { parseLrc } from "../utils/lyrics";
+import { activeLyricIndex, parseLrc, type LyricLine } from "../utils/lyrics";
 import {
   ACCENTS,
   EQ_BANDS,
@@ -106,6 +117,7 @@ import {
   type Accent,
   type EqPreset,
   type MusicSettings,
+  type MusicSource,
 } from "./settings";
 import "./MusicWindow.css";
 
@@ -122,7 +134,11 @@ type View =
 type Music = {
   t: Translations["musicApp"];
   locale: string;
-  player: PreviewPlayer;
+  player: PreviewPlayer | SpotifyPlayer | YouTubePlayer;
+  youtubeStatus: YouTubeStatus | null;
+  setYouTubeStatus: (status: YouTubeStatus | null) => void;
+  spotifyStatus: SpotifyStatus | null;
+  setSpotifyStatus: (status: SpotifyStatus | null) => void;
   /** Latest spectrum, refreshed every frame while music plays. */
   bandsRef: { current: number[] };
   isLiked: (track: Track) => boolean;
@@ -149,9 +165,12 @@ type Music = {
   setPanel: (panel: Panel) => void;
   /** Page name shown in the top bar once the page header scrolls away. */
   setHeading: (name: string | null) => void;
+  /** YouTube plays audio only unless the music video is asked for. */
+  showVideo: boolean;
+  setShowVideo: (show: boolean) => void;
 };
 
-type Panel = "lyrics" | "queue" | null;
+type Panel = "about" | "lyrics" | "queue" | null;
 
 type SleepState = { kind: "off" } | { kind: "end" } | { kind: "at"; endsAt: number; minutes: number };
 
@@ -267,7 +286,7 @@ export default function MusicWindow() {
     [settings.hideExplicit],
   );
 
-  const player = usePreviewPlayer({
+  const preview = usePreviewPlayer({
     sound,
     onStart: (track) =>
       setRecent((items) => {
@@ -301,6 +320,71 @@ export default function MusicWindow() {
       }
     },
   });
+
+  // Whole songs: YouTube (free) or Spotify (Premium); previews when neither is ready.
+  const [spotifyStatus, setSpotifyStatus] = useState<SpotifyStatus | null>(null);
+  const [youtubeStatus, setYouTubeStatus] = useState<YouTubeStatus | null>(
+    // The browser preview has no key; it plays songs already found on this PC.
+    youtube.available() ? null : { configured: import.meta.env.DEV, ownKey: false, builtIn: false },
+  );
+  useEffect(() => {
+    if (!youtube.available()) return;
+    youtube
+      .status()
+      .then(setYouTubeStatus)
+      .catch((error) => console.error("Could not read the YouTube setup", error));
+  }, []);
+  useEffect(() => {
+    if (!spotify.available()) return;
+    spotify
+      .status()
+      .then(setSpotifyStatus)
+      .catch((error) => console.error("Could not read the Spotify connection", error));
+  }, []);
+  const source: MusicSource =
+    settings.source === "spotify" && spotifyStatus?.connected
+      ? "spotify"
+      : settings.source === "youtube" && youtubeStatus?.configured
+        ? "youtube"
+        : "preview";
+  const logRecent = (track: Track) =>
+    setRecent((items) => {
+      const next = withRecent(items, track);
+      saveTracks(RECENT_KEY, next);
+      return next;
+    });
+  const youtubePlayer = useYouTubePlayer({
+    enabled: source === "youtube",
+    onStart: logRecent,
+    onMissing: () => setToast({ text: t.notOnYouTube, id: Date.now() }),
+    onError: (error) => {
+      const code = youtubeErrorCode(error);
+      setToast({ text: code ? t.youtubeErrors[code] : String(error), id: Date.now() });
+    },
+  });
+  const spotifyPlayer = useSpotifyPlayer({
+    enabled: source === "spotify",
+    onStart: (track) =>
+      setRecent((items) => {
+        const next = withRecent(items, track);
+        saveTracks(RECENT_KEY, next);
+        return next;
+      }),
+    onError: (error) => {
+      const code = spotifyErrorCode(error);
+      setToast({ text: code ? t.spotifyErrors[code] : String(error), id: Date.now() });
+    },
+  });
+  const player = source === "spotify" ? spotifyPlayer : source === "youtube" ? youtubePlayer : preview;
+  // Switching sources silences whatever the old one was playing.
+  useEffect(() => {
+    if (source !== "preview") preview.pause();
+    if (source !== "spotify" && spotifyPlayer.playing) spotifyPlayer.pause();
+  }, [source]);
+  const [videoSize, setVideoSize] = useState<"small" | "big" | "cinema">("small");
+  const videoSizeRef = useRef(videoSize);
+  videoSizeRef.current = videoSize;
+  const [showVideo, setShowVideo] = useState(false);
 
   const setSleep = (minutes: number | "end" | null) => {
     player.setStopAfterCurrent(minutes === "end");
@@ -461,6 +545,8 @@ export default function MusicWindow() {
       } else if (event.key === " " && !typing && !target?.closest("button, a, input")) {
         event.preventDefault();
         player.toggle();
+      } else if (event.key === "Escape" && !typing && videoSizeRef.current === "cinema") {
+        setVideoSize("small");
       } else if (event.altKey && event.key === "ArrowLeft") {
         event.preventDefault();
         back();
@@ -520,6 +606,12 @@ export default function MusicWindow() {
     panel,
     setPanel,
     setHeading,
+    spotifyStatus,
+    setSpotifyStatus,
+    youtubeStatus,
+    setYouTubeStatus,
+    showVideo,
+    setShowVideo,
   };
 
   return (
@@ -614,6 +706,37 @@ export default function MusicWindow() {
           </main>
         </div>
         {panel && <NowPanel />}
+        {source === "youtube" && (
+          <div
+            className={`mm-video mm-video--${videoSize}${youtubePlayer.current && showVideo ? "" : " mm-video--idle"}`}
+            aria-hidden={!showVideo}
+          >
+            <div className="mm-video__frame" ref={youtubePlayer.stageRef} />
+            <div className="mm-video__tools">
+              <button
+                type="button"
+                className="mm-video__size"
+                title={videoSize === "small" ? t.videoBigger : t.videoSmaller}
+                aria-label={videoSize === "small" ? t.videoBigger : t.videoSmaller}
+                onClick={() => setVideoSize((size) => (size === "small" ? "big" : "small"))}
+              >
+                {videoSize === "small" ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+              </button>
+              <button
+                type="button"
+                className={`mm-video__size${videoSize === "cinema" ? " mm-video__size--on" : ""}`}
+                title={videoSize === "cinema" ? t.exitCinema : t.cinema}
+                aria-label={videoSize === "cinema" ? t.exitCinema : t.cinema}
+                onClick={() => setVideoSize((size) => (size === "cinema" ? "small" : "cinema"))}
+              >
+                <Expand size={14} />
+              </button>
+              <button type="button" className="mm-video__size mm-video__close" title={t.hideVideo} aria-label={t.hideVideo} onClick={() => setShowVideo(false)}>
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
         <PlayerBar />
         {toast && (
           <div className="mm-toast" role="status" key={toast.id}>
@@ -681,7 +804,7 @@ function Sidebar({
   onOpen: (view: View) => void;
   onSearch: () => void;
 }) {
-  const { t, playlists, editPlaylists } = useMusic();
+  const { t, playlists, editPlaylists, player } = useMusic();
   const items: { id: View["kind"]; label: string; icon: typeof House; count?: number; run: () => void }[] = [
     { id: "home", label: t.home, icon: House, run: () => onOpen({ kind: "home" }) },
     {
@@ -771,9 +894,9 @@ function Sidebar({
         <span className="mm-nav__gap" />
         {more.map(renderItem)}
       </nav>
-      <footer className="mm-side__foot" title={t.previewNote}>
-        <Headphones size={13} strokeWidth={2.4} aria-hidden="true" />
-        <span>{t.footNote}</span>
+      <footer className={`mm-side__foot${player.source === "preview" ? "" : " mm-side__foot--full"}`} title={player.source === "preview" ? t.previewNote : undefined}>
+        {player.source === "preview" ? <Headphones size={13} strokeWidth={2.4} aria-hidden="true" /> : <ServiceMark service={player.source} size={14} />}
+        <span>{player.source === "spotify" ? t.fullFootNote : player.source === "youtube" ? t.youtubeFoot : t.footNote}</span>
       </footer>
     </aside>
   );
@@ -1665,7 +1788,16 @@ function Visualizer() {
 }
 
 function PlayerBar() {
-  const { t, player, open, panel, setPanel } = useMusic();
+  const { t, player, open, panel, setPanel, locale, showVideo, setShowVideo } = useMusic();
+  // Songs Spotify picked on its own have no catalog ids: find the artist by name.
+  const openArtist = (track: Track) => {
+    if (track.artistId) {
+      open({ kind: "artist", id: track.artistId });
+      return;
+    }
+    const name = track.artistName.split(",")[0].trim();
+    void catalog.search(name, locale).then((found) => found.artists[0] && open({ kind: "artist", id: found.artists[0].id }));
+  };
   const track = player.current;
   const progress = player.length > 0 ? (player.time / player.length) * 100 : 0;
   const volumeLevel = player.muted ? 0 : player.volume;
@@ -1680,12 +1812,14 @@ function PlayerBar() {
         <div className="mm-player__now">
           {track ? (
             <>
-              <button type="button" className="mm-player__art" key={track.id} onClick={() => open({ kind: "album", id: track.albumId })} aria-label={track.albumTitle}>
+              <button type="button" className="mm-player__art" key={track.id} onClick={() => track.albumId && open({ kind: "album", id: track.albumId })} aria-label={track.albumTitle}>
                 <Cover src={track.cover} size="md" />
               </button>
               <span className="mm-player__text" key={`text-${track.id}`}>
-                <strong title={track.title}>{track.title}</strong>
-                <button type="button" className="mm-link" onClick={() => open({ kind: "artist", id: track.artistId })}>
+                <button type="button" className="mm-player__title" title={t.about} onClick={() => setPanel(panel === "about" ? null : "about")}>
+                  {track.title}
+                </button>
+                <button type="button" className="mm-link" onClick={() => openArtist(track)}>
                   {track.artistName}
                 </button>
               </span>
@@ -1767,6 +1901,37 @@ function PlayerBar() {
 
         <div className="mm-player__side">
           <SleepChip />
+          {player.source === "spotify" && player.device && (
+            <span className="mm-device" title={t.playingOn(player.device)}>
+              <ServiceMark service="spotify" size={13} />
+              <span>{player.device}</span>
+            </span>
+          )}
+          <span className="mm-player__group">
+          {player.source === "youtube" && (
+            <button
+              type="button"
+              className={`mm-icon${showVideo ? " mm-icon--on" : ""}`}
+              title={showVideo ? t.hideVideo : t.showVideo}
+              aria-label={showVideo ? t.hideVideo : t.showVideo}
+              aria-pressed={showVideo}
+              disabled={!track}
+              onClick={() => setShowVideo(!showVideo)}
+            >
+              <Clapperboard size={17} />
+            </button>
+          )}
+          <button
+            type="button"
+            className={`mm-icon${panel === "about" ? " mm-icon--on" : ""}`}
+            title={t.about}
+            aria-label={t.about}
+            aria-pressed={panel === "about"}
+            disabled={!track}
+            onClick={() => setPanel(panel === "about" ? null : "about")}
+          >
+            <Info size={17} />
+          </button>
           <button
             type="button"
             className={`mm-icon${panel === "lyrics" ? " mm-icon--on" : ""}`}
@@ -1791,7 +1956,8 @@ function PlayerBar() {
               <span className="mm-icon__count">{Math.min(99, player.queue.length - player.index - 1)}</span>
             )}
           </button>
-          {track && <ListenFullMenu track={track} compact />}
+          </span>
+          <span className="mm-player__divider" aria-hidden="true" />
           <button type="button" className="mm-icon" title={player.muted ? t.unmute : t.mute} aria-label={player.muted ? t.unmute : t.mute} onClick={player.toggleMute}>
             <VolumeIcon size={17} />
           </button>
@@ -1972,7 +2138,7 @@ function Equalizer5() {
 }
 
 function SettingsView() {
-  const { t, locale, settings, updateSettings, motion, setMotionPreference, sleep, setSleep, likes, recent, clearLibrary, setTint } = useMusic();
+  const { t, locale, settings, updateSettings, motion, setMotionPreference, sleep, setSleep, likes, recent, clearLibrary, setTint, player } = useMusic();
   const [confirming, setConfirming] = useState<"likes" | "recent" | null>(null);
   const [copied, setCopied] = useState(false);
   const left = useCountdown(sleep.kind === "at" ? sleep.endsAt : null);
@@ -2016,8 +2182,11 @@ function SettingsView() {
         </div>
       </header>
 
+      <SourceSettings />
+
       <section className="mm-group" style={stagger(0)}>
         <h2>{t.sectionSound}</h2>
+        {player.source !== "preview" && <p className="mm-group__note">{t.previewOnly}</p>}
         <SettingRow icon={AudioLines} tone="#ff375f" title={t.equalizer} hint={t.equalizerHint} wide>
           <Equalizer5 />
         </SettingRow>
@@ -2356,17 +2525,19 @@ function TrackMenu({ track, onRemove }: { track: Track; onRemove?: () => void })
 
 // ---------- Lyrics and queue panel ----------
 
-type LyricsView = { status: "loading" } | { status: "missing" } | { status: "ready"; lines: string[]; instrumental: boolean };
+type LyricsView =
+  | { status: "loading" }
+  | { status: "missing" }
+  | { status: "ready"; lines: string[]; timed: LyricLine[]; instrumental: boolean };
 
 function linesOf(answer: LyricsAnswer | null): LyricsView {
   if (!answer) return { status: "missing" };
-  if (answer.instrumental) return { status: "ready", lines: [], instrumental: true };
+  if (answer.instrumental) return { status: "ready", lines: [], timed: [], instrumental: true };
+  const timed = answer.synced ? parseLrc(answer.synced) : [];
   const lines = answer.plain
     ? answer.plain.split(/\r?\n/).map((line) => line.trim())
-    : answer.synced
-      ? parseLrc(answer.synced).map((line) => line.text)
-      : [];
-  return lines.some(Boolean) ? { status: "ready", lines, instrumental: false } : { status: "missing" };
+    : timed.map((line) => line.text);
+  return lines.some(Boolean) || timed.length ? { status: "ready", lines, timed, instrumental: false } : { status: "missing" };
 }
 
 function LyricsPane() {
@@ -2388,6 +2559,18 @@ function LyricsPane() {
     // The id names the song; the rest of the object changes when its preview refreshes.
   }, [track?.id]);
 
+  // Whole songs (Spotify) follow the clock line by line; previews are only a clip, so they cannot.
+  const synced = player.source !== "preview" && view.status === "ready" && view.timed.length > 0;
+  const active = synced && view.status === "ready" ? activeLyricIndex(view.timed, player.time * 1000 + 300) : -1;
+  const listRef = useRef<HTMLOListElement | null>(null);
+  useEffect(() => {
+    const list = listRef.current;
+    const line = list?.children[Math.max(0, active)] as HTMLElement | undefined;
+    const box = list?.closest(".mm-now__body") as HTMLElement | null;
+    if (!line || !box || active < 0) return;
+    box.scrollTo({ top: line.offsetTop - box.clientHeight / 2 + line.clientHeight, behavior: "smooth" });
+  }, [active]);
+
   if (!track) return null;
   return (
     <div className="mm-lyrics">
@@ -2406,6 +2589,19 @@ function LyricsPane() {
         <NimboState mood="done" text={t.lyricsInstrumental} />
       ) : (
         <>
+          {synced ? (
+            <ol className="mm-lyrics__lines mm-lyrics__lines--synced" key={`synced-${track.id}`} ref={listRef}>
+              {view.timed.map((line, index) => (
+                <li
+                  key={`${line.timeMs}-${index}`}
+                  className={index === active ? "mm-lyrics__now" : index < active ? "mm-lyrics__past" : undefined}
+                  onClick={() => player.seek(line.timeMs / 1000)}
+                >
+                  {line.text || "\u266a"}
+                </li>
+              ))}
+            </ol>
+          ) : (
           <ol className="mm-lyrics__lines" key={track.id}>
             {view.lines.map((line, index) =>
               line ? (
@@ -2417,8 +2613,9 @@ function LyricsPane() {
               ),
             )}
           </ol>
+          )}
           <p className="mm-lyrics__note">
-            {t.lyricsNote} · {t.lyricsCredit}
+            {synced ? t.lyricsCredit : `${t.lyricsNote} · ${t.lyricsCredit}`}
           </p>
         </>
       )}
@@ -2430,7 +2627,8 @@ function QueuePane() {
   const { player, t } = useMusic();
   const upcoming = player.queue.slice(player.index + 1);
   const offset = player.index + 1;
-  const drag = useDragOrder((from, to) => player.moveInQueue(from + offset, to + offset));
+  const editable = player.source === "preview";
+  const drag = useDragOrder(editable ? (from, to) => player.moveInQueue(from + offset, to + offset) : undefined);
   return (
     <div className="mm-queue">
       {player.current && (
@@ -2448,12 +2646,13 @@ function QueuePane() {
       )}
       <h3>
         {t.upNext}
-        {upcoming.length > 0 && (
+        {upcoming.length > 0 && editable && (
           <button type="button" className="mm-queue__clear" onClick={player.clearUpcoming}>
             {t.clearQueue}
           </button>
         )}
       </h3>
+      {!editable && <p className="mm-queue__empty">{t.queueSpotifyNote}</p>}
       {upcoming.length === 0 ? (
         <p className="mm-queue__empty">{t.queueEmpty}</p>
       ) : (
@@ -2461,9 +2660,11 @@ function QueuePane() {
           {upcoming.map((track, index) => (
             <li key={`${track.id}-${index + offset}`} style={stagger(index)} {...drag.item(index)}>
               <div className="mm-queue__row">
-                <span className="mm-queue__grip" title={t.dragToReorder} aria-hidden="true">
-                  <GripVertical size={14} />
-                </span>
+                {editable && (
+                  <span className="mm-queue__grip" title={t.dragToReorder} aria-hidden="true">
+                    <GripVertical size={14} />
+                  </span>
+                )}
                 <button type="button" className="mm-queue__jump" onClick={() => player.jump(index + offset)} aria-label={`${t.play}: ${track.title}`}>
                   <Cover src={track.cover} size="sm" />
                   <span className="mm-queue__text">
@@ -2471,9 +2672,11 @@ function QueuePane() {
                     <small>{track.artistName}</small>
                   </span>
                 </button>
-                <button type="button" className="mm-icon mm-queue__remove" title={t.removeFromQueue} aria-label={`${t.removeFromQueue}: ${track.title}`} onClick={() => player.removeFromQueue(index + offset)}>
-                  <X size={15} />
-                </button>
+                {editable && (
+                  <button type="button" className="mm-icon mm-queue__remove" title={t.removeFromQueue} aria-label={`${t.removeFromQueue}: ${track.title}`} onClick={() => player.removeFromQueue(index + offset)}>
+                    <X size={15} />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -2487,12 +2690,13 @@ function NowPanel() {
   const { panel, setPanel, t } = useMusic();
   if (!panel) return null;
   return (
-    <aside className="mm-now" aria-label={panel === "lyrics" ? t.lyrics : t.queue}>
+    <aside className="mm-now" aria-label={panel === "about" ? t.about : panel === "lyrics" ? t.lyrics : t.queue}>
       <header className="mm-now__head">
         <Segmented
           label={t.nowPlaying}
           value={panel}
           options={[
+            { value: "about", label: t.about },
             { value: "lyrics", label: t.lyrics },
             { value: "queue", label: t.queue },
           ]}
@@ -2503,7 +2707,7 @@ function NowPanel() {
         </button>
       </header>
       <div className="mm-now__body" key={panel}>
-        {panel === "lyrics" ? <LyricsPane /> : <QueuePane />}
+        {panel === "about" ? <AboutPane /> : panel === "lyrics" ? <LyricsPane /> : <QueuePane />}
       </div>
     </aside>
   );
@@ -2602,6 +2806,433 @@ function PlaylistView({ id }: { id: string }) {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- Spotify connection ----------
+
+function SpotifySettings() {
+  const { t, spotifyStatus, setSpotifyStatus } = useMusic();
+  const [clientId, setClientId] = useState(spotifyStatus?.clientId ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (spotifyStatus?.clientId && !clientId) setClientId(spotifyStatus.clientId);
+  }, [spotifyStatus?.clientId]);
+
+  if (!spotify.available()) return null;
+  const redirect = spotifyStatus?.redirectUri ?? "http://127.0.0.1:43827/callback";
+
+  const connect = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSpotifyStatus(await spotify.connect(clientId));
+    } catch (failure) {
+      const code = spotifyErrorCode(failure);
+      setError(code ? t.spotifyErrors[code] : String(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    await spotify.disconnect().catch(() => {});
+    setSpotifyStatus(await spotify.status().catch(() => null));
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(redirect);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Selecting the field by hand still works.
+    }
+  };
+
+  return (
+    <div className="mm-spotify">
+        <span className="mm-spotify__mark" aria-hidden="true">
+          <ServiceMark service="spotify" size={34} />
+        </span>
+        {spotifyStatus?.connected ? (
+          <div className="mm-spotify__body">
+            <strong>{t.connectedAs(spotifyStatus.name ?? "Spotify")}</strong>
+            {spotifyStatus.premium === false && <p className="mm-spotify__warn">{t.premiumMissing}</p>}
+            <button type="button" className="mm-pill mm-pill--ghost" onClick={() => void disconnect()}>
+              {t.disconnect}
+            </button>
+          </div>
+        ) : (
+          <div className="mm-spotify__body">
+            <p>{t.spotifyIntro}</p>
+            <ol className="mm-spotify__steps">
+              <li>
+                <span>{t.spotifyStep1}</span>
+                <button type="button" className="mm-pill mm-pill--ghost" onClick={() => void openUrl(SPOTIFY_DASHBOARD)}>
+                  <ExternalLink size={14} />
+                  {t.spotifyOpenDashboard}
+                </button>
+              </li>
+              <li>
+                <span>{t.spotifyStep2}</span>
+                <span className="mm-spotify__copy">
+                  <code>{redirect}</code>
+                  <button type="button" className="mm-pill mm-pill--ghost" onClick={() => void copy()}>
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? t.copied : t.copy}
+                  </button>
+                </span>
+              </li>
+              <li>
+                <span>{t.spotifyStep3}</span>
+                <form
+                  className="mm-spotify__form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void connect();
+                  }}
+                >
+                  <input
+                    className="mm-spotify__input"
+                    value={clientId}
+                    spellCheck={false}
+                    placeholder={t.clientIdPlaceholder}
+                    aria-label={t.clientIdPlaceholder}
+                    onChange={(event) => setClientId(event.currentTarget.value.trim())}
+                  />
+                  <button type="submit" className="mm-pill mm-pill--spotify" disabled={busy || clientId.length !== 32}>
+                    {busy ? <Loader2 size={15} className="mm-spin" /> : <ServiceMark service="spotify" size={15} />}
+                    {busy ? t.connecting : t.connect}
+                  </button>
+                </form>
+              </li>
+            </ol>
+            {error && <p className="mm-spotify__warn">{error}</p>}
+          </div>
+        )}
+    </div>
+  );
+}
+
+// ---------- Where songs come from ----------
+
+function SourceSettings() {
+  const { t, settings, updateSettings, player } = useMusic();
+  const sources: MusicSource[] = ["youtube", "spotify", "preview"];
+  return (
+    <section className="mm-group mm-group--source" style={stagger(0)}>
+      <h2>{t.sourceTitle}</h2>
+      <p className="mm-group__note">{t.sourceHint}</p>
+      <div className="mm-sources" role="radiogroup" aria-label={t.sourceTitle}>
+        {sources.map((value) => {
+          const chosen = settings.source === value;
+          const live = player.source === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              className={`mm-source mm-source--${value}${chosen ? " mm-source--on" : ""}`}
+              onClick={() => updateSettings({ source: value })}
+            >
+              <span className="mm-source__mark" aria-hidden="true">
+                {value === "preview" ? <Headphones size={20} strokeWidth={2.2} /> : <ServiceMark service={value} size={26} />}
+              </span>
+              <span className="mm-source__text">
+                <strong>
+                  {t.sources[value].name}
+                  <em>{t.sources[value].badge}</em>
+                </strong>
+                <small>{t.sources[value].hint}</small>
+              </span>
+              {chosen && (
+                <span className={`mm-source__state${live ? " mm-source__state--live" : ""}`} aria-hidden="true">
+                  {live ? <Check size={13} strokeWidth={3} /> : <Loader2 size={13} />}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {settings.source === "youtube" && <YouTubeSettings />}
+      {settings.source === "spotify" && <SpotifySettings />}
+    </section>
+  );
+}
+
+function YouTubeSettings() {
+  const { t, youtubeStatus, setYouTubeStatus } = useMusic();
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!youtube.available()) return null;
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setYouTubeStatus(await youtube.saveKey(key));
+      setKey("");
+    } catch (failure) {
+      const code = youtubeErrorCode(failure);
+      setError(code ? t.youtubeErrors[code] : String(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mm-spotify mm-youtube">
+      <span className="mm-spotify__mark" aria-hidden="true">
+        <ServiceMark service="youtube" size={34} />
+      </span>
+      <div className="mm-spotify__body">
+        {youtubeStatus?.configured ? (
+          <>
+            <strong>{t.youtubeReady}</strong>
+            <p>{youtubeStatus.ownKey ? t.youtubeOwnKey : t.youtubeBuiltIn}</p>
+            {youtubeStatus.ownKey && (
+              <button type="button" className="mm-pill mm-pill--ghost" onClick={() => void youtube.deleteKey().then(setYouTubeStatus)}>
+                {t.removeKey}
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <p>{t.youtubeKeyIntro}</p>
+            <ol className="mm-spotify__steps">
+              <li>
+                <span>{t.youtubeStep1}</span>
+                <button type="button" className="mm-pill mm-pill--ghost" onClick={() => void openUrl(GOOGLE_CONSOLE)}>
+                  <ExternalLink size={14} />
+                  {t.youtubeOpenConsole}
+                </button>
+              </li>
+              <li>
+                <span>{t.youtubeStep2}</span>
+                <form
+                  className="mm-spotify__form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void save();
+                  }}
+                >
+                  <input
+                    className="mm-spotify__input"
+                    value={key}
+                    spellCheck={false}
+                    placeholder={t.keyPlaceholder}
+                    aria-label={t.keyPlaceholder}
+                    onChange={(event) => setKey(event.currentTarget.value.trim())}
+                  />
+                  <button type="submit" className="mm-pill mm-pill--youtube" disabled={busy || key.length !== 39}>
+                    {busy ? <Loader2 size={15} className="mm-spin" /> : <ServiceMark service="youtube" size={15} />}
+                    {t.save}
+                  </button>
+                </form>
+              </li>
+            </ol>
+          </>
+        )}
+        {error && <p className="mm-spotify__warn">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ---------- About this song: credits and links ----------
+
+function AboutPane() {
+  const { t, player, open, locale, showVideo, setShowVideo } = useMusic();
+  const track = player.current;
+  const [album, setAlbum] = useState<Album | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  // The album page has the label, the release date and the genres.
+  useEffect(() => {
+    setAlbum(null);
+    setChoosing(false);
+    if (!track?.albumId) return;
+    let cancelled = false;
+    catalog
+      .album(track.albumId, locale)
+      .then((page) => !cancelled && setAlbum(page.album))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [track?.albumId, track?.id, locale]);
+  if (!track) return <NimboState mood="idle" text={t.aboutEmpty} />;
+  const artists = track.artistName
+    // Only commas and "feat." split: "Felipe e Rodrigo" or "Henrique & Juliano" are one act.
+    .split(/\s*(?:,|\bfeat\.?|\bft\.?)\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const videoId = player.source === "youtube" ? player.videoId : null;
+  const youtubeLink = videoId
+    ? `https://www.youtube.com/watch?v=${videoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artistName} ${track.title}`)}`;
+  const openArtist = (name: string) => {
+    if (track.artistId && artists.length === 1) {
+      open({ kind: "artist", id: track.artistId });
+      return;
+    }
+    void catalog.search(name, locale).then((found) => found.artists[0] && open({ kind: "artist", id: found.artists[0].id }));
+  };
+  const source =
+    player.source === "youtube" ? t.sources.youtube.name : player.source === "spotify" ? t.sources.spotify.name : t.sources.preview.name;
+  const versions = player.source === "youtube" ? player.versions : [];
+  const playingVersion = versions.find((version) => version.id === videoId) ?? null;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(youtubeLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // The "open" button still works.
+    }
+  };
+
+  return (
+    <div className="mm-about">
+      <div className="mm-about__cover">
+        <Cover src={track.coverXl ?? track.cover} size="xl" />
+      </div>
+      <h3 className="mm-about__title">{track.title}</h3>
+      <dl className="mm-about__facts">
+        <div>
+          <dt>{t.artistsLabel}</dt>
+          <dd className="mm-about__artists">
+            {artists.map((name) => (
+              <button key={name} type="button" className="mm-chip" onClick={() => openArtist(name)}>
+                {name}
+              </button>
+            ))}
+          </dd>
+        </div>
+        {track.albumTitle && (
+          <div>
+            <dt>{t.albumLabel}</dt>
+            <dd>
+              {track.albumId ? (
+                <button type="button" className="mm-link mm-link--strong" onClick={() => open({ kind: "album", id: track.albumId })}>
+                  {track.albumTitle}
+                </button>
+              ) : (
+                track.albumTitle
+              )}
+            </dd>
+          </div>
+        )}
+        {track.duration > 0 && (
+          <div>
+            <dt>{t.durationLabel}</dt>
+            <dd>{formatDuration(track.duration)}</dd>
+          </div>
+        )}
+        {yearOf(album?.releaseDate ?? null) && (
+          <div>
+            <dt>{t.yearLabel}</dt>
+            <dd>{yearOf(album?.releaseDate ?? null)}</dd>
+          </div>
+        )}
+        {album?.genres && album.genres.length > 0 && (
+          <div>
+            <dt>{t.genreLabel}</dt>
+            <dd>{album.genres.join(", ")}</dd>
+          </div>
+        )}
+        {album?.label && (
+          <div>
+            <dt>{t.labelLabel}</dt>
+            <dd>{album.label}</dd>
+          </div>
+        )}
+        <div>
+          <dt>{t.sourceLabel}</dt>
+          <dd className="mm-about__source">
+            {player.source === "preview" ? <Headphones size={14} /> : <ServiceMark service={player.source} size={14} />}
+            {source}
+          </dd>
+        </div>
+      </dl>
+      {player.source === "youtube" && playingVersion && (
+        <div className="mm-about__video">
+          <span className="mm-about__label">{t.videoLabel}</span>
+          <strong>{playingVersion.title || t.sources.youtube.name}</strong>
+          {playingVersion.channel && <small>{playingVersion.channel}</small>}
+          {versions.length > 1 && (
+            <button type="button" className="mm-link-btn" onClick={() => setChoosing((value) => !value)} aria-expanded={choosing}>
+              {t.wrongVideo}
+            </button>
+          )}
+          {choosing && (
+            <ol className="mm-about__versions">
+              {versions.map((version, index) => (
+                <li key={version.id} style={stagger(index)}>
+                  <button
+                    type="button"
+                    className={`mm-about__version${version.id === videoId ? " mm-about__version--on" : ""}`}
+                    onClick={() => player.source === "youtube" && player.chooseVersion(version.id)}
+                  >
+                    <img src={`https://i.ytimg.com/vi/${version.id}/mqdefault.jpg`} alt="" loading="lazy" />
+                    <span>
+                      <strong>{version.title || version.id}</strong>
+                      <small>{[version.channel, version.seconds ? formatDuration(version.seconds) : null].filter(Boolean).join(" · ")}</small>
+                    </span>
+                    {version.id === videoId && <Check size={14} />}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+      <div className="mm-about__links">
+        <div className="mm-about__pair">
+          <button type="button" className="mm-about__link" onClick={() => void openUrl(youtubeLink)}>
+            <ServiceMark service="youtube" size={22} />
+            <span>
+              <strong>{t.watchOnYouTube}</strong>
+              <small>{videoId ? `youtube.com/watch?v=${videoId}` : t.searchOnYouTube}</small>
+            </span>
+            <ExternalLink size={14} />
+          </button>
+          <button type="button" className="mm-icon mm-about__copy" title={copied ? t.linkCopied : t.copyLink} aria-label={copied ? t.linkCopied : t.copyLink} onClick={() => void copyLink()}>
+            {copied ? <Check size={15} /> : <Link size={15} />}
+          </button>
+        </div>
+        <button
+          type="button"
+          className="mm-about__link"
+          onClick={() => void catalog.openExternal("spotify", track).catch(() => catalog.openExternal("spotifyWeb", track))}
+        >
+          <ServiceMark service="spotify" size={22} />
+          <span>
+            <strong>{t.openSpotify}</strong>
+            <small>{t.searchOnSpotify}</small>
+          </span>
+          <ExternalLink size={14} />
+        </button>
+        {player.source === "youtube" && (
+          <button type="button" className={`mm-about__link${showVideo ? " mm-about__link--on" : ""}`} onClick={() => setShowVideo(!showVideo)}>
+            <span className="mm-about__icon">
+              <Clapperboard size={16} />
+            </span>
+            <span>
+              <strong>{showVideo ? t.hideVideo : t.showVideo}</strong>
+              <small>{t.videoHint}</small>
+            </span>
+          </button>
+        )}
+      </div>
+      <p className="mm-about__credit">{t.creditLine(track.artistName, source)}</p>
     </div>
   );
 }

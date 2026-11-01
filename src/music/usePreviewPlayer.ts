@@ -392,6 +392,8 @@ export function usePreviewPlayer({
   }, [current, toggle]);
 
   return {
+    source: "preview" as const,
+    device: null as string | null,
     current,
     queue,
     index,

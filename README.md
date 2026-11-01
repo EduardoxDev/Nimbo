@@ -78,6 +78,10 @@ npm run tauri build -- --no-bundle
   Tem também letra (LRCLIB) e fila num painel lateral, menu ⋯ em cada música (tocar a seguir, fila,
   playlist), playlists com capa em mosaico e arrastar para reordenar, capas em alta na página Música
   da ilha quando nada toca, e "Ei Nimbo, toca Anitta" (funciona até sem a chave da Anthropic).
+  Músicas inteiras: pelo YouTube (grátis, com o vídeo pequeno na tela, pelo tocador oficial) ou pelo
+  Spotify Premium (o som sai do app do Spotify). O YouTube funciona sem configurar nada: o Nimbo acha
+  cada música na busca pública do YouTube e guarda o resultado no PC. Uma chave da YouTube Data API é
+  opcional (Ajustes, ou `$env:NIMBO_YOUTUBE_KEY="AIza..."` na hora de gerar o app).
 - Casa: ar-condicionado (temperatura, modos), luzes, tomadas e ventiladores pelo
   [Home Assistant](https://www.home-assistant.io/). O token fica no Gerenciador de Credenciais
   do Windows e a ilha só consegue ligar, desligar e ajustar esses aparelhos.

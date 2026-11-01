@@ -25,6 +25,8 @@ pub(crate) struct Track {
     duration: u32,
     preview: Option<String>,
     explicit: bool,
+    /// Recording code, used to find the very same song on Spotify.
+    isrc: Option<String>,
     artist_id: u64,
     artist_name: String,
     album_id: u64,
@@ -45,6 +47,8 @@ pub(crate) struct Album {
     release_date: Option<String>,
     record_type: Option<String>,
     track_count: Option<u32>,
+    label: Option<String>,
+    genres: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -128,6 +132,8 @@ struct RawAlbum {
     record_type: Option<String>,
     nb_tracks: Option<u32>,
     tracks: Option<List<RawTrack>>,
+    label: Option<String>,
+    genres: Option<List<RawGenre>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,6 +146,7 @@ struct RawTrack {
     preview: Option<String>,
     #[serde(default)]
     explicit_lyrics: bool,
+    isrc: Option<String>,
     #[serde(default = "readable_default")]
     readable: bool,
     #[serde(default)]
@@ -196,6 +203,8 @@ impl From<RawAlbum> for Album {
             release_date: non_empty(raw.release_date),
             record_type: non_empty(raw.record_type),
             track_count: raw.nb_tracks,
+            label: non_empty(raw.label),
+            genres: raw.genres.map(|list| list.data.into_iter().map(|genre| genre.name).filter(|name| !name.is_empty()).collect()).unwrap_or_default(),
         }
     }
 }
@@ -209,6 +218,7 @@ fn to_track(raw: RawTrack, album: Option<&Album>) -> Track {
         duration: raw.duration,
         preview: non_empty(raw.preview),
         explicit: raw.explicit_lyrics,
+        isrc: non_empty(raw.isrc),
         artist_id: raw.artist.id,
         artist_name: raw.artist.name,
         album_id: own.as_ref().map(|album| album.id).or(album.map(|album| album.id)).unwrap_or(0),
@@ -493,6 +503,8 @@ mod tests {
             release_date: None,
             record_type: None,
             track_count: None,
+            label: None,
+            genres: Vec::new(),
         };
         let track = to_track(raw, Some(&album));
         assert_eq!(track.album_id, 302127);

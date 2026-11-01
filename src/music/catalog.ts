@@ -8,6 +8,8 @@ export type Track = {
   duration: number;
   preview: string | null;
   explicit: boolean;
+  /** Recording code; finds the same song on Spotify. */
+  isrc?: string | null;
   artistId: number;
   artistName: string;
   albumId: number;
@@ -26,6 +28,9 @@ export type Album = {
   releaseDate: string | null;
   recordType: string | null;
   trackCount: number | null;
+  /** Record label and genres; filled on album pages. */
+  label?: string | null;
+  genres?: string[];
 };
 
 export type Artist = {

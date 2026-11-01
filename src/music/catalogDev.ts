@@ -41,6 +41,8 @@ function album(raw: Raw): Album {
     releaseDate: text(raw?.release_date),
     recordType: text(raw?.record_type),
     trackCount: raw?.nb_tracks ?? null,
+    label: text(raw?.label),
+    genres: ((raw?.genres?.data ?? []) as Raw[]).map((genre) => genre.name).filter(Boolean),
   };
 }
 
@@ -51,6 +53,7 @@ function track(raw: Raw, from?: Album): Track {
     duration: raw.duration ?? 0,
     preview: text(raw.preview),
     explicit: Boolean(raw.explicit_lyrics),
+    isrc: text(raw.isrc),
     artistId: raw.artist?.id ?? 0,
     artistName: raw.artist?.name ?? "",
     albumId: raw.album?.id ?? from?.id ?? 0,

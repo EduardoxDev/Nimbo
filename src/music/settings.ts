@@ -44,7 +44,11 @@ export type MusicSettings = {
   visualizer: VisualizerStyle;
   nimboDance: boolean;
   coverTint: boolean;
+  /** Where songs play from: YouTube (whole, free), Spotify (Premium) or 30-second previews. */
+  source: MusicSource;
 };
+
+export type MusicSource = "youtube" | "spotify" | "preview";
 
 export const DEFAULT_SETTINGS: MusicSettings = {
   eqPreset: "flat",
@@ -59,6 +63,7 @@ export const DEFAULT_SETTINGS: MusicSettings = {
   visualizer: "bars",
   nimboDance: true,
   coverTint: true,
+  source: "youtube",
 };
 
 const pick = <T,>(value: unknown, allowed: readonly T[], fallback: T): T =>
@@ -83,6 +88,7 @@ export function normalizeSettings(raw: unknown): MusicSettings {
     visualizer: pick(value.visualizer, ["bars", "wave", "off"] as const, DEFAULT_SETTINGS.visualizer),
     nimboDance: typeof value.nimboDance === "boolean" ? value.nimboDance : DEFAULT_SETTINGS.nimboDance,
     coverTint: typeof value.coverTint === "boolean" ? value.coverTint : DEFAULT_SETTINGS.coverTint,
+    source: pick(value.source, ["youtube", "spotify", "preview"] as const, DEFAULT_SETTINGS.source),
   };
 }
 
