@@ -163,6 +163,10 @@ import { EMPTY_LIVE, liveSummary, type LiveState } from "./live/live";
 import { friendMood } from "./squad/squad";
 import { useSquad } from "./squad/useSquad";
 import { PrompterPanel } from "./prompter/PrompterPanel";
+import { AMBIENT_KINDS, type AmbientKind } from "./tools/ambient";
+import { useTools } from "./tools/useTools";
+import { SoundsPanel } from "./tools/SoundsPanel";
+import { GamePanel } from "./tools/GamePanel";
 import { logPlay, MUSIC_LOG_KEY, RETRO_SEEN_KEY, retroDue } from "./retro/retro";
 import { IDLE_MUTE_WATCH, isOff, watchMute, type MicReading, type MuteWatch } from "./mic/muteWatch";
 import { daysSince, FIRST_RUN_KEY, nextTip, parseSeen, TIPS_LAST_KEY, TIPS_OFF_KEY, TIPS_SEEN_KEY, type TipId } from "./tips/tips";
@@ -175,7 +179,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "week" | "shelf" | "agents" | "clipboard" | "layout" | "prompter";
+type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "week" | "shelf" | "agents" | "clipboard" | "layout" | "prompter" | "sounds" | "game";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -324,6 +328,18 @@ export type IslandSettings = {
   liveActivities: boolean;
   /** Warns when a call starts with the microphone off, or you talk while it is off. */
   muteWarning: boolean;
+  /** Copied prices, units and times converted to the user's own. */
+  toolConvert: boolean;
+  /** Copied links and messages checked for scams. */
+  toolScam: boolean;
+  /** Screenshots read with OCR so the launcher finds them by their words. */
+  toolPrints: boolean;
+  /** A 30-second game offered on pomodoro breaks. */
+  breakGame: boolean;
+  /** Ambient sound that plays during focus, or "off". */
+  ambientWithFocus: AmbientKind | "off";
+  /** Speed of "read aloud". */
+  readRate: number;
   /** Serve the island to phones on the same Wi-Fi (QR code in Settings). */
   phoneIsland: boolean;
   /** Show the phone's notifications (through Windows' Phone Link) on the island. */
@@ -457,6 +473,8 @@ const MUSIC_EXPANDED_ISLAND_HEIGHT = 232;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
 const PROMPTER_EXPANDED_ISLAND_HEIGHT = 340;
+const SOUNDS_EXPANDED_ISLAND_HEIGHT = 262;
+const GAME_EXPANDED_ISLAND_HEIGHT = 300;
 const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
 const CARDS_EXPANDED_ISLAND_HEIGHT = 220;
 const ASSISTANT_EXPANDED_ISLAND_HEIGHT = 300;
@@ -532,6 +550,12 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   uiSounds: false,
   liveActivities: true,
   muteWarning: true,
+  toolConvert: true,
+  toolScam: true,
+  toolPrints: true,
+  breakGame: true,
+  ambientWithFocus: "off",
+  readRate: 1,
   phoneIsland: false,
   phoneNotifications: false,
   phoneShareClipboard: false,
@@ -900,6 +924,12 @@ export function normalizeSettings(
     uiSounds: typeof settings?.uiSounds === "boolean" ? settings.uiSounds : DEFAULT_SETTINGS.uiSounds,
     liveActivities: typeof settings?.liveActivities === "boolean" ? settings.liveActivities : DEFAULT_SETTINGS.liveActivities,
     muteWarning: typeof settings?.muteWarning === "boolean" ? settings.muteWarning : DEFAULT_SETTINGS.muteWarning,
+    toolConvert: typeof settings?.toolConvert === "boolean" ? settings.toolConvert : DEFAULT_SETTINGS.toolConvert,
+    toolScam: typeof settings?.toolScam === "boolean" ? settings.toolScam : DEFAULT_SETTINGS.toolScam,
+    toolPrints: typeof settings?.toolPrints === "boolean" ? settings.toolPrints : DEFAULT_SETTINGS.toolPrints,
+    breakGame: typeof settings?.breakGame === "boolean" ? settings.breakGame : DEFAULT_SETTINGS.breakGame,
+    ambientWithFocus: (AMBIENT_KINDS as string[]).includes(settings?.ambientWithFocus as string) ? (settings?.ambientWithFocus as AmbientKind) : "off",
+    readRate: typeof settings?.readRate === "number" && settings.readRate >= 0.6 && settings.readRate <= 2 ? settings.readRate : DEFAULT_SETTINGS.readRate,
     phoneIsland: typeof settings?.phoneIsland === "boolean" ? settings.phoneIsland : DEFAULT_SETTINGS.phoneIsland,
     phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
     phoneShareClipboard: typeof settings?.phoneShareClipboard === "boolean" ? settings.phoneShareClipboard : DEFAULT_SETTINGS.phoneShareClipboard,
@@ -4843,6 +4873,18 @@ function IslandApp({
     };
   }, []);
 
+  // The small tools (Settings → Tools): expander, paste queue, eyedropper, read aloud, converter…
+  const tools = useTools({
+    t,
+    locale: t.localeTag.startsWith("pt") ? "pt-BR" : t.localeTag.startsWith("zh") ? "zh-CN" : "en",
+    push: (notice) => lifePushRef.current(notice),
+    openPage: (target) => openIslandPageRef.current?.(target),
+    newestClip: clipboardHistory.items[0] ?? null,
+    settings,
+    focus: { status: focusTimer.state.status, phase: focusTimer.state.phase },
+    liveRunning: live.downloads.length + live.copies.length > 0,
+  });
+
   // Read later: links saved from the launcher or the phone come back in a free moment.
   const [readLater, setReadLater] = useState<ReadLaterItem[]>(() => loadReadLater());
   useEffect(() => {
@@ -5238,7 +5280,9 @@ function IslandApp({
       ? liveNow.text
       : null,
     ring: liveNow?.progress != null ? { progress: liveNow.progress, color: "#0a84ff" } : statusRing,
-    notice: micAlert
+    notice: tools.topNotice
+      ? { text: tools.topNotice.text, color: tools.topNotice.color, page, actions: tools.topNotice.actions }
+      : micAlert
       ? {
           text: micAlert.kind === "speakingMuted" ? t.mic.speakingMuted : t.mic.startedMuted(micAlert.app),
           color: "#ff453a",
@@ -5401,6 +5445,10 @@ function IslandApp({
           ? HOME_EXPANDED_ISLAND_HEIGHT
           : page === "prompter"
             ? PROMPTER_EXPANDED_ISLAND_HEIGHT
+          : page === "sounds"
+            ? SOUNDS_EXPANDED_ISLAND_HEIGHT
+          : page === "game"
+            ? GAME_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
             ? FOCUS_EXPANDED_ISLAND_HEIGHT + (focusFriends.length > 0 ? 50 : 0)
             : page === "clipboard"
@@ -5821,6 +5869,10 @@ function IslandApp({
       openIslandPage(islandPageLinks[(index + 1) % islandPageLinks.length].id);
     } else if (action === "launcher") {
       openIslandPage("launcher");
+    } else if (action === "readAloud") {
+      tools.readAloud();
+    } else if (action === "colorPick") {
+      tools.pickColor();
     } else if (action === "voice") {
       openIslandPage("assistant");
       setVoiceToken((token) => token + 1);
@@ -7623,6 +7675,7 @@ function IslandApp({
             onAddRule={rules.add}
             onReadLater={(url) => saveReadLaterRef.current(url)}
             onOpenPrompter={() => openIslandPage("prompter")}
+            onTool={tools.onTool}
             onSendToPhone={(text) =>
               void invoke("phone_push", { text })
                 .then(() => lifePushRef.current({ text: t.phone.sentToPhone, actions: [{ label: t.life.ok, primary: true }] }))
@@ -7659,6 +7712,8 @@ function IslandApp({
             onPageChange={openIslandPage}
           />
         )}
+        {page === "sounds" && <SoundsPanel pages={islandPageLinks} currentPage={page} showPageIcons={settings.showPageIcons} onPageChange={openIslandPage} />}
+        {page === "game" && <GamePanel pages={islandPageLinks} currentPage={page} showPageIcons={settings.showPageIcons} onPageChange={openIslandPage} />}
         {page === "prompter" && (
           <PrompterPanel pages={islandPageLinks} currentPage={page} showPageIcons={settings.showPageIcons} onPageChange={openIslandPage} />
         )}

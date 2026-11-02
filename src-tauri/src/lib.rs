@@ -11,10 +11,13 @@ mod diagnostics;
 mod fullscreen;
 mod lens;
 mod live;
+mod keys;
 mod mic;
 mod share;
 mod summarize;
 mod pc;
+mod prints;
+mod doctor;
 mod downloads;
 mod macros;
 mod context;
@@ -2031,6 +2034,14 @@ pub fn run() {
             mic::mic_state,
             mic::mic_unmute,
             share::share_save_png,
+            keys::keys_set_snippets,
+            keys::keys_paste_queue,
+            keys::keys_pick_color,
+            keys::keys_copy_selection,
+            prints::prints_scan,
+            prints::prints_search,
+            doctor::pc_checkup,
+            doctor::pc_close_app,
             devices_in_use::devices_in_use,
             workspace::workspace_snapshot,
             workspace::workspace_open,

@@ -17,6 +17,7 @@ export type SettingsPageId =
   | "routines"
   | "automation"
   | "phone"
+  | "tools"
   | "about";
 
 export type SettingsGroupId = keyof Translations["prefs"]["groups"];
@@ -24,7 +25,7 @@ export type SettingsGroupId = keyof Translations["prefs"]["groups"];
 /** Sidebar groups, in order: a handful of headings instead of one long list. */
 export const SETTINGS_GROUPS: { id: SettingsGroupId; pages: SettingsPageId[] }[] = [
   { id: "island", pages: ["general", "appearance", "display", "statusRing", "hud"] },
-  { id: "daily", pages: ["todo", "calendar", "pomodoro", "water", "music", "shelf"] },
+  { id: "daily", pages: ["todo", "calendar", "pomodoro", "water", "music", "shelf", "tools"] },
   { id: "smart", pages: ["agents", "routines", "automation"] },
   { id: "connected", pages: ["home", "phone"] },
 ];
@@ -49,6 +50,7 @@ function pageTexts(t: Translations, page: SettingsPageId): unknown[] {
     routines: [t.routines],
     automation: [prefs.automations, t.automation],
     phone: [t.phone],
+    tools: [t.tools, t.ambient],
     about: [prefs.about],
   };
   return [prefs.pages[page], (prefs.soon as Partial<Record<SettingsPageId, string>>)[page], ...own[page]];

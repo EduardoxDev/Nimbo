@@ -20,6 +20,7 @@ import {
   Sunrise,
   Timer,
   Smartphone,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { PhoneSettings } from "./phone/PhoneSettings";
@@ -51,6 +52,7 @@ import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import { SETTINGS_GROUPS, searchSettings, type SettingsPageId } from "./settings/search";
 import { SquadSettings } from "./squad/SquadSettings";
+import { ToolsSettings } from "./tools/ToolsSettings";
 import "./SettingsWindow.css";
 
 type PageId = SettingsPageId;
@@ -73,6 +75,7 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "routines", icon: Sunrise, color: "#ffd60a" },
   { id: "automation", icon: Zap, color: "#ff9f0a" },
   { id: "phone", icon: Smartphone, color: "#30d158" },
+  { id: "tools", icon: Wrench, color: "#64d2ff" },
 ];
 
 const PAGE_STYLE = Object.fromEntries(
@@ -282,6 +285,7 @@ export default function SettingsWindow() {
           {page === "routines" && <RoutineSettings routines={settings.routines} onChange={(routines) => update({ routines })} />}
           {page === "automation" && <AutomationSettings />}
           {page === "phone" && <PhoneSettings settings={settings} update={update} />}
+          {page === "tools" && <ToolsSettings settings={settings} update={update} />}
           {page === "about" && <AboutPage />}
           {page === "calendar" && <CalendarSettingsPage settings={settings} update={update} />}
         </div>

@@ -1,0 +1,129 @@
+/* ---------- Ambient sounds ---------- */
+.sounds-panel__grid {
+  position: absolute;
+  top: 50px;
+  right: 16px;
+  left: 16px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.sounds-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px;
+  background: var(--n-surface-raised);
+  border: 1px solid var(--n-line);
+  border-radius: var(--n-radius-md);
+  transition: background var(--n-dur) ease, border-color var(--n-dur) ease;
+}
+
+.sounds-tile--on {
+  background: color-mix(in srgb, var(--sound) 22%, transparent);
+  border-color: color-mix(in srgb, var(--sound) 55%, transparent);
+  box-shadow: 0 0 18px -6px var(--sound);
+}
+
+.sounds-tile__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  color: var(--n-text-2);
+  font-size: 12px;
+  font-weight: 650;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.sounds-tile--on .sounds-tile__button {
+  color: var(--sound);
+}
+
+.sounds-tile input[type="range"] {
+  width: 100%;
+  accent-color: var(--sound);
+}
+
+.sounds-panel__hint {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  left: 16px;
+  margin: 0;
+  color: var(--n-text-3);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* ---------- Break game ---------- */
+.game-panel__stage {
+  position: absolute;
+  top: 50px;
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+  overflow: hidden;
+  background: linear-gradient(#0d1b2a, #10263a);
+  border-radius: var(--n-radius-lg);
+  cursor: none;
+}
+
+.game-panel__stage canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.game-panel__hud {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  left: 12px;
+  display: flex;
+  justify-content: space-between;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.game-panel__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #fff;
+  text-align: center;
+  background: rgba(5, 10, 20, 0.6);
+  cursor: default;
+  animation: n-pop-in var(--n-dur-spring) var(--n-spring) both;
+}
+
+.game-panel__overlay strong {
+  font-size: 18px;
+}
+
+.game-panel__overlay span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12.5px;
+}
+
+.game-panel__start {
+  height: 32px;
+  margin-top: 6px;
+  padding: 0 18px;
+  color: #001a0b;
+  font-weight: 750;
+  background: #35e985;
+  border: 0;
+  border-radius: var(--n-radius-pill);
+  cursor: pointer;
+}

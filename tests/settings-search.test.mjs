@@ -8,7 +8,7 @@ const pt = TRANSLATIONS["pt-BR"];
 test("every settings page sits in exactly one group", () => {
   const pages = SETTINGS_GROUPS.flatMap((group) => group.pages);
   assert.equal(new Set(pages).size, pages.length);
-  assert.equal(pages.length, 16);
+  assert.equal(pages.length, 17);
 });
 
 test("search finds pages by name, without accents or case", () => {

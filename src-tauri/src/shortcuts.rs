@@ -21,7 +21,7 @@ use windows::{
     },
 };
 
-pub(crate) const ACTIONS: [&str; 9] = ["toggle", "playPause", "nextPage", "settings", "launcher", "voice", "screen", "draw", "lens"];
+pub(crate) const ACTIONS: [&str; 11] = ["toggle", "playPause", "nextPage", "settings", "launcher", "voice", "screen", "draw", "lens", "readAloud", "colorPick"];
 const FIRST_HOTKEY_ID: i32 = 0x4E00;
 const APPLY_MESSAGE: u32 = WM_APP + 0x61;
 

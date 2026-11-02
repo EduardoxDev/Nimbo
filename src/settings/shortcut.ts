@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 
-export type ShortcutAction = "toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice" | "screen" | "draw" | "lens";
-export const SHORTCUT_ACTIONS: ShortcutAction[] = ["toggle", "launcher", "lens", "voice", "screen", "draw", "playPause", "nextPage", "settings"];
+export type ShortcutAction = "toggle" | "playPause" | "nextPage" | "settings" | "launcher" | "voice" | "screen" | "draw" | "lens" | "readAloud" | "colorPick";
+export const SHORTCUT_ACTIONS: ShortcutAction[] = ["toggle", "launcher", "lens", "readAloud", "colorPick", "voice", "screen", "draw", "playPause", "nextPage", "settings"];
 export type Shortcuts = Record<ShortcutAction, string>;
 export type ShortcutResult = { action: ShortcutAction; shortcut: string; error: string | null };
 
@@ -12,6 +12,8 @@ export const DEFAULT_SHORTCUTS: Shortcuts = {
   screen: "Alt+Shift+S",
   draw: "Alt+Shift+D",
   lens: "Alt+Shift+L",
+  readAloud: "Alt+Shift+R",
+  colorPick: "Alt+Shift+P",
   playPause: "",
   nextPage: "",
   settings: "",

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, ScrollText, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
+import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, ScrollText, Wrench, Image as ImageIcon, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
 import { readLaterRequestOf, shortLink } from "../readLater/readLater";
 import { isPrompterRequest } from "../prompter/prompter";
+import { toolCommandOf, type ToolCommand } from "../tools/tools";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
@@ -55,6 +56,7 @@ export function LauncherPanel<Page extends string>({
   onSendToPhone,
   onReadLater,
   onOpenPrompter,
+  onTool,
   onDone,
 }: {
   pages: IslandTab<Page>[];
@@ -79,6 +81,7 @@ export function LauncherPanel<Page extends string>({
   /** Keeps a link to read in a free moment. */
   onReadLater: (url: string) => void;
   onOpenPrompter: () => void;
+  onTool: (tool: ToolCommand) => void;
   onDone: () => void;
 }) {
   const t = useTranslation();
@@ -106,6 +109,7 @@ export function LauncherPanel<Page extends string>({
   const summarySource = /^(?:resum(?:ir|e|a|o)|summari[sz]e|总结)\s+(.+)$/i.exec(query.trim())?.[1]?.trim() ?? null;
   const readLater = summarySource || toPhone ? null : readLaterRequestOf(trimmed);
   const prompter = isPrompterRequest(trimmed);
+  const tool = toolCommandOf(trimmed);
   const dayTab = summarySource ? null : dayRequestOf(query);
   const routine = dayTab ? null : routineOf(query);
   const project = routine || dayTab ? null : workspaceRequestOf(query);
@@ -123,6 +127,15 @@ export function LauncherPanel<Page extends string>({
       ? { icon: Circle, text: copy.recordRow(recordName[1] ?? recordName[2]), run: () => recordNow((recordName[1] ?? recordName[2]).trim()) }
       : macroToRun
         ? { icon: Play, text: copy.macroRow(macroToRun.name), run: () => runMacro(macroToRun.id) }
+        : tool
+    ? {
+        icon: Wrench,
+        text: t.tools[`${tool}Row` as const],
+        run: () => {
+          setQuery("");
+          onTool(tool);
+        },
+      }
         : prompter
     ? {
         icon: ScrollText,
@@ -154,7 +167,17 @@ export function LauncherPanel<Page extends string>({
 
   // Universal search: files (by meaning: type, month, words), copied things and tasks.
   const [files, setFiles] = useState<{ name: string; path: string; folder: string }[]>([]);
+  const [prints, setPrints] = useState<{ name: string; path: string; snippet: string }[]>([]);
   const searching = command || reminder || clip ? "" : query.trim();
+  // Screenshots found by the words in them (Settings → Tools → Screenshot library).
+  useEffect(() => {
+    setPrints([]);
+    if (searching.length < 3 || !isTauri()) return;
+    const timer = window.setTimeout(() => {
+      void invoke<{ name: string; path: string; snippet: string }[]>("prints_search", { query: searching }).then(setPrints).catch(() => {});
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searching]);
   useEffect(() => {
     setFiles([]);
     const fileQuery = searching.length >= 3 ? parseFileQuery(searching) : null;
@@ -169,6 +192,7 @@ export function LauncherPanel<Page extends string>({
       ? []
       : [
           ...files.map((file) => ({ key: `f-${file.path}`, icon: FileIcon, label: file.name, tag: file.folder, run: () => openFile(file.path) })),
+          ...prints.map((print) => ({ key: `p-${print.path}`, icon: ImageIcon, label: print.snippet || print.name, tag: t.tools.printTag, run: () => openFile(print.path) })),
           ...clips
             .filter((clip) => matchesAll(clip.text, searching))
             .slice(0, 3)
