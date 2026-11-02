@@ -81,6 +81,7 @@ import { getCollapsedTextUnits, getTodoTitleLineCount } from "./utils/text";
 import { activeLyricIndex, formatTrackTime, lyricsQueryFor, parseLrc, type LyricLine } from "./utils/lyrics";
 import { playByQuery, playRequestOf } from "./music/library";
 import { IslandDiscover } from "./music/IslandDiscover";
+import { smartLink, smartMatchOf, type SmartMatch } from "./clipboard/smart";
 import { DEMO_ARTWORK, DEMO_LYRICS, DEMO_TRACK, MUSIC_DEMO } from "./demo/musicDemo";
 import { HOME_DEMO } from "./demo/homeDemo";
 import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
@@ -88,7 +89,7 @@ import { CALENDAR_DEMO } from "./demo/calendarDemo";
 import { HUB_DEMO } from "./demo/hubDemo";
 import { HomePanel } from "./HomePanel";
 import { FocusPanel } from "./focus/FocusPanel";
-import { useFocusTimer, formatClock } from "./focus/useFocusTimer";
+import { useFocusTimer, formatClock, playChime } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
 import { IslandBar, IslandPageSwitcher, ProgressRing } from "./island/PageChrome";
@@ -136,6 +137,17 @@ import {
 import "./App.css";
 import { recordStat, useStats } from "./stats/useStats";
 import { useReminders } from "./reminders/useReminders";
+import { appReminderMatches } from "./reminders/reminders";
+import { DEFAULT_ROUTINES, normalizeRoutines, routineDue, routineOf, ROUTINE_KINDS, type RoutineKind, type Routines } from "./routines/routines";
+import { summaryParts } from "./life/summary";
+import { aiErrorText } from "./assistant/aiErrors";
+import { renderToStaticMarkup } from "react-dom/server";
+import { useBattery } from "./system/useBattery";
+import { useRules } from "./rules/useRules";
+import type { Rule } from "./rules/rules";
+import { searchApps, type LauncherApp } from "./launcher/launcher";
+import { liveCallOf, minutesSince, newDeviceUsers, type DevicesInUse } from "./life/presence";
+import { speak } from "./voice/voice";
 import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
 import { WeekPanel } from "./week/WeekPanel";
 import { IslandWeather } from "./island/IslandWeather";
@@ -292,9 +304,23 @@ export type IslandSettings = {
   showIdleTodoCount: boolean;
   hideInFullscreen: boolean;
   meetingMode: boolean;
+  /** Tell when an app starts using the camera or microphone. */
+  privacyGuard: boolean;
+  /** Hold the island's notices during focus, calls and full screen. */
+  smartDnd: boolean;
+  /** Serve the island to phones on the same Wi-Fi (QR code in Settings). */
+  phoneIsland: boolean;
+  /** Show the phone's notifications (through Windows' Phone Link) on the island. */
+  phoneNotifications: boolean;
+  /** Show every app's Windows notifications, not only the phone's. */
+  allNotifications: boolean;
   buddyMode: BuddyMode;
   focusGuard: boolean;
   habitTips: boolean;
+  /** Offer an action for what was just copied (open link, map, track…). */
+  smartClipboard: boolean;
+  /** "Start the day" and "End the day": what each one does. */
+  routines: Routines;
   dailySummary: boolean;
   wakeWord: boolean;
   carryOverIncompleteTodos: boolean;
@@ -480,9 +506,16 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   showIdleTodoCount: true,
   hideInFullscreen: true,
   meetingMode: true,
+  privacyGuard: true,
+  smartDnd: true,
+  phoneIsland: false,
+  phoneNotifications: false,
+  allNotifications: false,
   buddyMode: "off",
   focusGuard: true,
   habitTips: true,
+  smartClipboard: true,
+  routines: DEFAULT_ROUTINES,
   dailySummary: true,
   wakeWord: false,
   carryOverIncompleteTodos: false,
@@ -836,6 +869,11 @@ export function normalizeSettings(
       typeof settings?.hideInFullscreen === "boolean"
         ? settings.hideInFullscreen
         : DEFAULT_SETTINGS.hideInFullscreen,
+    privacyGuard: typeof settings?.privacyGuard === "boolean" ? settings.privacyGuard : DEFAULT_SETTINGS.privacyGuard,
+    smartDnd: typeof settings?.smartDnd === "boolean" ? settings.smartDnd : DEFAULT_SETTINGS.smartDnd,
+    phoneIsland: typeof settings?.phoneIsland === "boolean" ? settings.phoneIsland : DEFAULT_SETTINGS.phoneIsland,
+    phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
+    allNotifications: typeof settings?.allNotifications === "boolean" ? settings.allNotifications : DEFAULT_SETTINGS.allNotifications,
     meetingMode:
       typeof settings?.meetingMode === "boolean"
         ? settings.meetingMode
@@ -843,6 +881,8 @@ export function normalizeSettings(
     buddyMode: isBuddyMode(settings?.buddyMode) ? settings.buddyMode : DEFAULT_SETTINGS.buddyMode,
     focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
     habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
+    smartClipboard: typeof settings?.smartClipboard === "boolean" ? settings.smartClipboard : DEFAULT_SETTINGS.smartClipboard,
+    routines: normalizeRoutines(settings?.routines),
     dailySummary: typeof settings?.dailySummary === "boolean" ? settings.dailySummary : DEFAULT_SETTINGS.dailySummary,
     wakeWord: typeof settings?.wakeWord === "boolean" ? settings.wakeWord : DEFAULT_SETTINGS.wakeWord,
     showIdleTodoCount:
@@ -1449,7 +1489,8 @@ export function IslandShell({
       return;
     }
     clearHoverTimer();
-    if (openOnHover && !isExpanded) {
+    // A notice with buttons waits for an answer: hovering must not open the island over them.
+    if (openOnHover && !isExpanded && !collapsedStatus.notice?.actions?.length) {
       hoverTimerRef.current = window.setTimeout(() => onOpenPage(page), 160);
     }
   };
@@ -4576,7 +4617,16 @@ function IslandApp({
   }, [settings.watchClaudeSessions]);
   const updater = useUpdater({ background: true });
   const calendar = useCalendar(settings.calendarReminderMinutes);
-  const meeting = settings.meetingMode ? calendar.ongoing : null;
+  // Which apps use the microphone and camera: calls start meeting mode, new ones are reported.
+  const [devices, setDevices] = useState<DevicesInUse | null>(null);
+  const call = settings.meetingMode && devices ? liveCallOf(devices) : null;
+  const meeting: { id: string; title: string; start: number; end: number | null } | null = !settings.meetingMode
+    ? null
+    : calendar.ongoing
+      ? calendar.ongoing
+      : call
+        ? { id: call.id, title: call.app, start: call.since, end: null }
+        : null;
   const meetingIdRef = useRef<string | null>(null);
   const [pausedForMeeting, setPausedForMeeting] = useState(false);
   const [meetingEnded, setMeetingEnded] = useState(false);
@@ -4616,8 +4666,203 @@ function IslandApp({
     },
     copy: t.life,
   });
+  const runMediaCommandRef = useRef<(command: "media_play_pause" | "media_next" | "media_previous") => Promise<void>>(async () => {});
   const lifePushRef = useRef(life.push);
   lifePushRef.current = life.push;
+
+  // Smart do-not-disturb: during focus, a call or a full-screen app, notices wait in line.
+  const [fullscreenNow, setFullscreenNow] = useState(false);
+  useEffect(() => {
+    if (!settings.smartDnd || !isTauri()) {
+      setFullscreenNow(false);
+      return;
+    }
+    const check = () => void invoke<boolean>("fullscreen_now").then(setFullscreenNow).catch(() => {});
+    check();
+    const interval = window.setInterval(check, 3_000);
+    return () => window.clearInterval(interval);
+  }, [settings.smartDnd]);
+  const dndReason: "meeting" | "focus" | "fullscreen" | null = !settings.smartDnd
+    ? meeting
+      ? "meeting"
+      : null
+    : meeting
+      ? "meeting"
+      : focusTimer.state.status === "running" && focusTimer.state.phase === "focus"
+        ? "focus"
+        : fullscreenNow
+          ? "fullscreen"
+          : null;
+  const dnd = dndReason !== null;
+  const lastDndRef = useRef<{ reason: string; held: number } | null>(null);
+  useEffect(() => {
+    if (dndReason) {
+      lastDndRef.current = { reason: dndReason, held: lastDndRef.current?.held ?? 0 };
+      return;
+    }
+    const ended = lastDndRef.current;
+    lastDndRef.current = null;
+    if (ended && life.pending > 0) {
+      life.pushFirst({
+        text: t.life.heldSummary(life.pending + (reminders.due ? 1 : 0), t.life.dndReasons[ended.reason as "meeting" | "focus" | "fullscreen"]),
+        actions: [{ label: t.life.ok, primary: true }],
+      });
+    }
+  }, [dndReason]);
+
+  const watchDevices = settings.meetingMode || settings.privacyGuard;
+  const devicesRef = useRef<DevicesInUse | null>(null);
+  const callRef = useRef(call);
+  callRef.current = call;
+  useEffect(() => {
+    if (!watchDevices || !isTauri()) {
+      setDevices(null);
+      devicesRef.current = null;
+      return;
+    }
+    const sample = () =>
+      void invoke<DevicesInUse>("devices_in_use")
+        .then((current) => {
+          const starts = newDeviceUsers(devicesRef.current, current);
+          devicesRef.current = current;
+          setDevices((previous) => (JSON.stringify(previous) === JSON.stringify(current) ? previous : current));
+          if (!settings.privacyGuard) return;
+          // The call app taking the microphone is expected; anything else is worth a word.
+          const callApp = liveCallOf(current)?.app;
+          for (const start of starts.filter((item) => item.app !== callApp).slice(0, 1)) {
+            lifePushRef.current({
+              text: start.device === "camera" ? t.life.cameraStarted(start.app) : t.life.micStarted(start.app),
+              actions: [{ label: t.life.ok, primary: true }],
+            });
+          }
+        })
+        .catch(() => {});
+    sample();
+    const interval = window.setInterval(sample, 4_000);
+    return () => window.clearInterval(interval);
+  }, [watchDevices, settings.privacyGuard, t]);
+
+  // Something private was copied: it stayed out of the history; offer to wipe the clipboard.
+  const privacyGuardRef = useRef(settings.privacyGuard);
+  privacyGuardRef.current = settings.privacyGuard;
+  const tRef = useRef(t);
+  tRef.current = t;
+  useEffect(() => {
+    if (!isTauri()) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void listen<"secret" | "cpf" | "card">("clipboard-sensitive", ({ payload }) => {
+      if (!privacyGuardRef.current) return;
+      const copy = tRef.current.life;
+      lifePushRef.current({
+        text: copy.sensitive[payload] ?? copy.sensitive.secret,
+        actions: [
+          { label: copy.clearClipboard, primary: true, run: () => void invoke("clear_sensitive_clipboard").catch(() => {}) },
+          { label: copy.keepClipboard },
+        ],
+      });
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else stop = unlisten;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
+
+  // The day planner (its own window) asks for a reminder at the start of each block.
+  const remindersRef = useRef(reminders);
+  remindersRef.current = reminders;
+  useEffect(() => {
+    if (!isTauri()) return;
+    try {
+      if (window.localStorage.getItem("nimbo-activity-enabled") === "0") void invoke("activity_set_enabled", { enabled: false });
+    } catch {
+      // Recording stays on.
+    }
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void listen<{ text: string; at: number }[]>("plan-reminders", ({ payload }) => {
+      for (const item of payload.slice(0, 20)) {
+        if (item.at > Date.now()) remindersRef.current.add(item.text, item.at);
+      }
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else stop = unlisten;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
+
+  // When a call ends, offer to write down what came out of it.
+  const lastCallRef = useRef<{ app: string; since: number } | null>(null);
+  useEffect(() => {
+    if (call) {
+      lastCallRef.current = { app: call.app, since: call.since };
+      return;
+    }
+    const ended = lastCallRef.current;
+    lastCallRef.current = null;
+    if (!ended || Date.now() - ended.since < 60_000) return;
+    lifePushRef.current({
+      text: t.life.callEnded(ended.app, minutesSince(ended.since, Date.now())),
+      actions: [
+        { label: t.life.callNotes, primary: true, run: () => openIslandPageRef.current?.("todo") },
+        { label: t.life.ok },
+      ],
+    });
+  }, [call?.id]);
+
+  // Explaining and summarising answer on the assistant page; set once the assistant exists below.
+  const smartAskRef = useRef<{ explain: (text: string) => void; summarize: (source: string, label: string) => void } | null>(null);
+
+  // Smart clipboard: something new was copied, so offer the obvious next step.
+  const lastClipRef = useRef<string | null>(null);
+  useEffect(() => {
+    const item = clipboardHistory.items[0];
+    if (!item) return;
+    const previous = lastClipRef.current;
+    lastClipRef.current = item.id;
+    // The first snapshot is history, not a fresh copy.
+    if (previous === null || previous === item.id) return;
+    if (!settings.smartClipboard || item.kind !== "text" || !item.text || Date.now() - item.copiedAt > 15_000) return;
+    const match = smartMatchOf(item.text);
+    if (!match) return;
+    const smart = t.life.smart;
+    const openLink = (match: SmartMatch) => {
+      const link = smartLink(match);
+      if (link) void openUrl(link).catch((error) => console.error("Failed to open the link", error));
+    };
+    const copyText = (text: string) => void invoke("copy_translation_result", { text }).catch(() => {});
+    const text =
+      match.kind === "url" ? smart.url
+      : match.kind === "email" ? smart.email
+      : match.kind === "phone" ? smart.phone
+      : match.kind === "address" ? smart.address
+      : match.kind === "tracking" ? smart.tracking(match.code)
+      : match.kind === "color" ? smart.color(match.hex, match.rgb)
+      : match.kind === "error" ? smart.error
+      : match.kind === "file" ? smart.file(match.name)
+      : smart.math(match.expression, match.result);
+    const action =
+      match.kind === "url" ? { label: smart.open, run: () => openLink(match) }
+      : match.kind === "email" ? { label: smart.writeEmail, run: () => openLink(match) }
+      : match.kind === "phone" ? { label: smart.whatsapp, run: () => openLink(match) }
+      : match.kind === "address" ? { label: smart.map, run: () => openLink(match) }
+      : match.kind === "tracking" ? { label: smart.track, run: () => openLink(match) }
+      : match.kind === "color" ? { label: smart.copyRgb, run: () => copyText(match.rgb) }
+      : match.kind === "error" ? { label: smart.explain, run: () => smartAskRef.current?.explain(match.text) }
+      : match.kind === "file" ? { label: smart.summarize, run: () => smartAskRef.current?.summarize(match.path, match.name) }
+      : match.kind === "math" ? { label: smart.copyResult, run: () => copyText(match.result) }
+      : { label: smart.copyResult, run: () => {} };
+    // Links can also be summed up (pages and YouTube videos).
+    const extra = match.kind === "url" ? [{ label: smart.summarize, run: () => smartAskRef.current?.summarize(match.url, match.url) }] : [];
+    lifePushRef.current({ text, actions: [{ ...action, primary: true }, ...extra, { label: t.life.notNow }] });
+    // Only a new first item matters; the rest of the snapshot does not.
+  }, [clipboardHistory.items[0]?.id]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -4653,7 +4898,9 @@ function IslandApp({
     label: activeAgent
       ? `${activeAgent.name} · ${activeAgentStep?.title ?? activeAgent.goal ?? t.agents.working}`
       : meeting
-      ? t.calendar.inMeeting(meeting.title, new Date(meeting.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      ? meeting.end === null
+        ? t.calendar.inCall(meeting.title, minutesSince(meeting.start, Date.now()))
+        : t.calendar.inMeeting(meeting.title, new Date(meeting.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
       : null,
     ring: statusRing,
     notice: approval
@@ -4683,7 +4930,7 @@ function IslandApp({
             { label: t.calendar.notNow, onClick: () => setMeetingEnded(false) },
           ],
         }
-      : life.notice
+      : life.notice && !dnd
       ? {
           text: life.notice.text,
           color: "#64d2ff",
@@ -4697,7 +4944,7 @@ function IslandApp({
             },
           })),
         }
-      : reminders.due
+      : reminders.due && !dnd
       ? {
           text: t.launcher.reminderDue(reminders.due.text),
           color: "#ffd60a",
@@ -5406,6 +5653,7 @@ function IslandApp({
     },
     [mediaState.audioActive, mediaState.playbackStatus, refreshMediaState],
   );
+  runMediaCommandRef.current = runMediaCommand;
 
   useEffect(() => {
     const id = meeting?.id ?? null;
@@ -6326,6 +6574,7 @@ function IslandApp({
       assistantStateRef.current.locale,
     )}`;
   }, []);
+  const runRoutineRef = useRef<(kind: RoutineKind) => Promise<string>>(async () => "");
   const runAssistantTool = useCallback<ToolExecutor>(async (name, input) => {
     const current = assistantStateRef.current;
     const climateOf = async () => {
@@ -6428,11 +6677,371 @@ function IslandApp({
         await homeApi.call({ domain: device.domain, service: "toggle", entityId: device.entityId });
         return `Toggled ${device.name}.`;
       }
+      case "pc_status":
+      case "free_space":
+      case "shutdown_timer":
+      case "lock_pc":
+        return invoke<string>("pc_tool", { name, minutes: input.minutes ?? null, confirm: input.confirm ?? null });
+      case "run_macro":
+        return invoke<string>("macro_run", { id: String(input.name ?? "") });
+      case "run_routine": {
+        const kind = input.routine === "end" ? "end" : "start";
+        return runRoutineRef.current(kind);
+      }
       default:
         throw new Error(`Unknown tool ${name}`);
     }
   }, [runMediaCommand, settings.waterGoalMl, toggleTodo]);
   const assistant = useAssistant(runAssistantTool, assistantContext);
+  smartAskRef.current = {
+    explain: (text) => {
+      openIslandPageRef.current?.("assistant");
+      void assistant.handleLocally(t.life.smart.explainPrompt(text.length > 160 ? `${text.slice(0, 160)}…` : text), async () => ({
+        text: await invoke<string>("lens_ask", { text, task: "explain", language: locale }).catch((error) => aiErrorText(t, error)),
+        action: "explain",
+      }));
+    },
+    summarize: (source, label) => {
+      openIslandPageRef.current?.("assistant");
+      void assistant.handleLocally(t.life.smart.summarizePrompt(label), async () => ({
+        text: await invoke<string>("summarize_source", { source, language: locale }).catch((error) => aiErrorText(t, error)),
+        action: "summarize",
+      }));
+    },
+  };
+
+  // One-click routines: each step runs on its own, so one failure does not stop the rest.
+  const runRoutine = useCallback(
+    async (kind: RoutineKind) => {
+      const routine = settings.routines[kind];
+      const copy = t.routines;
+      const failed: string[] = [];
+      const step = async (label: string, work: () => Promise<unknown>) => {
+        try {
+          await work();
+        } catch (error) {
+          console.error(`Routine step "${label}" failed`, error);
+          failed.push(label);
+        }
+      };
+      if (routine.apps.length > 0 && isTauri()) {
+        await step(copy.apps, async () => {
+          for (const app of routine.apps) await invoke("launcher_open", { id: app.id });
+        });
+      }
+      const timer = assistantStateRef.current.focusTimer;
+      if (routine.focus === "start" && timer.state.status !== "running") await step(copy.focus, () => runAssistantTool("focus_timer", { action: "start" }));
+      if (routine.focus === "stop" && timer.state.status !== "idle") await step(copy.focus, () => runAssistantTool("focus_timer", { action: "reset" }));
+      if (routine.ac === "on") {
+        await step(copy.ac, async () => {
+          await runAssistantTool("air_conditioner", { action: "turn_on" });
+          await runAssistantTool("air_conditioner", { action: "set_temperature", temperature: routine.acTemperature });
+        });
+      } else if (routine.ac === "off") {
+        await step(copy.ac, () => runAssistantTool("air_conditioner", { action: "turn_off" }));
+      }
+      const playing = assistantStateRef.current.mediaState.playbackStatus === "playing";
+      if (routine.music === "play" && routine.musicQuery.trim()) await step(copy.music, () => runAssistantTool("play_song", { query: routine.musicQuery }));
+      else if (routine.music === "play" && !playing) await step(copy.music, () => runMediaCommand("media_play_pause"));
+      else if (routine.music === "pause" && playing) await step(copy.music, () => runMediaCommand("media_play_pause"));
+
+      const now = Date.now();
+      const open = assistantStateRef.current.todos.filter((todo) => !todo.completed);
+      const next = calendar.events.find((event) => !event.allDay && event.start > now && new Date(event.start).toDateString() === new Date(now).toDateString());
+      const briefing =
+        kind === "start"
+          ? copy.morning(
+              open.length,
+              open.slice(0, 3).map((todo) => todo.title).join(", "),
+              next ? `${next.title}, ${new Date(next.start).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" })}` : null,
+            )
+          : t.life.summary(
+              summaryParts({
+                ...(statsHistory[dayKey(now)] ?? { focus: 0, todos: 0, agents: 0 }),
+                waterMl: water.drankMl,
+                goalMl: settings.waterGoalMl,
+                pending: open.length,
+              }),
+            );
+      if (routine.speak) speak(briefing, locale);
+      const name = copy.names[kind];
+      lifePushRef.current({
+        text: failed.length ? `${copy.failed(name, failed.join(", "))} ${briefing}` : `${copy.done(name)} ${briefing}`,
+        actions: [{ label: t.life.ok, primary: true }],
+      });
+      return failed.length ? `${name}: done, except ${failed.join(", ")}. ${briefing}` : `${name}: done. ${briefing}`;
+    },
+    [calendar.events, locale, runAssistantTool, runMediaCommand, settings.routines, settings.waterGoalMl, statsHistory, t, water.drankMl],
+  );
+  runRoutineRef.current = runRoutine;
+
+  // Trigger rules: "quando conectar o fone, toca minha playlist".
+  const battery = useBattery();
+  const runRule = useCallback(
+    async (rule: Rule) => {
+      const action = rule.action;
+      const playing = assistantStateRef.current.mediaState.playbackStatus === "playing";
+      switch (action.kind) {
+        case "music":
+          if (action.query) await runAssistantTool("play_song", { query: action.query });
+          else if (!playing) await runMediaCommand("media_play_pause");
+          break;
+        case "pause":
+          if (playing) await runMediaCommand("media_play_pause");
+          break;
+        case "focus":
+          await runAssistantTool("focus_timer", { action: "start" });
+          break;
+        case "routine":
+          await runRoutineRef.current(action.routine);
+          return;
+        case "ac":
+          await runAssistantTool("air_conditioner", { action: action.on ? "turn_on" : "turn_off" });
+          if (action.on && action.temperature) await runAssistantTool("air_conditioner", { action: "set_temperature", temperature: action.temperature });
+          break;
+        case "dark":
+          await invoke("system_set_dark_mode", { enabled: action.on });
+          break;
+        case "open": {
+          const apps = await invoke<LauncherApp[]>("launcher_apps");
+          const app = searchApps(apps, action.app)[0];
+          if (!app) throw new Error(`No app called ${action.app}`);
+          await invoke("launcher_open", { id: app.id });
+          break;
+        }
+        case "macro":
+          await invoke("macro_run", { id: action.name });
+          break;
+        case "notify":
+          break;
+      }
+      lifePushRef.current({
+        text: action.kind === "notify" ? action.text : t.automation.ruleFired(rule.text),
+        actions: [{ label: t.life.ok, primary: true }],
+      });
+    },
+    [runAssistantTool, runMediaCommand, t],
+  );
+  const rules = useRules(battery, runRule);
+
+  // A recording started from the launcher saves itself under the name given there.
+  const recordingNameRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void listen<number>("macro-recorded", () => {
+      const name = recordingNameRef.current;
+      recordingNameRef.current = null;
+      if (name === null) return;
+      void invoke<{ name: string; steps: number }>("macro_save", { name })
+        .then((saved) => lifePushRef.current({ text: t.automation.macroSaved(saved.name, saved.steps), actions: [{ label: t.life.ok, primary: true }] }))
+        .catch((error) => lifePushRef.current({ text: String(error), actions: [{ label: t.life.ok, primary: true }] }));
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else stop = unlisten;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [t]);
+
+  // The island on the phone: a page on the home Wi-Fi (Rust serves it; this window feeds it).
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (settings.phoneIsland) void invoke("phone_start").catch((error) => console.error("Phone server", error));
+    else void invoke("phone_stop").catch(() => {});
+  }, [settings.phoneIsland]);
+  const phoneStatusRef = useRef<() => unknown>(() => null);
+  const phoneTodoRef = useRef<{ toggle: (id: string) => void; add: (title: string) => void }>({ toggle: () => {}, add: () => {} });
+  phoneTodoRef.current = {
+    toggle: toggleTodo,
+    add: (title) =>
+      setTodos((currentTodos) => [{ id: createTodoId(), title: title.trim().slice(0, 200), completed: false, createdAt: Date.now() }, ...currentTodos]),
+  };
+  // The phone shows the same island: the same mascot (drawn here), text, music, focus, water and tasks.
+  phoneStatusRef.current = () => {
+    const current = assistantStateRef.current;
+    const timer = current.focusTimer;
+    const media = current.mediaState;
+    const mood = nimboMood({
+      hour: new Date().getHours(),
+      focusRunning: timer.state.status === "running",
+      assistantBusy: assistant.busy,
+      needsAttention: Boolean(approval || calendar.reminder || water.reminderDue),
+      justFinished: Boolean(focusNotice),
+      musicPlaying: media.playbackStatus === "playing",
+    });
+    const notice = collapsedStatus.notice;
+    return {
+      pc: t.phone.pcLabel,
+      mascot: renderToStaticMarkup(<Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={64} showDot={false} />),
+      island: notice ? { text: notice.text, color: notice.color } : collapsedStatus.label ? { text: collapsedStatus.label, color: null } : null,
+      music: media.title
+        ? { title: media.title, artist: media.artist, playing: media.playbackStatus === "playing", positionMs: media.positionMs, durationMs: media.durationMs }
+        : null,
+      focus: { status: timer.state.status, phase: timer.state.phase, remainingMs: timer.remainingMs, totalMs: timer.totalMs },
+      water: { drankMl: current.water.drankMl, goalMl: settings.waterGoalMl },
+      notices: [life.notice?.text, reminders.due ? t.launcher.reminderDue(reminders.due.text) : null, meeting ? meeting.title : null].filter(Boolean),
+      tasks: current.todos.slice(0, 30).map((todo) => ({ id: todo.id, title: todo.title, completed: todo.completed })),
+    };
+  };
+  useEffect(() => {
+    if (!settings.phoneIsland || !isTauri()) return;
+    const publish = () => void invoke("phone_publish", { status: phoneStatusRef.current() }).catch(() => {});
+    publish();
+    const interval = window.setInterval(publish, 2_500);
+    return () => window.clearInterval(interval);
+  }, [settings.phoneIsland]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const stops: (() => void)[] = [];
+    let cancelled = false;
+    const keep = (stop: () => void) => (cancelled ? stop() : stops.push(stop));
+    void listen<string>("phone-text", ({ payload }) => {
+      const isLink = /^https?:\/\/\S+$/.test(payload.trim());
+      lifePushRef.current({
+        text: tRef.current.phone.textArrived(payload.length > 90 ? `${payload.slice(0, 90)}…` : payload),
+        actions: isLink
+          ? [{ label: tRef.current.life.smart.open, primary: true, run: () => void openUrl(payload.trim()).catch(() => {}) }, { label: tRef.current.life.ok }]
+          : [{ label: tRef.current.life.ok, primary: true }],
+      });
+    }).then(keep);
+    void listen<string>("phone-file", ({ payload }) => {
+      const name = payload.split("\\").pop() ?? payload;
+      lifePushRef.current({
+        text: tRef.current.phone.fileArrived(name),
+        actions: [{ label: tRef.current.phone.openFile, primary: true, run: () => void invoke("search_open", { path: payload }).catch(() => {}) }, { label: tRef.current.life.ok }],
+      });
+    }).then(keep);
+    void listen<{ action: string; value: string }>("phone-command", ({ payload }) => {
+      const { action, value } = payload;
+      const current = assistantStateRef.current;
+      if (action === "play_pause") void runMediaCommandRef.current("media_play_pause");
+      else if (action === "next") void runMediaCommandRef.current("media_next");
+      else if (action === "previous") void runMediaCommandRef.current("media_previous");
+      else if (action === "focus_start") current.focusTimer.start();
+      else if (action === "focus_pause") current.focusTimer.pause();
+      else if (action === "focus_skip") current.focusTimer.skip();
+      else if (action === "water_add") current.water.add();
+      else if (action === "task_toggle") phoneTodoRef.current.toggle(value);
+      else if (action === "task_add") phoneTodoRef.current.add(value);
+    }).then(keep);
+    void listen<{ app: string; title: string; body: string }>("windows-notification", ({ payload }) => {
+      lifePushRef.current({
+        text: tRef.current.phone.notification(payload.app, [payload.title, payload.body].filter(Boolean).join(": ")),
+        actions: [{ label: tRef.current.life.ok, primary: true }],
+      });
+    }).then(keep);
+    return () => {
+      cancelled = true;
+      stops.forEach((stop) => stop());
+    };
+  }, []);
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (settings.phoneNotifications) void invoke("notifications_start", { onlyPhone: !settings.allNotifications }).catch(() => {});
+    else void invoke("notifications_stop").catch(() => {});
+  }, [settings.phoneNotifications, settings.allNotifications]);
+
+  // Once a week, offer to tidy a crowded Downloads folder.
+  useEffect(() => {
+    if (!isTauri()) return;
+    const check = () => {
+      try {
+        const last = Number(window.localStorage.getItem("nimbo-downloads-nudge") ?? 0);
+        if (Date.now() - last < 7 * 86_400_000) return;
+        window.localStorage.setItem("nimbo-downloads-nudge", String(Date.now()));
+      } catch {
+        return;
+      }
+      void invoke<{ looseTotal: number; bigOld: { sizeMb: number }[] }>("downloads_report")
+        .then((report) => {
+          if (report.looseTotal < 15) return;
+          const bigGb = report.bigOld.reduce((sum, file) => sum + file.sizeMb, 0) / 1024;
+          lifePushRef.current({
+            text: t.automation.nudge(report.looseTotal, report.bigOld.length, bigGb.toFixed(1)),
+            // Only opens the Downloads page; moving files takes a deliberate click there.
+            actions: [
+              {
+                label: t.automation.review,
+                primary: true,
+                run: () => {
+                  try {
+                    window.localStorage.setItem("nimbo-settings-page", "automation");
+                  } catch {
+                    // Settings opens on its last page.
+                  }
+                  void invoke("open_settings_window").catch(() => {});
+                },
+              },
+              { label: t.life.notNow },
+            ],
+          });
+        })
+        .catch(() => {});
+    };
+    const first = window.setTimeout(check, 60_000);
+    const interval = window.setInterval(check, 6 * 3_600_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, [t]);
+
+  // A routine with a time is offered once that day; it never runs by itself.
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      for (const kind of ROUTINE_KINDS) {
+        if (!routineDue(settings.routines[kind], now)) continue;
+        const key = `nimbo-routine-${kind}-${now.toDateString()}`;
+        try {
+          if (window.localStorage.getItem(key)) continue;
+          window.localStorage.setItem(key, "1");
+        } catch {
+          continue;
+        }
+        lifePushRef.current({
+          text: t.routines.offer(t.routines.names[kind]),
+          actions: [
+            { label: t.routines.run, primary: true, run: () => void runRoutineRef.current(kind) },
+            { label: t.life.notNow },
+          ],
+        });
+      }
+    };
+    check();
+    const interval = window.setInterval(check, 20_000);
+    return () => window.clearInterval(interval);
+  }, [settings.routines, t]);
+
+  // "When I open VS Code, remind me to...": watch the window in front while any are waiting.
+  const appRemindersRef = useRef(reminders);
+  appRemindersRef.current = reminders;
+  const hasAppReminders = reminders.forApps.length > 0;
+  useEffect(() => {
+    if (!hasAppReminders || !isTauri()) return;
+    const sample = () =>
+      void invoke<{ app: string; path: string; title: string } | null>("foreground_window")
+        .then((front) => {
+          if (!front) return;
+          const { forApps, removeForApp } = appRemindersRef.current;
+          const match = forApps.find((item) => appReminderMatches(item.app, front));
+          if (!match) return;
+          removeForApp(match.id);
+          playChime();
+          lifePushRef.current({
+            text: t.launcher.appReminderDue(match.app, match.text),
+            actions: [{ label: t.launcher.reminderDone, primary: true }],
+          });
+        })
+        .catch(() => {});
+    sample();
+    const interval = window.setInterval(sample, 4_000);
+    return () => window.clearInterval(interval);
+  }, [hasAppReminders, t]);
 
   const timeFormat = new Intl.DateTimeFormat(t.localeTag, { hour: "2-digit", minute: "2-digit" });
   const hubNow = Date.now();
@@ -6618,6 +7227,29 @@ function IslandApp({
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
             reminders={reminders}
+            onRoutine={(kind) => void runRoutine(kind)}
+            onNotice={(text) => lifePushRef.current({ text, actions: [{ label: t.life.ok, primary: true }] })}
+            onSummarize={(source) => smartAskRef.current?.summarize(source, source)}
+            clips={clipboardHistory.items.filter((item) => item.kind === "text" && item.text).slice(0, 80).map((item) => ({ id: item.id, text: item.text ?? "" }))}
+            todos={todos.filter((todo) => !todo.completed).map((todo) => todo.title)}
+            onCopyClip={(id) => {
+              const item = clipboardHistory.items.find((clip) => clip.id === id);
+              if (item?.text) void invoke("copy_translation_result", { text: item.text }).catch(() => {});
+            }}
+            onOpenTodos={() => openIslandPage("todo")}
+            onAddRule={rules.add}
+            onSendToPhone={(text) =>
+              void invoke("phone_push", { text })
+                .then(() => lifePushRef.current({ text: t.phone.sentToPhone, actions: [{ label: t.life.ok, primary: true }] }))
+                .catch((error) => lifePushRef.current({ text: String(error), actions: [{ label: t.life.ok, primary: true }] }))
+            }
+            onRecord={(name) => {
+              recordingNameRef.current = name;
+              void invoke("macro_record_start").catch((error) => {
+                recordingNameRef.current = null;
+                lifePushRef.current({ text: String(error), actions: [{ label: t.life.ok, primary: true }] });
+              });
+            }}
             onDone={() => setMode("collapsed")}
           />
         )}
@@ -6660,6 +7292,11 @@ function IslandApp({
             busy={assistant.busy}
             onSend={(text) => {
               // "Toca …" is answered on the PC: no Claude key needed, nothing leaves but the search.
+              const routine = routineOf(text.replace(/^(?:ei|hey)\s+nimbo[,!]?\s*/i, ""));
+              if (routine) {
+                void assistant.handleLocally(text, async () => ({ text: await runRoutine(routine), action: "run_routine" }));
+                return;
+              }
               const query = playRequestOf(text);
               if (query) {
                 void assistant.handleLocally(text, async () => {

@@ -140,8 +140,8 @@ pub fn copy_translation_result(text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn has_translation_secret() -> Result<bool, String> {
-    crate::assistant::assistant_has_key()
+pub async fn has_translation_secret() -> Result<bool, String> {
+    crate::assistant::assistant_has_key().await
 }
 
 #[tauri::command]
@@ -188,6 +188,16 @@ pub async fn translate_text(text: String, target: String, alternate: Option<Stri
         return Err("Translate up to 5,000 characters at a time.".to_string());
     }
     let instruction = translation_instruction(&target, alternate.as_deref())?;
+    ask(&instruction, text).await
+}
+
+/// One instruction and one text, answered by whichever AI the user chose.
+pub(crate) async fn ask(instruction: &str, text: &str) -> Result<String, String> {
+    // The free AIs (Ollama, Gemini, Groq) answer too.
+    let provider = crate::ai::chosen();
+    if provider != crate::ai::Provider::Claude {
+        return crate::ai::complete(provider, instruction, text).await;
+    }
     let key = crate::assistant::read_key()?
         .ok_or_else(|| "Add your Anthropic API key first.".to_string())?;
     let client = reqwest::Client::builder()

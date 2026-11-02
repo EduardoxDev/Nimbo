@@ -1,4 +1,5 @@
 mod agents;
+mod ai;
 mod assistant;
 mod broadlink;
 mod buddy;
@@ -8,6 +9,18 @@ mod claude_task;
 mod clipboard_history;
 mod diagnostics;
 mod fullscreen;
+mod lens;
+mod summarize;
+mod pc;
+mod downloads;
+mod macros;
+mod context;
+mod phone;
+mod notifications;
+mod relay;
+mod devices_in_use;
+mod workspace;
+mod activity;
 mod home_assistant;
 mod hud;
 mod ir_climate;
@@ -24,6 +37,7 @@ mod system;
 mod media_control;
 mod monitors;
 mod quick_action;
+mod secrets;
 mod speech;
 mod translation;
 mod weather;
@@ -1767,8 +1781,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
     let settings_item =
         MenuItem::with_id(app, "settings", "Configurações…", true, None::<&str>)?;
     let music_item = MenuItem::with_id(app, "music", "Nimbo Music", true, None::<&str>)?;
+    let day_item = MenuItem::with_id(app, "day", "Meu dia", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &music_item, &settings_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &music_item, &day_item, &settings_item, &quit_item])?;
 
     let mut tray = TrayIconBuilder::new()
         .tooltip("Nimbo")
@@ -1785,6 +1800,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
             }
             "settings" => {
                 let _ = show_settings(app);
+            }
+            "day" => {
+                let _ = activity::show_day_window(app, None);
             }
             "music" => {
                 let _ = music_catalog::show_music_window(app);
@@ -1829,7 +1847,7 @@ pub fn run() {
         .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| {
-            if window.label() == SETTINGS_WINDOW_LABEL || window.label() == music_catalog::MUSIC_WINDOW_LABEL {
+            if window.label() == SETTINGS_WINDOW_LABEL || window.label() == music_catalog::MUSIC_WINDOW_LABEL || window.label() == activity::DAY_WINDOW_LABEL {
                 return;
             }
             if window.label() == "translation" {
@@ -1861,6 +1879,8 @@ pub fn run() {
             agents::init(app.handle());
             hud::init(app.handle());
             fullscreen::init(app.handle());
+            activity::init(app.handle());
+            relay::init(app.handle());
             shortcuts::init(app.handle());
             launcher::init();
             monitors::init(app.handle());
@@ -1932,6 +1952,11 @@ pub fn run() {
             youtube::youtube_save_key,
             youtube::youtube_delete_key,
             youtube::youtube_find,
+            ai::ai_status,
+            ai::ai_set_provider,
+            ai::ai_save_key,
+            ai::ai_delete_key,
+            ai::ai_ollama_pull,
             home_assistant::home_assistant_status,
             home_assistant::connect_home_assistant,
             home_assistant::disconnect_home_assistant,
@@ -1966,6 +1991,47 @@ pub fn run() {
             capture::draw_open,
             capture::draw_background,
             capture::draw_finish,
+            lens::lens_open,
+            lens::lens_background,
+            lens::lens_close,
+            lens::lens_read,
+            lens::lens_ask,
+            lens::lens_copy_image,
+            summarize::summarize_source,
+            pc::search_files,
+            pc::search_open,
+            pc::pc_tool,
+            downloads::downloads_report,
+            downloads::downloads_organize,
+            downloads::downloads_undo,
+            downloads::downloads_reveal,
+            macros::macro_record_start,
+            macros::macro_record_stop,
+            macros::macro_save,
+            macros::macro_list,
+            macros::macro_delete,
+            macros::macro_run,
+            context::context_now,
+            phone::phone_start,
+            phone::phone_stop,
+            phone::phone_info,
+            phone::phone_new_code,
+            phone::phone_publish,
+            phone::phone_push,
+            notifications::notifications_start,
+            notifications::notifications_stop,
+            relay::relay_info,
+            relay::relay_configure,
+            relay::relay_new_room,
+            devices_in_use::devices_in_use,
+            workspace::workspace_snapshot,
+            workspace::workspace_open,
+            secrets::clear_sensitive_clipboard,
+            activity::activity_day,
+            activity::activity_set_enabled,
+            activity::activity_clear,
+            activity::open_day_window,
+            fullscreen::fullscreen_now,
             capture::record_last_clip,
             capture::windows_features,
             capture::open_windows_settings,

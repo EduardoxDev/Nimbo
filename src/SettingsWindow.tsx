@@ -16,8 +16,14 @@ import {
   Monitor,
   Music,
   Settings,
+  Sunrise,
   Timer,
+  Smartphone,
+  Zap,
 } from "lucide-react";
+import { PhoneSettings } from "./phone/PhoneSettings";
+import { AutomationSettings } from "./rules/AutomationSettings";
+import { RoutineSettings } from "./routines/RoutineSettings";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -58,6 +64,9 @@ type PageId =
   | "shelf"
   | "hud"
   | "agents"
+  | "routines"
+  | "automation"
+  | "phone"
   | "about";
 
 
@@ -76,6 +85,9 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "shelf", icon: Archive, color: "#ffb340" },
   { id: "hud", icon: Bell, color: "#0a84ff" },
   { id: "agents", icon: Bot, color: "#bf5af2" },
+  { id: "routines", icon: Sunrise, color: "#ffd60a" },
+  { id: "automation", icon: Zap, color: "#ff9f0a" },
+  { id: "phone", icon: Smartphone, color: "#30d158" },
 ];
 
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
@@ -216,6 +228,9 @@ export default function SettingsWindow() {
           {page === "water" && <WaterPage settings={settings} update={update} />}
           {page === "hud" && <HudPage settings={settings} update={update} />}
           {page === "shelf" && <ShelfPage />}
+          {page === "routines" && <RoutineSettings routines={settings.routines} onChange={(routines) => update({ routines })} />}
+          {page === "automation" && <AutomationSettings />}
+          {page === "phone" && <PhoneSettings settings={settings} update={update} />}
           {page === "about" && <AboutPage />}
           {page === "calendar" && <CalendarSettingsPage settings={settings} update={update} />}
         </div>
@@ -452,6 +467,15 @@ function GeneralPage({ settings, update }: PageProps) {
       </Row>
       <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
         <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
+      </Row>
+      <Row title={t.life.dndTitle} hint={t.life.dndHint}>
+        <Toggle label={t.life.dndTitle} checked={settings.smartDnd} onChange={(smartDnd) => update({ smartDnd })} />
+      </Row>
+      <Row title={t.life.guardTitle} hint={t.life.guardHint}>
+        <Toggle label={t.life.guardTitle} checked={settings.privacyGuard} onChange={(privacyGuard) => update({ privacyGuard })} />
+      </Row>
+      <Row title={t.life.smartTitle} hint={t.life.smartHint}>
+        <Toggle label={t.life.smartTitle} checked={settings.smartClipboard} onChange={(smartClipboard) => update({ smartClipboard })} />
       </Row>
       <Row title={t.life.summaryTitle} hint={t.life.summaryHint}>
         <Toggle label={t.life.summaryTitle} checked={settings.dailySummary} onChange={(dailySummary) => update({ dailySummary })} />

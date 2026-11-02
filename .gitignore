@@ -28,3 +28,14 @@ src-tauri/gen
 
 # Chaves de assinatura
 *.key
+
+# App do iPhone (gerados pelo Expo) e servidor local
+mobile/ios
+mobile/android
+mobile/.expo
+relay/.wrangler
+relay/.dev.vars
+*.p8
+
+# QR de pareamento (contém o código da sala)
+nimbo-pareamento.png

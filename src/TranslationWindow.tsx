@@ -1,7 +1,8 @@
 import { useLocale, useTranslation } from "./i18n";
+import { aiErrorText } from "./assistant/aiErrors";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { ArrowRight, Check, Clipboard, Copy, Grip, Languages, LoaderCircle, Settings2, X } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./TranslationWindow.css";
@@ -35,6 +36,27 @@ function normalizeShortcut(event: KeyboardEvent<HTMLInputElement>) {
 
 export default function TranslationWindow() {
   const t = useTranslation();
+  // Which AI translates (the one chosen for the assistant), shown in the header.
+  const [provider, setProvider] = useState<"ollama" | "gemini" | "groq" | "claude" | null>(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const read = () =>
+      void invoke<{ provider: "ollama" | "gemini" | "groq" | "claude" }>("ai_status")
+        .then((status) => setProvider(status.provider))
+        .catch(() => {});
+    read();
+    window.addEventListener("focus", read);
+    return () => window.removeEventListener("focus", read);
+  }, []);
+  // The AI is chosen in Settings > AI agents, shared with the assistant.
+  const openAiSettings = () => {
+    try {
+      window.localStorage.setItem("nimbo-settings-page", "agents");
+    } catch {
+      // Opens on the last page instead.
+    }
+    if (isTauri()) void invoke("open_settings_window").catch(() => {});
+  };
   const [settings, setSettings] = useState<TranslationSettings>(loadSettings);
   const [input, setInput] = useState("");
   const [clipboardPreview, setClipboardPreview] = useState("");
@@ -262,7 +284,7 @@ export default function TranslationWindow() {
                 <ArrowRight size={15} aria-hidden="true" />
                 <span>{targetLanguage}</span>
               </div>
-              <span className="translation-window__provider">Claude</span>
+              {provider && <span className="translation-window__provider">{t.prefs.assistant.providers[provider].name}</span>}
             </div>
             <div className="translation-window__content">
               <section className="translation-window__panel translation-window__source">
@@ -282,7 +304,7 @@ export default function TranslationWindow() {
               </section>
             </div>
             <footer className="translation-window__footer">
-              <div className="translation-window__footer-info">{error ? <span className="translation-window__error" role="alert">{error}</span> : !hasSecret ? <button type="button" className="translation-window__setup" onClick={() => setShowConfig(true)}>{t.translator.configureSecret}</button> : <span>{t.translator.enterHint}</span>}</div>
+              <div className="translation-window__footer-info">{error ? <span className="translation-window__error" role="alert">{aiErrorText(t, error)}</span> : !hasSecret ? <button type="button" className="translation-window__setup" onClick={openAiSettings}>{t.translator.configureSecret}</button> : <span>{t.translator.enterHint}</span>}</div>
               <button type="button" className="translation-window__primary translation-window__translate" onClick={() => void submit()} disabled={isLoading}>{isLoading ? t.translator.loading : t.translator.translate} {!isLoading && <ArrowRight size={15} />}</button>
             </footer>
           </>

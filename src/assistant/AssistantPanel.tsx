@@ -3,6 +3,7 @@ import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useLocale, useTranslation } from "../i18n";
 import { MicButton } from "../voice/MicButton";
+import { aiErrorText } from "./aiErrors";
 import { speak } from "../voice/voice";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
@@ -132,7 +133,7 @@ export function AssistantPanel<Page extends string>({
             ) : (
               entries.map((entry) => (
                 <div key={entry.id} className={`assistant-bubble assistant-bubble--${entry.role}`}>
-                  <span>{entry.text}</span>
+                  <span>{entry.role === "notice" ? aiErrorText(t, entry.text) : entry.text}</span>
                   {entry.actions && entry.actions.length > 0 && (
                     <em>{entry.actions.map(actionLabel).join(" · ")}</em>
                   )}

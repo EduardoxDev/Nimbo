@@ -1,0 +1,33 @@
+name = "nimbo-relay"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+
+# The Nimbo web app (built from mobile/ by `npm run deploy`).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+# SQLite-backed Durable Objects are on Cloudflare's free plan.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Same as "ios.bundleIdentifier" in mobile/app.json.
+APNS_BUNDLE_ID = "com.eduardoxdev.nimbo"
+# "1" while testing development builds; "0" for TestFlight and the App Store.
+APNS_SANDBOX = "1"
+
+# Free notifications for the web app: run `npm run vapid` once and follow what it prints.
+VAPID_SUBJECT = "mailto:nimbo@example.com"
+VAPID_PUBLIC_KEY = "BCqxSsi1QCpYaMSXH8vka0Vrg73keb12m33EsGu1SMVcFhqHHXj1RgQ8iw4GRuPiwNN4syVgrwWcx8Ji9CH2tng"
+
+# Secrets (never in this file), set once with:
+#   npx wrangler secret put APNS_KEY       (contents of the AuthKey_XXXX.p8 file)
+#   npx wrangler secret put APNS_KEY_ID
+#   npx wrangler secret put APNS_TEAM_ID

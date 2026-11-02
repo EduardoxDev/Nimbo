@@ -1,0 +1,18 @@
+{
+  "name": "nimbo-relay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "web": "cd ../mobile && npx expo export --platform web --output-dir ../relay/public",
+    "deploy": "npm run web && wrangler deploy",
+    "vapid": "node scripts/vapid.mjs",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260702.1",
+    "typescript": "^5.9.3",
+    "wrangler": "4.86.0"
+  }
+}

@@ -58,15 +58,25 @@ export function useLifeHelpers({
   today: () => DaySummary;
   copy: Copy;
 }) {
-  const [notice, setNotice] = useState<LifeNotice | null>(null);
+  // A queue, so a new notice waits its turn instead of replacing the one on screen.
+  const [queue, setQueue] = useState<LifeNotice[]>([]);
+  const notice = queue[0] ?? null;
   const lastWarnRef = useRef(0);
   const copyRef = useRef(copy);
   copyRef.current = copy;
   const todayRef = useRef(today);
   todayRef.current = today;
 
-  const push = useCallback((next: Omit<LifeNotice, "id">) => setNotice({ ...next, id: `${Date.now()}` }), []);
-  const dismiss = useCallback(() => setNotice(null), []);
+  const push = useCallback(
+    (next: Omit<LifeNotice, "id">) =>
+      setQueue((current) =>
+        current.some((item) => item.text === next.text) ? current : [...current, { ...next, id: `${Date.now()}-${current.length}` }].slice(-12),
+      ),
+    [],
+  );
+  /** Jumps the queue (the "while you were busy" summary). */
+  const pushFirst = useCallback((next: Omit<LifeNotice, "id">) => setQueue((current) => [{ ...next, id: `${Date.now()}-first` }, ...current]), []);
+  const dismiss = useCallback(() => setQueue((current) => current.slice(1)), []);
 
   useEffect(() => {
     if (!isTauri() || (!habitTips && !(focusRunning && focusGuard))) return;
@@ -130,5 +140,5 @@ export function useLifeHelpers({
     return () => window.clearInterval(interval);
   }, [dailySummary, buddyMode, locale, push]);
 
-  return { notice, push, dismiss };
+  return { notice, pending: queue.length, push, pushFirst, dismiss };
 }

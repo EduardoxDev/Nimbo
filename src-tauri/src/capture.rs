@@ -25,7 +25,7 @@ pub(crate) fn bgra_to_rgba(pixels: &mut [u8]) {
     }
 }
 
-fn grab_primary() -> Result<RgbaImage, String> {
+pub(crate) fn grab_primary() -> Result<RgbaImage, String> {
     unsafe {
         let width = GetSystemMetrics(SM_CXSCREEN);
         let height = GetSystemMetrics(SM_CYSCREEN);
@@ -63,7 +63,7 @@ fn grab_primary() -> Result<RgbaImage, String> {
     }
 }
 
-fn png_bytes(image: &RgbaImage) -> Result<Vec<u8>, String> {
+pub(crate) fn png_bytes(image: &RgbaImage) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
     image.write_to(&mut Cursor::new(&mut bytes), ImageFormat::Png).map_err(|error| error.to_string())?;
     Ok(bytes)
@@ -100,10 +100,15 @@ pub(crate) async fn draw_open(app: AppHandle) -> Result<(), String> {
     if let Ok(mut slot) = DRAW_BACKGROUND.lock() {
         *slot = Some(encoded);
     }
-    if let Some(window) = app.get_webview_window(DRAW_LABEL) {
+    open_overlay(&app, DRAW_LABEL, "index.html?window=draw")
+}
+
+/// A borderless window over the whole primary screen (drawing, reading the screen).
+pub(crate) fn open_overlay(app: &AppHandle, label: &str, url: &str) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window(label) {
         let _ = window.destroy();
     }
-    let window = WebviewWindowBuilder::new(&app, DRAW_LABEL, WebviewUrl::App("index.html?window=draw".into()))
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()))
         .title("Nimbo")
         .decorations(false)
         .transparent(false)

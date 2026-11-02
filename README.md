@@ -52,19 +52,30 @@ PC**: senhas e chaves ficam no Gerenciador de Credenciais do Windows.
 - **Foco (Pomodoro)** com anel de progresso, rodadas e som no fim.
 - **Água**: meta do dia, copo que enche e lembretes.
 - **Agenda** do Google ou Outlook com aviso antes de cada compromisso e **modo reunião**.
-- **Lançador de apps** (Alt+Shift+Espaço) com lembretes em linguagem natural.
-- **Histórico de copiados** com favoritos e notas.
+- **Lançador** (Alt+Shift+Espaço) que acha apps, arquivos (“aquele PDF do contrato de março”),
+  copiados e tarefas, e entende lembretes, rotinas e regras em português.
+- **Meu dia**: linha do tempo do que você fez, raio-X do tempo por app, diário automático e
+  plano do dia montado com suas tarefas e a agenda.
+- **Rotinas de um clique**: “bom dia” abre seus apps, liga o ar e lê o resumo do dia.
+- **“Onde eu parei?”**: salva os apps e arquivos de um projeto e reabre tudo depois.
+- **Histórico de copiados** com favoritos e notas, que nunca guarda senhas, chaves, CPF ou cartão.
+- **Ações ao copiar**: link, telefone, endereço, rastreio, conta, erro ou PDF viram um botão.
 - **Prateleira**: arraste arquivos para a ilha e pegue de volta depois.
 
 </td>
 <td width="50%" valign="top">
 
 ### 🤖 IA
-- **Assistente na ilha** (Claude): “liga o ar em 22 e começa um foco”.
+- **Assistente na ilha**: “liga o ar em 22 e começa um foco”. Escolha a IA: **Ollama** (no seu PC,
+  sem conta), **Gemini** ou **Groq**, todas grátis, ou o Claude.
 - **“Ei Nimbo”**: peça por voz.
 - **Agentes de IA** (Claude Code, Cursor, Codex…) mostram o plano na ilha, pedem aprovação e avisam
   quando terminam, por um servidor MCP local.
 - **Tradução rápida** em português, inglês, espanhol e chinês.
+- **A ilha lê a tela** (Alt+Shift+L): arraste em volta de qualquer coisa para copiar o texto, a
+  tabela (cola no Excel) ou a imagem, traduzir, explicar ou resumir. A leitura é offline.
+- **Resuma qualquer coisa**: link, vídeo do YouTube (pela legenda), PDF ou texto.
+- **Pergunte ao seu PC**: “por que está lento?”, “libera espaço”, “desliga em 1 hora”.
 
 ### 🏠 Casa e sistema
 - **Ar-condicionado, luzes, tomadas** pelo [Home Assistant](https://www.home-assistant.io/), com
@@ -73,6 +84,21 @@ PC**: senhas e chaves ficam no Gerenciador de Credenciais do Windows.
 - **Sistema**: bateria, CPU, memória, Wi‑Fi, Bluetooth, modo escuro e volume por app.
 - **HUD na ilha**: volume e brilho no lugar dos pop-ups do Windows.
 - **Tempo** da sua cidade no topo da ilha.
+- **Regras**: “quando conectar o fone, toca minha playlist”, “quando a bateria chegar a 20%, me
+  avisa”, “quando eu chegar em casa, liga o ar em 23”.
+- **Ensine uma vez**: grave cliques e teclas de uma tarefa e repita com “faz relatório semanal”.
+- **Downloads arrumado** em pastas por tipo, com desfazer, e aviso de arquivos grandes esquecidos.
+- **Modo reunião** quando o microfone entra numa chamada, **Não Perturbe** no foco e em tela
+  cheia, e aviso quando um app liga a câmera ou o microfone.
+
+### 📱 Celular
+- **Ilha no celular** pelo Wi-Fi de casa, com QR code: música, foco, avisos, bloquear o PC e
+  mandar textos e fotos entre o celular e o PC.
+- **Notificações do celular na ilha** pelo Vincular ao Celular do Windows.
+- **Nimbo no iPhone, de graça**: a mesma ilha como web app (qualquer pessoa adiciona à Tela
+  de Início, com avisos) ou o app completo com **widgets** e **ilha dinâmica** pelo SideStore,
+  com controle do PC **de qualquer lugar** pelo seu servidor grátis no Cloudflare. Guia em
+  [mobile/README.md](mobile/README.md).
 
 </td>
 </tr>
@@ -158,6 +184,8 @@ Abrir direto no Nimbo Music (bom para atalhos): `nimbo.exe --music`.
 | `src-tauri/src/media_control.rs` | Música do Windows (SMTC) |
 | `src-tauri/src/music_catalog.rs`, `youtube.rs`, `spotify.rs` | Catálogo, busca de vídeos e Spotify |
 | `src-tauri/src/agents.rs` | Servidor MCP para agentes de IA |
+| `mobile/` | App do iPhone (Expo), widgets e ilha dinâmica em Swift |
+| `relay/` | Servidor no Cloudflare que liga o iPhone ao PC de qualquer lugar |
 
 Guia para quem mexe no código: [AGENTS.md](AGENTS.md). Plano e próximos passos: [PLANO.md](PLANO.md).
 
@@ -196,8 +224,12 @@ npm run tauri build
 
 ## Privacidade
 
-- Chaves e tokens (Anthropic, Home Assistant, agenda, Spotify) ficam só no **Gerenciador de
-  Credenciais do Windows**.
+- Chaves e tokens (IA, Home Assistant, agenda, Spotify) ficam só no **Gerenciador de
+  Credenciais do Windows**. Com o Ollama, a IA roda no seu PC e nada sai dele.
+- O registro do **Meu dia** (qual app estava na frente) fica só no PC, some depois de 30 dias,
+  pode ser pausado ou apagado, e não guarda títulos de janelas anônimas nem de gerenciadores de senha.
+- A **ilha no celular** vem desligada; quando ligada, só responde na sua rede e com o código do QR.
+- Leitura da tela, ações gravadas e Downloads arrumado acontecem no PC, sem enviar nada.
 - Tarefas, curtidas, playlists e ajustes ficam **no seu PC**.
 - O que sai do PC é só o necessário para cada recurso: o nome da música para achar a letra ou o
   vídeo, a cidade para o tempo, e o que você escreve para o assistente quando conversa com ele.
@@ -211,6 +243,7 @@ npm run tauri build
 - Catálogo e prévias: [Deezer](https://developers.deezer.com/api). Letras: [LRCLIB](https://lrclib.net).
   Tempo: [Open-Meteo](https://open-meteo.com).
 - Arrastar arquivos para fora: [tauri-plugin-drag](https://github.com/crabnebula-dev/drag-rs) (MIT/Apache-2.0).
+- QR code da ilha no celular: [qrcode](https://github.com/kennytm/qrcode-rust) (MIT/Apache-2.0).
 
 <div align="center">
 <br />

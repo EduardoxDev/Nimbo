@@ -63,3 +63,76 @@ export function parseReminders(raw: string | null): Reminder[] {
 export function dueReminder(reminders: Reminder[], now: number) {
   return [...reminders].sort((a, b) => a.at - b.at).find((reminder) => reminder.at <= now) ?? null;
 }
+
+/** "When I open VS Code, remind me to…": shown once, the next time that app comes to the front. */
+export type AppReminder = { id: string; text: string; app: string };
+
+const WHEN_OPEN = String.raw`quando\s+(?:eu\s+)?abrir\s+(?:o\s+|a\s+)?`;
+const REMIND = String.raw`(?:me\s+)?lembr(?:a|e|ar)(?:\s+(?:de|que))?`;
+const APP_PATTERNS: { pattern: RegExp; app: number; text: number }[] = [
+  { pattern: new RegExp(String.raw`^${WHEN_OPEN}(.+?),?\s+${REMIND}\s+(.+)$`, "i"), app: 1, text: 2 },
+  { pattern: new RegExp(String.raw`^${REMIND}\s+(.+?),?\s+${WHEN_OPEN}(.+)$`, "i"), app: 2, text: 1 },
+  { pattern: /^when\s+i\s+open\s+(.+?),?\s+remind\s+me\s+(?:to\s+|about\s+|of\s+)?(.+)$/i, app: 1, text: 2 },
+  { pattern: /^remind\s+me\s+(?:to\s+|about\s+|of\s+)?(.+?)\s+when\s+i\s+open\s+(.+)$/i, app: 2, text: 1 },
+  { pattern: /^(?:当我)?打开(.+?)(?:时|的时候)提醒我(.+)$/, app: 1, text: 2 },
+];
+
+export function parseAppReminder(input: string): Omit<AppReminder, "id"> | null {
+  const raw = input.trim();
+  for (const { pattern, app, text } of APP_PATTERNS) {
+    const match = pattern.exec(raw);
+    if (!match) continue;
+    const name = match[app].replace(/[.!,]+$/, "").trim();
+    const body = tidy(match[text]);
+    if (name && body && appKey(name)) return { text: body, app: name };
+  }
+  return null;
+}
+
+export function parseAppReminders(raw: string | null): AppReminder[] {
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is AppReminder => Boolean(item) && typeof item.id === "string" && typeof item.text === "string" && typeof item.app === "string")
+      .slice(0, 30);
+  } catch {
+    return [];
+  }
+}
+
+function appKey(name: string) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, "");
+}
+
+/** What people call an app versus the program Windows runs. */
+const ALIASES: Record<string, string[]> = {
+  vscode: ["code", "visualstudiocode"],
+  visualstudiocode: ["code", "visualstudiocode"],
+  code: ["code"],
+  word: ["winword"],
+  powerpoint: ["powerpnt"],
+  outlook: ["outlook", "olk"],
+  teams: ["msteams", "teams"],
+  chrome: ["chrome"],
+  googlechrome: ["chrome"],
+  edge: ["msedge"],
+  explorador: ["explorer"],
+  explorer: ["explorer"],
+  terminal: ["windowsterminal", "wt"],
+  bloco: ["notepad"],
+  blocodenotas: ["notepad"],
+  notepad: ["notepad"],
+  calculadora: ["calculatorapp", "calc"],
+};
+
+/** Whether the window in front is the app a reminder waits for. */
+export function appReminderMatches(app: string, window_: { path: string; title: string }) {
+  const wanted = appKey(app);
+  if (!wanted) return false;
+  const exe = appKey((window_.path.split(/[\/]/).pop() ?? "").replace(/\.exe$/i, ""));
+  const title = appKey(window_.title);
+  const keys = ALIASES[wanted] ?? [wanted];
+  // Short names like "code" only count as the whole program name, never inside a title.
+  return keys.some((key) => exe === key || (key.length >= 4 && exe.includes(key)) || (key.length >= 5 && title.includes(key)));
+}

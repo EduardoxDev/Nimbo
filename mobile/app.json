@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Nimbo",
+    "slug": "nimbo",
+    "scheme": "nimbo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050507",
+    "ios": {
+      "bundleIdentifier": "com.eduardoxdev.nimbo",
+      "appleTeamId": "",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "NSLocalNetworkUsageDescription": "Para falar com o Nimbo do seu PC pelo Wi-Fi de casa.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.eduardoxdev.nimbo"
+        ]
+      }
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-image",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Nimbo usa a câmera só para ler o QR code que pareia o app com o seu PC.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      "@bacons/apple-targets",
+      "expo-localization"
+    ]
+  }
+}

@@ -165,3 +165,40 @@
   color: var(--g-text, #fff);
   background: rgba(255, 255, 255, 0.1);
 }
+
+.launcher-reminders .launcher-reminders__open {
+  display: block;
+  flex: 1;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  color: var(--g-text, #fff);
+  border-radius: 0;
+  overflow: hidden;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.launcher-reminders .launcher-reminders__open:hover {
+  text-decoration: underline;
+}
+
+.launcher-result__avatar--extra {
+  color: #64d2ff;
+}
+
+.launcher-result__tag {
+  flex: none;
+  max-width: 120px;
+  overflow: hidden;
+  color: var(--g-text-2, rgba(255, 255, 255, 0.5));
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

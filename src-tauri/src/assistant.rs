@@ -1,4 +1,6 @@
-//! The island's assistant: one Claude Messages API call per step.
+//! The island's assistant: one model call per step. Claude goes through its
+//! Messages API here; the free providers (Ollama, Gemini, Groq) go through
+//! `ai.rs`, which speaks their OpenAI-style format.
 //!
 //! The webview runs the tool loop (its tools act on state that lives there:
 //! tasks, focus timer, water, the AC), and this module only talks to the API
@@ -22,7 +24,8 @@ const MAX_REQUEST_BYTES: usize = 400 * 1024;
 
 const SYSTEM_PROMPT: &str = "You are Nimbo, the assistant inside a small widget at the top of the user's Windows screen. \
 The user talks to you to get things done on their computer: tasks, a focus (pomodoro) timer, water tracking, music, \
-the air conditioner and smart-home devices.\n\n\
+the air conditioner, smart-home devices and the PC itself (why it is slow, disk space, shutting down later), \
+one-click routines and recorded actions.\n\n\
 How to answer:\n\
 - Reply in the user's language (it is given with each message), in one to three short sentences of plain text. \
 The widget cannot render Markdown, lists or headings.\n\
@@ -81,6 +84,27 @@ fn tools() -> Value {
             }),
             json!(["action"])
         ),
+        strict(
+            "run_routine",
+            "Run one of the user's one-click routines: 'start' (start the day, good morning) or 'end' (end the day, good night).",
+            json!({ "routine": { "type": "string", "enum": ["start", "end"] } }),
+            json!(["routine"])
+        ),
+        strict("pc_status", "How the PC is doing: CPU and memory use, the programs using the most memory and CPU, free space on C:, and the size of the temp and Downloads folders. Use it for 'why is my PC slow?' or 'what is filling my disk?'.", json!({}), json!([])),
+        strict(
+            "free_space",
+            "Delete temporary files older than two days to free disk space. Call with confirm false first to learn the size, ask the user, and call with confirm true only after they agree.",
+            json!({ "confirm": { "type": "boolean" } }),
+            json!(["confirm"])
+        ),
+        strict(
+            "shutdown_timer",
+            "Shut the PC down after a number of minutes (e.g. 60 for 'in one hour'), or cancel a scheduled shutdown with 0.",
+            json!({ "minutes": { "type": "integer", "minimum": 0, "maximum": 1440 } }),
+            json!(["minutes"])
+        ),
+        strict("lock_pc", "Lock the PC (Windows lock screen).", json!({}), json!([])),
+        strict("run_macro", "Replay an action the user taught Nimbo by recording it (clicks and keys), by its name.", json!({ "name": { "type": "string" } }), json!(["name"])),
         strict("toggle_device", "Turn a light, plug or fan on or off by its name (as shown by get_status).", json!({ "name": { "type": "string" } }), json!(["name"]))
     ])
 }
@@ -130,9 +154,10 @@ fn validate_messages(messages: &[Value]) -> Result<(), String> {
     Ok(())
 }
 
+/// Whether the chosen AI can answer (a key, or Ollama running with a model).
 #[tauri::command]
-pub(crate) fn assistant_has_key() -> Result<bool, String> {
-    Ok(read_key()?.is_some())
+pub(crate) async fn assistant_has_key() -> Result<bool, String> {
+    Ok(crate::ai::ready(crate::ai::chosen()).await)
 }
 
 #[tauri::command]
@@ -159,6 +184,12 @@ pub(crate) fn assistant_delete_key() -> Result<(), String> {
 #[tauri::command]
 pub(crate) async fn assistant_step(messages: Vec<Value>) -> Result<Value, String> {
     validate_messages(&messages)?;
+    let provider = crate::ai::chosen();
+    if provider != crate::ai::Provider::Claude {
+        let converted = crate::ai::openai_messages(SYSTEM_PROMPT, &messages);
+        let answer = crate::ai::chat(provider, converted, Some(crate::ai::openai_tools(&tools()))).await?;
+        return Ok(crate::ai::from_openai(&answer));
+    }
     let key = read_key()?.ok_or_else(|| "Add your Anthropic API key in settings first.".to_string())?;
     let body = build_request(&messages);
     let serialized = serde_json::to_vec(&body).map_err(|error| error.to_string())?;

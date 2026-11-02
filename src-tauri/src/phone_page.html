@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nimbo" />
+<title>Nimbo</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --text: #f5f5f7;
+    --muted: rgba(245, 245, 247, 0.55);
+    --card: rgba(255, 255, 255, 0.07);
+    --line: rgba(255, 255, 255, 0.08);
+    --blue: #64d2ff;
+    --music: #ff375f;
+    --focus: #ff9f0a;
+    --tasks: #35e985;
+    --water: #5ac8fa;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    color: var(--text);
+    font: 15px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(120% 70% at 50% 0%, #1c2433 0%, #0b0d12 55%, #050507 100%);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  button:active { transform: scale(0.96); }
+
+  /* ---------- The island ---------- */
+  .stage { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: max(10px, env(safe-area-inset-top)); }
+  .island {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    z-index: 3;
+    width: min(92vw, 380px);
+    height: 44px;
+    overflow: hidden;
+    background: #000;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    transition: height 0.5s var(--ease), border-radius 0.5s var(--ease), width 0.5s var(--ease);
+  }
+  .island.open { width: min(96vw, 430px); height: min(78vh, 640px); border-radius: 38px; }
+  .pill { display: flex; align-items: center; gap: 9px; width: 100%; height: 44px; padding: 0 14px 0 8px; text-align: left; }
+  .pill .mascot { width: 30px; height: 30px; flex: none; }
+  .pill-text { flex: 1; min-width: 0; overflow: hidden; font-size: 14px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+  .pill-right { flex: none; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .wave { display: flex; align-items: center; gap: 2px; height: 16px; }
+  .wave i { width: 3px; height: 30%; background: var(--music); border-radius: 2px; }
+  .playing .wave i { animation: wave 0.9s ease-in-out infinite; }
+  .wave i:nth-child(2) { animation-delay: -0.3s; } .wave i:nth-child(3) { animation-delay: -0.6s; } .wave i:nth-child(4) { animation-delay: -0.15s; }
+  @keyframes wave { 0%, 100% { height: 25%; } 50% { height: 100%; } }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #35e985; box-shadow: 0 0 8px #35e985; }
+  .dot.off { background: #8e8e93; box-shadow: none; }
+
+  .panel { position: absolute; inset: 44px 0 0; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+  .open .panel { opacity: 1; pointer-events: auto; transition-delay: 0.15s; }
+  .tabs { display: flex; justify-content: space-between; gap: 4px; padding: 4px 14px 10px; }
+  .tab { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--muted); }
+  .tab svg { width: 20px; height: 20px; }
+  .tab.on { color: #000; background: var(--tab-color, var(--blue)); }
+  .page { flex: 1; overflow-y: auto; padding: 0 14px 16px; -webkit-overflow-scrolling: touch; }
+  .card { margin: 0 0 10px; padding: 14px; background: var(--card); border-radius: 22px; }
+  .label { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .big { font-size: 20px; font-weight: 700; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: flex; gap: 8px; }
+  .btn { flex: 1; min-height: 46px; padding: 0 12px; font-weight: 700; background: rgba(255, 255, 255, 0.1); border-radius: 16px; }
+  .btn.main { color: #000; background: var(--accent, var(--blue)); }
+  .btn.danger { background: rgba(255, 69, 58, 0.85); }
+
+  /* Home */
+  .hello { display: flex; align-items: center; gap: 14px; }
+  .hello .mascot { width: 64px; height: 64px; flex: none; animation: float 3.4s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-4px); } }
+  .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .chip { padding: 10px; text-align: left; background: rgba(255, 255, 255, 0.06); border-radius: 16px; }
+  .chip b { display: block; font-size: 17px; }
+  .chip span { color: var(--muted); font-size: 12px; }
+
+  /* Music */
+  .cover { width: 100%; aspect-ratio: 1; margin: 0 0 14px; overflow: hidden; background: linear-gradient(135deg, #3a1020, #10131c); border-radius: 22px; }
+  .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .bar { height: 5px; margin: 12px 0 6px; overflow: hidden; background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
+  .bar i { display: block; height: 100%; background: var(--music); border-radius: 3px; transition: width 1s linear; }
+  .times { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .controls { display: flex; justify-content: center; align-items: center; gap: 22px; margin-top: 10px; }
+  .controls button { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; }
+  .controls .play { width: 66px; height: 66px; color: #000; background: #fff; }
+  .controls svg { width: 26px; height: 26px; }
+
+  /* Focus */
+  .ring { position: relative; width: 210px; height: 210px; margin: 6px auto 14px; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .clock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring .clock b { font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Tasks */
+  .task { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 2px; text-align: left; border-bottom: 1px solid var(--line); }
+  .task:last-child { border-bottom: 0; }
+  .check { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%; }
+  .task.done .check { border-color: var(--tasks); background: var(--tasks); }
+  .task.done span { color: var(--muted); text-decoration: line-through; }
+  .add { display: flex; gap: 8px; margin-top: 10px; }
+  input, textarea { width: 100%; min-height: 46px; padding: 10px 14px; color: var(--text); font: inherit; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line); border-radius: 16px; outline: none; -webkit-user-select: text; user-select: text; }
+  textarea { min-height: 84px; resize: vertical; }
+
+  /* Water */
+  .cup { position: relative; width: 120px; height: 160px; margin: 6px auto 14px; overflow: hidden; border: 3px solid rgba(255, 255, 255, 0.35); border-top-width: 0; border-radius: 0 0 26px 26px; }
+  .cup i { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(#5ac8fa, #0a84ff); transition: height 0.6s var(--ease); }
+
+  .list p { margin: 0; padding: 10px 0; border-bottom: 1px solid var(--line); word-break: break-word; }
+  .list p:last-child { border-bottom: 0; }
+  .inbox p { display: flex; gap: 8px; align-items: center; }
+  .inbox p span { flex: 1; }
+  .inbox p button { padding: 6px 10px; font-size: 13px; font-weight: 700; background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+  /* Lock-screen look behind the island */
+  .home { position: relative; z-index: 1; margin-top: calc(12vh + 54px); text-align: center; transition: opacity 0.3s ease, transform 0.4s var(--ease); }
+  .open ~ .home { opacity: 0.25; transform: scale(0.96); }
+  .home .time { font-size: 86px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
+  .home .date { margin-top: 6px; color: var(--muted); font-size: 17px; }
+  .home .hint { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  .backdrop { position: fixed; inset: 0; z-index: 2; display: none; }
+  .open + .backdrop { display: block; }
+  .toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); z-index: 5; padding: 10px 16px; background: #000; border-radius: 999px; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s; }
+  .toast.on { opacity: 1; }
+  input[type="file"] { display: none; }
+  .mascot svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="island" id="island">
+    <button class="pill" id="pill" aria-label="Nimbo">
+      <span class="mascot" id="pillMascot"></span>
+      <span class="pill-text" id="pillText">Nimbo</span>
+      <span class="pill-right" id="pillRight"></span>
+    </button>
+    <div class="panel">
+      <nav class="tabs" id="tabs"></nav>
+      <div class="page" id="page"></div>
+    </div>
+  </div>
+  <div class="backdrop" id="backdrop"></div>
+  <div class="home" id="home">
+    <div class="time" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+<input type="file" id="file" multiple />
+<div class="toast" id="toast"></div>
+
+<script>
+  const T = {
+    pt: { hint: "Toque na ilha", home: "Início", music: "Música", focus: "Foco", tasks: "Tarefas", water: "Água", notices: "Avisos", pc: "PC", hello: ["Boa noite", "Bom dia", "Boa tarde", "Boa noite"], pending: "tarefas", glasses: "da meta", focusIdle: "Foco parado", nothing: "Nada tocando", start: "Começar", pause: "Pausar", skip: "Pular", addTask: "Nova tarefa", add: "Adicionar", noTasks: "Nenhuma tarefa por aqui.", drank: "bebidos de", addGlass: "+1 copo", noNotices: "Nenhum aviso agora.", send: "Mandar pro PC", placeholder: "Texto ou link: vai para a área de transferência do PC", sendText: "Mandar texto", sendPhoto: "Mandar foto", fromPc: "Do PC", empty: "Nada ainda.", copy: "Copiar", open: "Abrir", lock: "Bloquear o PC", cancelShutdown: "Cancelar desligamento", remote: "Controle do PC", sent: "Enviado ✓", failed: "Não deu certo", offline: "PC fora do ar", copied: "Copiado", focusLabel: "Foco", breakLabel: "Pausa" },
+    en: { hint: "Tap the island", home: "Home", music: "Music", focus: "Focus", tasks: "Tasks", water: "Water", notices: "Notices", pc: "PC", hello: ["Good night", "Good morning", "Good afternoon", "Good evening"], pending: "tasks", glasses: "of goal", focusIdle: "Focus idle", nothing: "Nothing playing", start: "Start", pause: "Pause", skip: "Skip", addTask: "New task", add: "Add", noTasks: "No tasks here.", drank: "drunk of", addGlass: "+1 glass", noNotices: "No notices right now.", send: "Send to PC", placeholder: "Text or link: goes to the PC clipboard", sendText: "Send text", sendPhoto: "Send photo", fromPc: "From the PC", empty: "Nothing yet.", copy: "Copy", open: "Open", lock: "Lock the PC", cancelShutdown: "Cancel shutdown", remote: "PC remote", sent: "Sent ✓", failed: "Did not work", offline: "PC offline", copied: "Copied", focusLabel: "Focus", breakLabel: "Break" },
+    zh: { hint: "轻点灵动岛", home: "首页", music: "音乐", focus: "专注", tasks: "任务", water: "喝水", notices: "提醒", pc: "电脑", hello: ["晚安", "早上好", "下午好", "晚上好"], pending: "个任务", glasses: "的目标", focusIdle: "专注未开始", nothing: "没有播放", start: "开始", pause: "暂停", skip: "跳过", addTask: "新任务", add: "添加", noTasks: "暂无任务。", drank: "已喝 / 目标", addGlass: "+1 杯", noNotices: "暂无提醒。", send: "发送到电脑", placeholder: "文字或链接：进入电脑剪贴板", sendText: "发送文字", sendPhoto: "发送照片", fromPc: "来自电脑", empty: "暂无内容。", copy: "复制", open: "打开", lock: "锁定电脑", cancelShutdown: "取消关机", remote: "远程控制", sent: "已发送 ✓", failed: "失败了", offline: "电脑离线", copied: "已复制", focusLabel: "专注", breakLabel: "休息" },
+  };
+  const lang = navigator.language.startsWith("pt") ? "pt" : navigator.language.startsWith("zh") ? "zh" : "en";
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  const key = new URLSearchParams(location.search).get("k") || "";
+  const headers = { "X-Nimbo-Key": key, "Content-Type": "application/json" };
+  const $ = (id) => document.getElementById(id);
+  const icon = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const ICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+    music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    focus: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',
+    tasks: '<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+    water: '<path d="M12 2.7s6 6.4 6 11.3a6 6 0 0 1-12 0c0-4.9 6-11.3 6-11.3z"/>',
+    notices: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    pc: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    prev: '<path d="M19 20 9 12l10-8z" fill="currentColor"/><path d="M5 19V5"/>',
+    next: '<path d="m5 4 10 8-10 8z" fill="currentColor"/><path d="M19 5v14"/>',
+    play: '<path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/>',
+    pausei: '<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+  };
+  const COLORS = { home: "#64d2ff", music: "#ff375f", focus: "#ff9f0a", tasks: "#35e985", water: "#5ac8fa", notices: "#ffd60a", pc: "#bf8cff" };
+  const PAGES = ["home", "music", "focus", "tasks", "water", "notices", "pc"];
+  let page = "home";
+  let open = false;
+  let state = {};
+  let cover = null;
+  let coverFor = "";
+  let inboxSince = 0;
+  const inbox = [];
+
+  function toast(text) {
+    const el = $("toast");
+    el.textContent = text;
+    el.classList.add("on");
+    setTimeout(() => el.classList.remove("on"), 1500);
+  }
+  function esc(text) {
+    return String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+  function clock(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  async function command(action, value = "") {
+    const ok = await fetch("/api/command", { method: "POST", headers, body: JSON.stringify({ action, value }) }).then((r) => r.json()).then((r) => r.ok).catch(() => false);
+    if (!ok) toast(t.failed);
+    if (navigator.vibrate) navigator.vibrate(8);
+    setTimeout(refresh, 400);
+  }
+  async function sendText() {
+    const box = $("text");
+    if (!box || !box.value.trim()) return;
+    const ok = await fetch("/api/send", { method: "POST", headers, body: JSON.stringify({ text: box.value }) }).then((r) => r.json()).then((r) => r.ok).catch(() => false);
+    toast(ok ? t.sent : t.failed);
+    if (ok) box.value = "";
+  }
+  $("file").onchange = async (event) => {
+    for (const file of event.target.files) {
+      const ok = await fetch("/api/upload?name=" + encodeURIComponent(file.name), { method: "POST", headers: { "X-Nimbo-Key": key }, body: file }).then((r) => r.json()).then((r) => r.ok).catch(() => false);
+      toast(ok ? t.sent : t.failed);
+    }
+    event.target.value = "";
+  };
+
+  function setOpen(next) {
+    open = next;
+    $("island").classList.toggle("open", open);
+    if (open) render();
+  }
+  $("pill").onclick = () => setOpen(!open);
+  $("backdrop").onclick = () => setOpen(false);
+
+  function renderTabs() {
+    $("tabs").innerHTML = PAGES.map((id) => `<button class="tab${id === page ? " on" : ""}" style="--tab-color:${COLORS[id]}" data-page="${id}" aria-label="${t[id]}">${icon(ICONS[id])}</button>`).join("");
+    $("tabs").querySelectorAll("button").forEach((button) => (button.onclick = () => { page = button.dataset.page; render(); }));
+  }
+
+  function pageHtml() {
+    const s = state;
+    const music = s.music;
+    const focus = s.focus || { status: "idle", remainingMs: 0, totalMs: 1 };
+    const water = s.water || { drankMl: 0, goalMl: 2000 };
+    const tasks = s.tasks || [];
+    if (page === "home") {
+      const hour = new Date().getHours();
+      const greeting = t.hello[hour < 5 ? 0 : hour < 12 ? 1 : hour < 18 ? 2 : 3];
+      const open = tasks.filter((task) => !task.completed).length;
+      return `<div class="card hello"><span class="mascot">${s.mascot || ""}</span><div><div class="big">${esc(greeting)}</div><div class="muted">${esc(s.pc || "")}</div></div></div>
+        <div class="chips">
+          <button class="chip" data-go="tasks"><b style="color:var(--tasks)">${open}</b><span>${t.pending}</span></button>
+          <button class="chip" data-go="water"><b style="color:var(--water)">${Math.round((water.drankMl / Math.max(1, water.goalMl)) * 100)}%</b><span>${t.glasses}</span></button>
+          <button class="chip" data-go="focus"><b style="color:var(--focus)">${focus.status === "idle" ? "—" : clock(focus.remainingMs)}</b><span>${t.focus}</span></button>
+        </div>
+        ${music ? `<button class="card chip${music.playing ? " playing" : ""}" data-go="music" style="display:flex;gap:12px;align-items:center;width:100%;margin-top:10px"><span class="wave"><i></i><i></i><i></i><i></i></span><span style="flex:1;min-width:0"><b style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(music.title)}</b><span>${esc(music.artist || "")}</span></span></button>` : ""}
+        ${(s.notices || []).length ? `<div class="card list" style="margin-top:10px">${s.notices.map((n) => `<p>${esc(n)}</p>`).join("")}</div>` : ""}`;
+    }
+    if (page === "music") {
+      if (!music) return `<div class="card"><p class="big">${t.nothing}</p></div>`;
+      const pos = music.positionMs || 0;
+      const dur = music.durationMs || 0;
+      return `<div class="cover">${cover ? `<img src="${cover}" alt="">` : ""}</div>
+        <div class="big" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(music.title)}</div>
+        <div class="muted">${esc(music.artist || "")}</div>
+        ${dur ? `<div class="bar"><i style="width:${Math.min(100, (pos / dur) * 100)}%"></i></div><div class="times"><span>${clock(pos)}</span><span>${clock(dur)}</span></div>` : ""}
+        <div class="controls">
+          <button data-cmd="previous" aria-label="prev">${icon(ICONS.prev)}</button>
+          <button class="play" data-cmd="play_pause" aria-label="play">${icon(music.playing ? ICONS.pausei : ICONS.play)}</button>
+          <button data-cmd="next" aria-label="next">${icon(ICONS.next)}</button>
+        </div>`;
+    }
+    if (page === "focus") {
+      const left = focus.status === "idle" ? focus.totalMs : focus.remainingMs;
+      const progress = focus.totalMs ? 1 - left / focus.totalMs : 0;
+      const length = 2 * Math.PI * 92;
+      return `<div class="ring"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="92" stroke="rgba(255,255,255,.1)" stroke-width="12" fill="none"/><circle cx="100" cy="100" r="92" stroke="${focus.phase === "focus" ? "#ff9f0a" : "#35e985"}" stroke-width="12" stroke-linecap="round" fill="none" stroke-dasharray="${length}" stroke-dashoffset="${length * (1 - progress)}"/></svg>
+          <div class="clock"><b>${clock(left)}</b><span class="muted">${focus.status === "idle" ? t.focusIdle : focus.phase === "focus" ? t.focusLabel : t.breakLabel}</span></div></div>
+        <div class="row" style="--accent:var(--focus)">
+          ${focus.status === "running" ? `<button class="btn main" data-cmd="focus_pause">${t.pause}</button>` : `<button class="btn main" data-cmd="focus_start">${t.start}</button>`}
+          <button class="btn" data-cmd="focus_skip">${t.skip}</button>
+        </div>`;
+    }
+    if (page === "tasks") {
+      return `<div class="card">${tasks.length ? tasks.map((task) => `<button class="task${task.completed ? " done" : ""}" data-task="${esc(task.id)}"><span class="check">${task.completed ? icon(ICONS.check) : ""}</span><span>${esc(task.title)}</span></button>`).join("") : `<p class="muted">${t.noTasks}</p>`}
+        <div class="add"><input id="newTask" placeholder="${t.addTask}" enterkeyhint="done" /><button class="btn main" style="--accent:var(--tasks);flex:none" id="addTask">${t.add}</button></div></div>`;
+    }
+    if (page === "water") {
+      const percent = Math.min(100, (water.drankMl / Math.max(1, water.goalMl)) * 100);
+      return `<div class="card" style="text-align:center"><div class="cup"><i style="height:${percent}%"></i></div>
+        <div class="big">${water.drankMl} ml</div><div class="muted">${t.drank} ${water.goalMl} ml</div>
+        <div class="row" style="margin-top:14px;--accent:var(--water)"><button class="btn main" data-cmd="water_add">${t.addGlass}</button></div></div>`;
+    }
+    if (page === "notices") {
+      return `<div class="card list">${(s.notices || []).length ? s.notices.map((n) => `<p>${esc(n)}</p>`).join("") : `<p class="muted">${t.noNotices}</p>`}</div>
+        <div class="card"><p class="label">${t.send}</p><textarea id="text" placeholder="${t.placeholder}"></textarea>
+          <div class="row" style="margin-top:8px"><button class="btn main" id="sendText">${t.sendText}</button><button class="btn" id="sendPhoto">${t.sendPhoto}</button></div></div>
+        <div class="card list inbox"><p class="label" style="border:0">${t.fromPc}</p>${inbox.length ? inbox.map((item, index) => `<p><span>${esc(item.text)}</span><button data-copy="${index}">${t.copy}</button>${/^https?:\/\//.test(item.text.trim()) ? `<button data-link="${index}">${t.open}</button>` : ""}</p>`).join("") : `<p class="muted">${t.empty}</p>`}</div>`;
+    }
+    return `<div class="card"><p class="label">${t.remote}</p>
+        <div class="controls" style="margin:6px 0 14px"><button data-cmd="previous">${icon(ICONS.prev)}</button><button class="play" data-cmd="play_pause">${icon(music && music.playing ? ICONS.pausei : ICONS.play)}</button><button data-cmd="next">${icon(ICONS.next)}</button></div>
+        <div class="row"><button class="btn danger" data-cmd="lock">${t.lock}</button><button class="btn" data-cmd="shutdown_cancel">${t.cancelShutdown}</button></div></div>`;
+  }
+
+  function render() {
+    renderTabs();
+    const focused = document.activeElement && ["newTask", "text"].includes(document.activeElement.id);
+    // Do not wipe what is being typed.
+    if (focused) return;
+    $("page").innerHTML = pageHtml();
+    $("page").querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = () => command(b.dataset.cmd)));
+    $("page").querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => { page = b.dataset.go; render(); }));
+    $("page").querySelectorAll("[data-task]").forEach((b) => (b.onclick = () => { b.classList.toggle("done"); command("task_toggle", b.dataset.task); }));
+    $("page").querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => navigator.clipboard?.writeText(inbox[b.dataset.copy].text).then(() => toast(t.copied))));
+    $("page").querySelectorAll("[data-link]").forEach((b) => (b.onclick = () => window.open(inbox[b.dataset.link].text.trim(), "_blank", "noopener")));
+    const add = $("addTask");
+    if (add) {
+      const go = () => { const input = $("newTask"); if (input.value.trim()) { command("task_add", input.value.trim()); input.value = ""; input.blur(); } };
+      add.onclick = go;
+      $("newTask").onkeydown = (event) => { if (event.key === "Enter") go(); };
+    }
+    if ($("sendText")) $("sendText").onclick = sendText;
+    if ($("sendPhoto")) $("sendPhoto").onclick = () => $("file").click();
+  }
+
+  function renderPill() {
+    const s = state;
+    $("pillMascot").innerHTML = s.mascot || "";
+    const music = s.music;
+    const focus = s.focus;
+    $("pillText").textContent = s.island?.text || (music ? music.title : "Nimbo");
+    $("pillText").style.color = s.island?.color || "";
+    const right = $("pillRight");
+    if (focus && focus.status !== "idle") {
+      right.innerHTML = `<span style="color:${focus.phase === "focus" ? "#ff9f0a" : "#35e985"}">${clock(focus.remainingMs)}</span>`;
+      right.className = "pill-right";
+    } else if (music) {
+      right.innerHTML = '<span class="wave"><i></i><i></i><i></i><i></i></span>';
+      right.className = "pill-right" + (music.playing ? " playing" : "");
+    } else {
+      right.innerHTML = '<span class="dot"></span>';
+      right.className = "pill-right";
+    }
+  }
+
+  async function refresh() {
+    try {
+      const data = await fetch("/api/status?k=" + encodeURIComponent(key) + "&inbox=" + inboxSince).then((r) => {
+        if (r.status === 403) location.reload();
+        return r.json();
+      });
+      state = data.status || {};
+      for (const item of data.inbox || []) {
+        inboxSince = Math.max(inboxSince, item.id);
+        inbox.unshift(item);
+        toast(`${t.fromPc}: ${item.text.slice(0, 40)}`);
+      }
+      const track = state.music ? state.music.title + state.music.artist : "";
+      if (track && track !== coverFor) {
+        coverFor = track;
+        fetch("/api/cover?k=" + encodeURIComponent(key)).then((r) => r.json()).then((r) => { cover = r.cover; if (open && page === "music") render(); }).catch(() => {});
+      }
+      renderPill();
+      if (open) render();
+    } catch {
+      $("pillText").textContent = t.offline;
+      $("pillRight").innerHTML = '<span class="dot off"></span>';
+    }
+  }
+
+  function tick() {
+    const now = new Date();
+    $("clock").textContent = now.toLocaleTimeString(lang === "en" ? "en-US" : lang === "zh" ? "zh-CN" : "pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const date = now.toLocaleDateString(lang === "en" ? "en-US" : lang === "zh" ? "zh-CN" : "pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    $("date").textContent = date.charAt(0).toUpperCase() + date.slice(1);
+  }
+  $("hint").textContent = t.hint;
+  tick();
+  setInterval(tick, 10_000);
+  refresh();
+  setInterval(refresh, 2000);
+</script>
+</body>
+</html>

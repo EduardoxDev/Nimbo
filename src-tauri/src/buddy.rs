@@ -59,9 +59,9 @@ pub(crate) struct Scene {
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct ForegroundWindow {
-    app: String,
-    path: String,
-    title: String,
+    pub(crate) app: String,
+    pub(crate) path: String,
+    pub(crate) title: String,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -165,6 +165,32 @@ fn top_windows() -> Vec<Rect> {
         let _ = EnumWindows(Some(collect), LPARAM(&mut list as *mut Vec<Rect> as isize));
     }
     list.truncate(40);
+    list
+}
+
+unsafe extern "system" fn collect_open(window: HWND, data: LPARAM) -> BOOL {
+    let list = unsafe { &mut *(data.0 as *mut Vec<ForegroundWindow>) };
+    let usable = unsafe { IsWindowVisible(window).as_bool() && GetWindowTextLengthW(window) > 0 }
+        && unsafe { GetWindowLongPtrW(window, GWL_EXSTYLE) } as u32 & WS_EX_TOOLWINDOW.0 == 0
+        && process_of(window) != std::process::id()
+        && !is_cloaked(window)
+        && !SHELL_CLASSES.contains(&class_name(window).as_str());
+    if usable {
+        if let Some(path) = process_path(process_of(window)) {
+            let app = path.rsplit('\\').next().unwrap_or("").to_lowercase();
+            list.push(ForegroundWindow { app, path, title: window_title(window) });
+        }
+    }
+    BOOL(1)
+}
+
+/// Every window on the taskbar, front to back (minimised ones too).
+pub(crate) fn open_windows() -> Vec<ForegroundWindow> {
+    let mut list: Vec<ForegroundWindow> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(Some(collect_open), LPARAM(&mut list as *mut Vec<ForegroundWindow> as isize));
+    }
+    list.truncate(60);
     list
 }
 

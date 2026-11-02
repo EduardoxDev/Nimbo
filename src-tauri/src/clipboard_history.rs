@@ -56,6 +56,7 @@ const CLIPBOARD_WRITE_RETRY_ATTEMPTS: usize = 8;
 const CLIPBOARD_WRITE_RETRY_DELAY: Duration = Duration::from_millis(35);
 const HOTKEY_ID: i32 = 0x4643;
 const HOTKEY_REFRESH_MESSAGE: u32 = WM_APP + 0x51;
+const SENSITIVE_EVENT: &str = "clipboard-sensitive";
 
 static CLIPBOARD_HISTORY: OnceLock<ClipboardHistoryService> = OnceLock::new();
 static CLIPBOARD_NOTIFY_TX: OnceLock<Mutex<Option<SyncSender<()>>>> = OnceLock::new();
@@ -286,9 +287,11 @@ fn load_history(history_path: &Path) -> PersistedClipboardHistory {
         .map(|mut history| {
             history.settings = history.settings.normalized();
             history.items.retain(|item| match item.kind {
-                ClipboardHistoryItemKind::Text => {
-                    item.text.as_ref().is_some_and(|text| !text.is_empty())
-                }
+                // Also drops secrets saved before this filter existed.
+                ClipboardHistoryItemKind::Text => item
+                    .text
+                    .as_ref()
+                    .is_some_and(|text| !text.is_empty() && crate::secrets::sensitive_kind(text).is_none()),
                 ClipboardHistoryItemKind::Image => item.image.is_some(),
             });
             history
@@ -437,6 +440,10 @@ impl ClipboardHistoryService {
             }
         };
 
+        if crate::secrets::clipboard_marked_private() {
+            return;
+        }
+        self.warn_if_sensitive();
         if !settings.enabled {
             return;
         }
@@ -611,6 +618,21 @@ impl ClipboardHistoryService {
         }
     }
 
+    /// Tells the island something private was copied, once per copy.
+    fn warn_if_sensitive(&self) {
+        static LAST: Mutex<Option<String>> = Mutex::new(None);
+        let Ok(text) = Clipboard::new().and_then(|mut clipboard| clipboard.get_text()) else { return };
+        let Some(kind) = crate::secrets::sensitive_kind(&text) else { return };
+        let hash = hash_bytes(text.as_bytes());
+        if let Ok(mut last) = LAST.lock() {
+            if last.as_deref() == Some(hash.as_str()) {
+                return;
+            }
+            *last = Some(hash);
+        }
+        let _ = self.app.emit(SENSITIVE_EVENT, kind);
+    }
+
     fn emit_changed(&self) {
         let _ = self.app.emit(HISTORY_CHANGED_EVENT, ());
     }
@@ -637,6 +659,10 @@ fn read_clipboard_capture(capture_images: bool) -> Result<Option<ClipboardCaptur
     let mut clipboard = Clipboard::new().map_err(|error| error.to_string())?;
 
     if let Ok(text) = clipboard.get_text() {
+        // Passwords, API keys, tokens, CPFs and card numbers never enter the history.
+        if crate::secrets::sensitive_kind(&text).is_some() {
+            return Ok(None);
+        }
         if !text.trim().is_empty() {
             let hash = hash_bytes([b"text:", text.as_bytes()].concat().as_slice());
             return Ok(Some(ClipboardCapture::Text {

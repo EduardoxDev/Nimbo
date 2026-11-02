@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { playChime } from "../focus/useFocusTimer";
-import { dueReminder, parseReminders, type Reminder } from "./reminders";
+import { dueReminder, parseAppReminders, parseReminders, type AppReminder, type Reminder } from "./reminders";
 
 const KEY = "nimbo-reminders";
+const APP_KEY = "nimbo-app-reminders";
 const TICK_MS = 10_000;
+
+function loadApp() {
+  try {
+    return parseAppReminders(window.localStorage.getItem(APP_KEY));
+  } catch {
+    return [];
+  }
+}
+
+function newId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
 
 function load() {
   try {
@@ -15,6 +28,7 @@ function load() {
 
 export function useReminders() {
   const [reminders, setReminders] = useState<Reminder[]>(load);
+  const [forApps, setForApps] = useState<AppReminder[]>(loadApp);
   const [now, setNow] = useState(() => Date.now());
   const chimedRef = useRef<string | null>(null);
 
@@ -25,6 +39,14 @@ export function useReminders() {
       // Kept in memory for this run.
     }
   }, [reminders]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(APP_KEY, JSON.stringify(forApps));
+    } catch {
+      // Kept in memory for this run.
+    }
+  }, [forApps]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), TICK_MS);
@@ -40,8 +62,7 @@ export function useReminders() {
   }, [due]);
 
   const add = useCallback((text: string, at: number) => {
-    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    setReminders((current) => [...current, { id, text, at }].slice(-50));
+    setReminders((current) => [...current, { id: newId(), text, at }].slice(-50));
     setNow(Date.now());
   }, []);
 
@@ -52,9 +73,15 @@ export function useReminders() {
     chimedRef.current = null;
   }, []);
 
+  const addForApp = useCallback((text: string, app: string) => {
+    setForApps((current) => [...current, { id: newId(), text, app }].slice(-30));
+  }, []);
+
+  const removeForApp = useCallback((id: string) => setForApps((current) => current.filter((reminder) => reminder.id !== id)), []);
+
   const upcoming = useMemo(() => [...reminders].sort((a, b) => a.at - b.at), [reminders]);
 
-  return { reminders: upcoming, due, add, remove, snooze };
+  return { reminders: upcoming, due, add, remove, snooze, forApps, addForApp, removeForApp };
 }
 
 export type Reminders = ReturnType<typeof useReminders>;

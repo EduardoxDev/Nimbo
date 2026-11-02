@@ -20,6 +20,7 @@ const SHELL_WINDOW_CLASSES: [&str; 4] = ["Progman", "WorkerW", "Shell_TrayWnd", 
 static ENABLED: AtomicBool = AtomicBool::new(true);
 static HIDDEN_FOR_FULLSCREEN: AtomicBool = AtomicBool::new(false);
 static SHOWN_BY_USER: AtomicBool = AtomicBool::new(false);
+static COVERED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn init(app: &AppHandle) {
     let app = app.clone();
@@ -36,6 +37,12 @@ pub(crate) fn user_changed_visibility() {
     SHOWN_BY_USER.store(true, Ordering::SeqCst);
 }
 
+/// Whether a full-screen app, game or presentation is in front right now.
+#[tauri::command]
+pub(crate) fn fullscreen_now() -> bool {
+    COVERED.load(Ordering::SeqCst)
+}
+
 #[tauri::command]
 pub(crate) fn set_hide_in_fullscreen(enabled: bool) {
     ENABLED.store(enabled, Ordering::SeqCst);
@@ -43,6 +50,7 @@ pub(crate) fn set_hide_in_fullscreen(enabled: bool) {
 
 fn tick(window: &WebviewWindow) {
     let covered = island_screen_is_covered(window);
+    COVERED.store(covered, Ordering::SeqCst);
     if !covered {
         SHOWN_BY_USER.store(false, Ordering::SeqCst);
     }

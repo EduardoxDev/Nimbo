@@ -78,7 +78,19 @@
   gap: 2px;
 }
 
+/* The page list scrolls when the window is shorter than it; "About" stays pinned below. */
+.prefs__nav:not(.prefs__nav--bottom) {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-right: -6px;
+  padding-right: 6px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
 .prefs__nav--bottom {
+  flex: none;
   margin-top: auto;
   padding-top: 12px;
 }
@@ -1035,4 +1047,360 @@
 .prefs-status--on {
   color: #35e985;
   background: rgba(53, 233, 133, 0.12);
+}
+
+/* ---------- Which AI answers (Settings > AI agents) ---------- */
+.prefs-ai__title {
+  margin: 14px 0 8px;
+  color: var(--prefs-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prefs-ai {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.prefs-ai__option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--prefs-line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.prefs-ai__option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.prefs-ai__option--on {
+  background: rgba(10, 132, 255, 0.1);
+  border-color: rgba(10, 132, 255, 0.6);
+}
+
+.prefs-ai__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+}
+
+.prefs-ai__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-right: 16px;
+}
+
+.prefs-ai__text strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+}
+
+.prefs-ai__text em {
+  padding: 1px 7px;
+  color: var(--prefs-green);
+  background: rgba(48, 209, 88, 0.14);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.prefs-ai__text em.prefs-ai__badge--paid {
+  color: #ffb340;
+  background: rgba(255, 159, 10, 0.14);
+}
+
+.prefs-ai__text small {
+  color: var(--prefs-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.prefs-ai__ok {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--prefs-green);
+}
+
+.prefs-ai__setup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--prefs-line);
+  border-radius: 12px;
+}
+
+.prefs-ai__setup p {
+  margin: 0;
+  color: var(--prefs-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.prefs-ai__setup .prefs-form {
+  width: 100%;
+}
+
+.prefs-ai__setup .prefs-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prefs-ai__state {
+  padding: 2px 9px;
+  color: #ffb340;
+  background: rgba(255, 159, 10, 0.14);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.prefs-ai__state--ready {
+  color: var(--prefs-green);
+  background: rgba(48, 209, 88, 0.14);
+}
+
+.prefs-ai__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ---------- Routines ---------- */
+.prefs-routines__intro {
+  margin: 0 0 14px;
+  color: var(--prefs-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.prefs-routines__apps,
+.prefs-routines__pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.prefs-routines__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  font-size: 12.5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.prefs-routines__chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.prefs-routines__chip button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 1;
+}
+
+.prefs-routines__select,
+.prefs-routines__time {
+  height: 28px;
+  padding: 0 8px;
+  color: var(--prefs-text);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  color-scheme: dark;
+  outline: none;
+}
+
+.prefs-routines__select {
+  max-width: 180px;
+}
+
+.prefs-routines__select:focus,
+.prefs-routines__time:focus {
+  border-color: var(--prefs-blue);
+}
+
+.prefs-routines__field {
+  padding: 0 16px 12px;
+}
+
+.prefs-routines__clear {
+  min-width: 0;
+  padding: 4px 10px;
+  font-size: 12px !important;
+}
+
+/* ---------- Automation ---------- */
+.prefs-auto__new {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 6px;
+}
+
+.prefs-auto__new input,
+.prefs-auto__name {
+  flex: 1;
+  height: 32px;
+  padding: 0 12px;
+  color: var(--prefs-text);
+  font: inherit;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  outline: none;
+}
+
+.prefs-auto__name {
+  flex: none;
+  width: 170px;
+}
+
+.prefs-auto__new input:focus,
+.prefs-auto__name:focus {
+  border-color: var(--prefs-blue);
+}
+
+.prefs-auto__new .prefs-button,
+.prefs-auto__row .prefs-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.prefs-auto__hint {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--prefs-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prefs-auto__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prefs-auto__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--prefs-text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.prefs-auto__icon:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.prefs-auto__message {
+  margin: 0 0 18px;
+  color: var(--prefs-muted);
+  font-size: 12.5px;
+}
+
+/* ---------- Phone ---------- */
+.prefs-phone {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--prefs-line);
+}
+
+.prefs-phone__qr {
+  flex: none;
+  width: 168px;
+  height: 168px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.prefs-phone__side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.prefs-phone__side span,
+.prefs-phone__side small {
+  color: var(--prefs-muted);
+  line-height: 1.45;
+}
+
+.prefs-phone__side code {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.prefs-phone__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.prefs-phone__actions .prefs-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.prefs-relay__on {
+  color: var(--prefs-green);
 }

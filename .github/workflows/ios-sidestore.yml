@@ -1,0 +1,82 @@
+name: App do iPhone (SideStore)
+
+# Builds the full iPhone app (widgets and Dynamic Island) for free on GitHub's
+# macOS machines, unsigned, so SideStore can sign it with a free Apple ID.
+# It runs on every push that changes the iPhone app, or from the Actions tab →
+# "App do iPhone (SideStore)" → Run workflow (once this file is on main).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/ios-sidestore.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+
+      - name: Generate the Xcode project
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: Install native dependencies
+        run: pod install
+        working-directory: mobile/ios
+
+      - name: Build (without signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/Nimbo.xcworkspace \
+            -scheme Nimbo \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Nimbo.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tail -n 60
+
+      - name: Package Nimbo.ipa
+        run: |
+          brew install ldid
+          rm -rf Payload && mkdir Payload
+          cp -R build/Nimbo.xcarchive/Products/Applications/Nimbo.app Payload/
+          # SideStore keeps the entitlements it finds in the binaries (App Group shared with the widgets).
+          ldid -Sios/Nimbo/Nimbo.entitlements Payload/Nimbo.app/Nimbo
+          for extension in Payload/Nimbo.app/PlugIns/*.appex; do
+            name=$(basename "$extension" .appex)
+            entitlements=$(ls ios/.targets/*/generated.entitlements | head -n 1)
+            ldid -S"$entitlements" "$extension/$name"
+          done
+          zip -qry Nimbo.ipa Payload
+          ls -lh Nimbo.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nimbo-ipa
+          path: mobile/Nimbo.ipa
+
+      - name: Publish as the "ios-sidestore" release (easy to open on the iPhone)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view ios-sidestore >/dev/null 2>&1 || gh release create ios-sidestore --prerelease --title "Nimbo para iPhone (SideStore)" --notes "Instale com o SideStore: veja mobile/README.md."
+          gh release upload ios-sidestore Nimbo.ipa --clobber
