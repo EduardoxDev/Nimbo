@@ -4463,6 +4463,7 @@ function IslandApp({
         }
       : DEFAULT_MEDIA_STATE,
   );
+  const isMediaPlaying = mediaState.playbackStatus === "playing";
   const [isMediaTrackChanging, setIsMediaTrackChanging] = useState(false);
   const [mediaCommandError, setMediaCommandError] = useState<string | null>(
     null,
@@ -6155,13 +6156,13 @@ function IslandApp({
 
     const interval = window.setInterval(() => {
       void refreshAudioLevel();
-    }, 500);
+    }, isMediaPlaying ? 500 : 2_500);
 
     return () => {
       didCancel = true;
       window.clearInterval(interval);
     };
-  }, [isPageVisible]);
+  }, [isPageVisible, isMediaPlaying]);
 
   const addTodoTitled = useCallback((title: string) => {
     const clean = title.trim();
@@ -6606,17 +6607,17 @@ function IslandApp({
 
     const interval = window.setInterval(() => {
       void refreshMediaState();
-    }, 1500);
+    }, isMediaPlaying ? 1_500 : 3_000);
 
     return () => window.clearInterval(interval);
-  }, [isPageVisible, refreshMediaState]);
+  }, [isPageVisible, refreshMediaState, isMediaPlaying]);
 
   useEffect(() => {
     void refreshAgentStatus();
 
     const interval = window.setInterval(() => {
       void refreshAgentStatus();
-    }, isPageVisible ? 1000 : 5000);
+    }, isPageVisible ? 2_500 : 5_000);
 
     return () => window.clearInterval(interval);
   }, [isPageVisible, refreshAgentStatus]);

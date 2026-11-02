@@ -26,6 +26,18 @@ html.buddy-root #root {
   will-change: transform;
 }
 
+.buddy__glow {
+  position: absolute;
+  inset: -22px;
+  background: radial-gradient(circle at 50% 54%, rgba(242, 242, 245, 0.42) 0%, rgba(242, 242, 245, 0.16) 38%, transparent 68%);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.buddy .mascot {
+  position: relative;
+}
+
 .buddy:active {
   cursor: grabbing;
 }

@@ -26,20 +26,34 @@ function mix(hex: string, target: string, amount: number) {
   return `#${from.map((value, index) => Math.round(value + (to[index] - value) * amount).toString(16).padStart(2, "0")).join("")}`;
 }
 
-const listeners = new Set<Listener>();
-let frame = 0;
+type Subscription = { listener: Listener; interval: number };
+
+const listeners = new Set<Subscription>();
+let timer = 0;
 let pointer: { x: number; y: number; at: number } | null = null;
 
-function tick(now: number) {
-  listeners.forEach((listener) => listener(now / 1000));
-  frame = listeners.size > 0 ? requestAnimationFrame(tick) : 0;
+function schedule() {
+  timer = 0;
+  if (listeners.size === 0) return;
+  let wait = Infinity;
+  listeners.forEach((entry) => {
+    wait = Math.min(wait, entry.interval);
+  });
+  timer = window.setTimeout(tick, wait * 1000);
 }
 
-function subscribe(listener: Listener) {
-  listeners.add(listener);
-  if (!frame) frame = requestAnimationFrame(tick);
+function tick() {
+  const now = performance.now() / 1000;
+  listeners.forEach((entry) => entry.listener(now));
+  schedule();
+}
+
+function subscribe(listener: Listener, interval: number) {
+  const entry = { listener, interval };
+  listeners.add(entry);
+  if (!timer) schedule();
   return () => {
-    listeners.delete(listener);
+    listeners.delete(entry);
   };
 }
 
@@ -185,7 +199,7 @@ export function Mascot({
     let last = 0;
     const interval = fps ? 1 / fps : size < 28 ? 1 / 12 : 1 / 30;
     return subscribe((now) => {
-      if (now - last < interval) return;
+      if (now - last < interval * 0.8) return;
       last = now;
       const next = build(now, gazeOf());
       if (next.shape !== shapeRef.current) {
@@ -198,7 +212,7 @@ export function Mascot({
         patch("clip", { d: next.nodes.clip }) &&
         patch("figure", { transform: next.nodes.transform });
       if (!complete) setTime(now);
-    });
+    }, interval);
   }, [size, fps, forceMotion, shape, numericSeed]);
 
   const current = build(time, null);

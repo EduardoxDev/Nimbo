@@ -234,7 +234,15 @@ export default function BuddyWindow() {
 
   useEffect(() => {
     let raf = 0;
+    let timer = 0;
     let last = performance.now();
+    const later = (ms: number) => {
+      timer = window.setTimeout(() => tick(performance.now()), ms);
+    };
+    const next = () => {
+      if (dragRef.current) raf = requestAnimationFrame(tick);
+      else later(33);
+    };
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const tick = (now: number) => {
       const body0 = bodyRef.current;
@@ -249,7 +257,7 @@ export default function BuddyWindow() {
         squashRef.current === 0 &&
         now < behaviorRef.current.until;
       if (calm && now - last < 100) {
-        raf = requestAnimationFrame(tick);
+        later(100 - (now - last));
         return;
       }
       const dt = Math.min(calm ? 0.1 : 0.033, (now - last) / 1000);
@@ -442,10 +450,13 @@ export default function BuddyWindow() {
         hitboxRef.current = { key, at: now };
         void invoke("buddy_set_hitbox", { ...box, capture });
       }
-      raf = requestAnimationFrame(tick);
+      next();
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
   }, [mode, minis.length]);
 
   const openPage = (page?: string) => {
@@ -554,7 +565,8 @@ export default function BuddyWindow() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} aura={auraOf(level)} label="Nimbo" fps={mood === "sleeping" || mood === "idle" ? 8 : 18} />
+          <span className="buddy__glow" aria-hidden="true" />
+          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} accessory={accessory} aura={auraOf(level)} label="Nimbo" fps={mood === "sleeping" || mood === "idle" ? 8 : 14} />
         </div>
       )}
     </div>
