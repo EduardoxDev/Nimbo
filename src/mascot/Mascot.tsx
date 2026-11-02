@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { hashSeed, mascotFrame, type MascotFrame, type MascotMood, type MascotShape } from "./engine";
+import { createElement, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { hashSeed, mascotFrame, type MascotMood, type MascotShape } from "./engine";
 import type { MascotAccessory } from "./accessories";
 import { AccessoryShape } from "./MascotAccessory";
+import { domName, flatten, mascotNodes, shapeOf, type MascotNode } from "./mascotNodes";
 import "./Mascot.css";
 
 type Listener = (time: number) => void;
@@ -12,7 +13,6 @@ const DIZZY_MS = 4_500;
 const ANNOYED_AFTER_MS = 4_000;
 /** Below this size only the face is drawn: no mouth, cheeks, arms or antenna. */
 const DETAIL_SIZE = 28;
-const INK = "#1c1b29";
 
 function mix(hex: string, target: string, amount: number) {
   const parse = (value: string) => {
@@ -24,70 +24,6 @@ function mix(hex: string, target: string, amount: number) {
   const to = parse(target);
   if (from.some(Number.isNaN) || to.some(Number.isNaN)) return hex;
   return `#${from.map((value, index) => Math.round(value + (to[index] - value) * amount).toString(16).padStart(2, "0")).join("")}`;
-}
-
-function Eye({ eye, detail }: { eye: MascotFrame["eyes"][number]; detail: boolean }) {
-  if (eye.style === "spiral") {
-    return <circle cx={eye.cx} cy={eye.cy} r="4.6" fill="none" stroke={INK} strokeWidth="2.4" strokeDasharray="20 6" strokeLinecap="round" />;
-  }
-  if (eye.style === "happy") {
-    return (
-      <path
-        d={`M${eye.cx - 5} ${eye.cy + 2} Q${eye.cx} ${eye.cy - 5.5} ${eye.cx + 5} ${eye.cy + 2}`}
-        fill="none"
-        stroke={INK}
-        strokeWidth="3.4"
-        strokeLinecap="round"
-      />
-    );
-  }
-  if (eye.style === "closed") {
-    return (
-      <path
-        d={`M${eye.cx - 5} ${eye.cy} Q${eye.cx} ${eye.cy + 3.5} ${eye.cx + 5} ${eye.cy}`}
-        fill="none"
-        stroke={INK}
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    );
-  }
-  const ry = Math.max(0.8, eye.ry);
-  return (
-    <g>
-      <ellipse cx={eye.cx} cy={eye.cy} rx={eye.rx} ry={ry} fill={INK} />
-      {detail && ry > 3 && (
-        <>
-          <circle cx={eye.cx + 1.4} cy={eye.cy - ry * 0.42} r="1.9" fill="#fff" />
-          <circle cx={eye.cx - 1.5} cy={eye.cy + ry * 0.38} r="0.9" fill="#fff" fillOpacity="0.75" />
-        </>
-      )}
-    </g>
-  );
-}
-
-function Mouth({ mouth }: { mouth: MascotFrame["mouth"] }) {
-  const { cx, cy } = mouth;
-  const stroke = { fill: "none", stroke: INK, strokeWidth: 2.4, strokeLinecap: "round" as const };
-  switch (mouth.style) {
-    case "smile":
-      return <path d={`M${cx - 4} ${cy - 1} Q${cx} ${cy + 3} ${cx + 4} ${cy - 1}`} {...stroke} />;
-    case "grin":
-      return (
-        <g>
-          <path d={`M${cx - 6} ${cy - 2} Q${cx} ${cy + 7} ${cx + 6} ${cy - 2} Z`} fill={INK} stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-          <path d={`M${cx - 2.6} ${cy + 2.4} Q${cx} ${cy + 0.6} ${cx + 2.6} ${cy + 2.4}`} fill="#ff7a9a" />
-        </g>
-      );
-    case "o":
-      return <ellipse cx={cx} cy={cy + 1} rx="2.4" ry="3" fill={INK} />;
-    case "flat":
-      return <path d={`M${cx - 3.5} ${cy} L${cx + 3.5} ${cy}`} {...stroke} />;
-    case "hmm":
-      return <path d={`M${cx - 2} ${cy + 0.5} Q${cx + 2} ${cy - 1.5} ${cx + 5} ${cy}`} {...stroke} />;
-    case "wavy":
-      return <path d={`M${cx - 6} ${cy} q1.5 -2.5 3 0 t3 0 t3 0 t3 0`} {...stroke} strokeWidth={2} />;
-  }
 }
 
 const listeners = new Set<Listener>();
@@ -203,6 +139,47 @@ export function Mascot({
     : {};
   const shownMood: MascotMood = reaction ?? mood;
 
+  const elementsRef = useRef(new Map<string, Element>());
+  const appliedRef = useRef(new Map<string, Record<string, string | number>>());
+  const shapeRef = useRef("");
+  const liveRef = useRef<{ mood: MascotMood; pokedAt: number | null; color: string; detail: boolean; aura: typeof aura; glow: boolean; showDot: boolean }>(null!);
+  const detail = size >= DETAIL_SIZE;
+  liveRef.current = { mood: shownMood, pokedAt, color, detail, aura, glow, showDot };
+
+  const paintFor = (tint: string, dot: string | null) => ({
+    color: tint,
+    light: mix(tint, "#ffffff", 0.55),
+    shade: mix(tint, "#3a3f66", 0.38),
+    accent: dot ?? tint,
+    ids: { body: `${maskId}-body`, bulb: `${maskId}-bulb`, glow: `${maskId}-glow`, clip: `${maskId}-clip` },
+  });
+
+  const gazeOf = () => {
+    if (!pointer || performance.now() - pointer.at >= 2500 || !ref.current) return null;
+    const rect = ref.current.getBoundingClientRect();
+    const dx = pointer.x - (rect.left + rect.width / 2);
+    const dy = pointer.y - (rect.top + rect.height / 2);
+    return { x: Math.max(-1, Math.min(1, dx / 220)), y: Math.max(-1, Math.min(1, dy / 140)) };
+  };
+
+  const build = (t: number, gaze: { x: number; y: number } | null) => {
+    const live = liveRef.current;
+    const frame = mascotFrame({ shape, mood: live.mood, t, seed: numericSeed, gaze, poke: live.pokedAt === null ? null : t - live.pokedAt });
+    const nodes = mascotNodes(frame, { detail: live.detail, paint: paintFor(live.color, frame.dot), aura: live.aura, glow: live.glow, showDot: live.showDot, mood: live.mood, time: t });
+    return { frame, nodes, shape: `${shapeOf(nodes.before)}|${shapeOf(nodes.body)}|${shapeOf(nodes.after)}` };
+  };
+
+  const patch = (key: string, attrs: Record<string, string | number>) => {
+    const element = elementsRef.current.get(key);
+    if (!element) return false;
+    const applied = appliedRef.current.get(key) ?? {};
+    for (const [name, value] of Object.entries(attrs)) {
+      if (applied[name] !== value) element.setAttribute(domName(name), String(value));
+    }
+    appliedRef.current.set(key, attrs);
+    return true;
+  };
+
   useEffect(() => {
     if (!forceMotion && reducedMotion()) return;
     let last = 0;
@@ -210,25 +187,40 @@ export function Mascot({
     return subscribe((now) => {
       if (now - last < interval) return;
       last = now;
-      setTime(now);
+      const next = build(now, gazeOf());
+      if (next.shape !== shapeRef.current) {
+        setTime(now);
+        return;
+      }
+      const all = flatten([...next.nodes.before, ...next.nodes.body, ...next.nodes.after]);
+      const complete =
+        all.every((node) => patch(node.key, node.attrs)) &&
+        patch("clip", { d: next.nodes.clip }) &&
+        patch("figure", { transform: next.nodes.transform });
+      if (!complete) setTime(now);
     });
-  }, [size, fps, forceMotion]);
+  }, [size, fps, forceMotion, shape, numericSeed]);
 
-  let gaze: { x: number; y: number } | null = null;
-  if (pointer && performance.now() - pointer.at < 2500 && ref.current) {
-    const rect = ref.current.getBoundingClientRect();
-    const dx = pointer.x - (rect.left + rect.width / 2);
-    const dy = pointer.y - (rect.top + rect.height / 2);
-    gaze = { x: Math.max(-1, Math.min(1, dx / 220)), y: Math.max(-1, Math.min(1, dy / 140)) };
-  }
+  const current = build(time, null);
+  shapeRef.current = current.shape;
+  const paint = paintFor(color, current.frame.dot);
 
-  const poke = pokedAt === null ? null : time - pokedAt;
-  const current = mascotFrame({ shape, mood: shownMood, t: time, seed: numericSeed, gaze, poke });
-  const detail = size >= DETAIL_SIZE;
-  const light = mix(color, "#ffffff", 0.55);
-  const shade = mix(color, "#3a3f66", 0.38);
-  const accent = current.dot ?? color;
-  const { x: squashX, y: squashY } = current.squash;
+  const keep = (key: string, attrs: Record<string, string | number>) => (element: Element | null) => {
+    if (element) {
+      elementsRef.current.set(key, element);
+      appliedRef.current.set(key, attrs);
+    } else {
+      elementsRef.current.delete(key);
+      appliedRef.current.delete(key);
+    }
+  };
+
+  const render = (node: MascotNode, extra?: ReactNode): ReactNode =>
+    createElement(
+      node.tag,
+      { key: node.key, ref: keep(node.key, node.attrs), ...node.attrs },
+      node.text ?? (node.children ? [...node.children.map((child) => render(child)), extra] : extra),
+    );
 
   return (
     <svg
@@ -244,97 +236,30 @@ export function Mascot({
       aria-hidden={label ? undefined : true}
     >
       <defs>
-        <radialGradient id={`${maskId}-glow`}>
-          <stop offset="0.35" stopColor={accent} stopOpacity="0.55" />
-          <stop offset="1" stopColor={accent} stopOpacity="0" />
+        <radialGradient id={paint.ids.glow}>
+          <stop offset="0.35" stopColor={paint.accent} stopOpacity="0.55" />
+          <stop offset="1" stopColor={paint.accent} stopOpacity="0" />
         </radialGradient>
-        <radialGradient id={`${maskId}-body`} cx="0.36" cy="0.28" r="0.85">
-          <stop offset="0" stopColor={light} />
+        <radialGradient id={paint.ids.body} cx="0.36" cy="0.28" r="0.85">
+          <stop offset="0" stopColor={paint.light} />
           <stop offset="0.55" stopColor={color} />
-          <stop offset="1" stopColor={shade} />
+          <stop offset="1" stopColor={paint.shade} />
         </radialGradient>
-        <radialGradient id={`${maskId}-bulb`}>
+        <radialGradient id={paint.ids.bulb}>
           <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.45" stopColor={accent} />
-          <stop offset="1" stopColor={accent} stopOpacity="0" />
+          <stop offset="0.45" stopColor={paint.accent} />
+          <stop offset="1" stopColor={paint.accent} stopOpacity="0" />
         </radialGradient>
-        <clipPath id={`${maskId}-clip`}>
-          <path d={current.body} />
+        <clipPath id={paint.ids.clip}>
+          <path ref={keep("clip", { d: current.nodes.clip })} d={current.nodes.clip} />
         </clipPath>
       </defs>
-      {aura === "wings" && (
-        <g className="mascot__wings" transform={`translate(0 ${current.offsetY})`} fill="#ffffff" fillOpacity="0.85">
-          <path d={`M22 50 Q${2 - Math.sin(time * 9) * 6} ${34 - Math.sin(time * 9) * 8} ${6 - Math.sin(time * 9) * 4} 58 Q14 60 22 58 Z`} />
-          <path d={`M78 50 Q${98 + Math.sin(time * 9) * 6} ${34 - Math.sin(time * 9) * 8} ${94 + Math.sin(time * 9) * 4} 58 Q86 60 78 58 Z`} />
-        </g>
-      )}
-      {aura && (
-        <g className="mascot__sparkles" fill="#ffd60a">
-          <path d="M12 18 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 Z" />
-          <path d="M86 70 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 Z" />
-          <path d="M90 14 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1 Z" />
-        </g>
-      )}
-      {glow && <circle className="mascot__glow" cx="50" cy="52" r="58" fill={`url(#${maskId}-glow)`} />}
-      {detail && (
-        <ellipse
-          className="mascot__shadow"
-          cx="50"
-          cy="91"
-          rx={24 + current.offsetY * 1.2}
-          ry="3.2"
-          fill="#000"
-          fillOpacity={Math.max(0.08, 0.28 + current.offsetY * 0.03)}
-        />
-      )}
-      <g
-        transform={`translate(0 ${current.offsetY}) rotate(${current.rotation} 50 50) translate(50 84) scale(${current.scale * squashX} ${current.scale * squashY}) translate(-50 -84)`}
-      >
-        {detail && current.antenna && (
-          <g className="mascot__antenna">
-            <path
-              d={`M50 24 Q${(50 + current.antenna.tip[0]) / 2 - 3} ${current.antenna.tip[1] + 10} ${current.antenna.tip[0]} ${current.antenna.tip[1] + 4}`}
-              fill="none"
-              stroke={shade}
-              strokeWidth="2.4"
-              strokeLinecap="round"
-            />
-            {current.antenna.on && <circle cx={current.antenna.tip[0]} cy={current.antenna.tip[1]} r="9" fill={`url(#${maskId}-bulb)`} />}
-            <circle cx={current.antenna.tip[0]} cy={current.antenna.tip[1]} r="3.6" fill={current.antenna.on ? accent : shade} />
-            <circle cx={current.antenna.tip[0] - 1} cy={current.antenna.tip[1] - 1.2} r="1.1" fill="#fff" fillOpacity="0.85" />
-          </g>
-        )}
-        {detail &&
-          current.arms.map((arm, index) => (
-            <g key={index} className="mascot__arm">
-              <path d={`M${arm.shoulder[0]} ${arm.shoulder[1]} L${arm.hand[0]} ${arm.hand[1]}`} stroke={shade} strokeWidth="9.5" strokeLinecap="round" />
-              <path d={`M${arm.shoulder[0]} ${arm.shoulder[1]} L${arm.hand[0]} ${arm.hand[1]}`} stroke={color} strokeWidth="7" strokeLinecap="round" />
-            </g>
-          ))}
-        <path className="mascot__body" d={current.body} fill={`url(#${maskId}-body)`} />
-        <g clipPath={`url(#${maskId}-clip)`}>
-          <path d={current.body} fill="none" stroke={shade} strokeOpacity="0.35" strokeWidth="5" />
-          <ellipse cx="36" cy="27" rx="13" ry="6" fill="#fff" fillOpacity="0.6" transform="rotate(-22 36 27)" />
-          <circle cx="53" cy="22" r="2.2" fill="#fff" fillOpacity="0.55" />
-        </g>
-        {detail &&
-          current.cheeks.map((cheek, index) => (
-            <ellipse key={index} cx={cheek.cx} cy={cheek.cy} rx="5" ry="3" fill="#ff7a9a" fillOpacity="0.38" />
-          ))}
-        {current.eyes.map((eye, index) => (
-          <Eye key={index} eye={eye} detail={detail} />
-        ))}
-        {detail && <Mouth mouth={current.mouth} />}
-        {accessory && !(accessory === "sunglasses" && shownMood === "sleeping") && <AccessoryShape accessory={accessory} eyes={current.eyes} />}
+      {current.nodes.before.map((node) => render(node))}
+      <g ref={keep("figure", { transform: current.nodes.transform })} transform={current.nodes.transform}>
+        {current.nodes.body.map((node) => render(node))}
+        {accessory && !(accessory === "sunglasses" && shownMood === "sleeping") && <AccessoryShape accessory={accessory} eyes={current.frame.eyes} />}
       </g>
-      {showDot && current.dot && !(detail && current.antenna) && (
-        <circle className="mascot__dot" cx="20" cy="20" r="8" fill={current.dot} stroke="#0b0b0f" strokeWidth="3.5" />
-      )}
-      {shownMood === "sleeping" && (
-        <text className="mascot__z" x="76" y="24" fontSize="18" fontWeight="700" fill={light}>
-          z
-        </text>
-      )}
+      {current.nodes.after.map((node) => render(node))}
     </svg>
   );
 }
