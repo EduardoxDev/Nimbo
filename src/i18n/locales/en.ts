@@ -159,6 +159,10 @@ const en: Translations = {
     deleteTask: (taskTitle) => `Delete: ${taskTitle}`,
     reorder: "Drag to reorder",
     reorderTask: (taskTitle) => `Reorder: ${taskTitle}`,
+    progress: (done, total) => `${done} of ${total} done`,
+    doneSection: (count) => `${count} done`,
+    showDone: (count) => `Show ${count} done`,
+    hideDone: "Hide done",
   },
 
   clipboard: {

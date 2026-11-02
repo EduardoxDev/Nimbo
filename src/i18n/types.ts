@@ -162,6 +162,10 @@ export type Translations = {
     deleteTask: (taskTitle: string) => string;
     reorder: string;
     reorderTask: (taskTitle: string) => string;
+    progress: (done: number, total: number) => string;
+    doneSection: (count: number) => string;
+    showDone: (count: number) => string;
+    hideDone: string;
   };
 
   clipboard: {

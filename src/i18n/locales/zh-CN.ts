@@ -162,6 +162,10 @@ const zhCN: Translations = {
     deleteTask: (taskTitle) => `删除：${taskTitle}`,
     reorder: "拖动排序",
     reorderTask: (taskTitle) => `拖动排序：${taskTitle}`,
+    progress: (done, total) => `已完成 ${done}/${total}`,
+    doneSection: (count) => `已完成 ${count} 项`,
+    showDone: (count) => `查看已完成的 ${count} 项`,
+    hideDone: "隐藏已完成",
   },
 
   clipboard: {

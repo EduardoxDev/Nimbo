@@ -159,6 +159,10 @@ const ptBR: Translations = {
     deleteTask: (taskTitle) => `Apagar: ${taskTitle}`,
     reorder: "Arraste para mudar a ordem",
     reorderTask: (taskTitle) => `Mudar a ordem: ${taskTitle}`,
+    progress: (done, total) => `${done} de ${total} feitas`,
+    doneSection: (count) => (count === 1 ? "1 feita" : `${count} feitas`),
+    showDone: (count) => (count === 1 ? "Ver 1 feita" : `Ver ${count} feitas`),
+    hideDone: "Esconder as feitas",
   },
 
   clipboard: {

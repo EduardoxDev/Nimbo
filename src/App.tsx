@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -14,6 +15,7 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  CheckCircle2,
   BarChart3,
   AirVent,
   Archive,
@@ -177,6 +179,7 @@ import { getWeather, subscribeWeather } from "./weather/weather";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
 import "./FocusWater.css";
+import "./todo/TodoRefresh.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
@@ -2936,6 +2939,13 @@ function TodoNotebook({
   const isArchiveMode = pageMode === "archive";
   const isReviewMode = pageMode === "review";
   const openCount = displayedTodos.filter((todo) => !todo.completed).length;
+  const doneCount = displayedTodos.length - openCount;
+  const [showDone, setShowDone] = useState(false);
+  const orderedTodos = isTodayMode
+    ? [...displayedTodos.filter((todo) => !todo.completed), ...(showDone ? displayedTodos.filter((todo) => todo.completed) : [])]
+    : displayedTodos;
+  const firstDoneId = isTodayMode && showDone ? displayedTodos.find((todo) => todo.completed)?.id ?? null : null;
+  const progress = displayedTodos.length > 0 ? doneCount / displayedTodos.length : 0;
   const listClassName = [
     "todo-list",
     displayedTodos.length > TODO_SCROLL_START_ROWS ? "todo-list--scroll" : "",
@@ -3080,7 +3090,13 @@ function TodoNotebook({
           {!isArchiveMode && !isReviewMode && (
             <span className="todo-head__date">{todayLabel}</span>
           )}
-          {!isArchiveMode && !isReviewMode && !isDailyMode && (
+          {!isArchiveMode && !isReviewMode && !isDailyMode && displayedTodos.length > 0 && (
+            <span className="todo-head__progress" title={t.todo.progress(doneCount, displayedTodos.length)}>
+              <ProgressRing progress={progress} size={18} stroke={3} color="#35e985" />
+              {t.todo.progress(doneCount, displayedTodos.length)}
+            </span>
+          )}
+          {!isArchiveMode && !isReviewMode && !isDailyMode && displayedTodos.length === 0 && (
             <span className="todo-head__count">{t.notebook.openCount(openCount)}</span>
           )}
         </div>
@@ -3205,12 +3221,18 @@ function TodoNotebook({
               {isReviewMode ? t.todo.emptyReview : t.todo.empty}
             </div>
           ) : (
-            displayedTodos.map((todo) => {
+            orderedTodos.map((todo) => {
               const isActive =
                 isTodayMode && todo.id === activeTodoId && !todo.completed;
               const titleLineCount = getTodoTitleLineCount(todo.title);
 
               return (
+                <Fragment key={todo.id}>
+                {todo.id === firstDoneId && (
+                  <div className="todo-done-divider" role="presentation">
+                    {t.todo.doneSection(doneCount)}
+                  </div>
+                )}
                 <div
                   className={[
                     "todo-item",
@@ -3223,7 +3245,6 @@ function TodoNotebook({
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  key={todo.id}
                   role="listitem"
                   data-todo-id={todo.id}
                   style={
@@ -3324,8 +3345,15 @@ function TodoNotebook({
                     </>
                   )}
                 </div>
+                </Fragment>
               );
             })
+          )}
+          {isTodayMode && doneCount > 0 && (
+            <button className="todo-done-toggle" type="button" aria-expanded={showDone} onClick={() => setShowDone((open) => !open)}>
+              <CheckCircle2 size={13} strokeWidth={2.4} aria-hidden="true" />
+              {showDone ? t.todo.hideDone : t.todo.showDone(doneCount)}
+            </button>
           )}
         </div>
       )}
