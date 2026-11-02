@@ -352,6 +352,8 @@ export type Translations = {
     habitsTitle: string;
     habitsHint: string;
     dndTitle: string;
+    soundsTitle: string;
+    soundsHint: string;
     dndHint: string;
     dndReasons: Record<"meeting" | "focus" | "fullscreen", string>;
     heldSummary: (count: number, reason: string) => string;
@@ -469,6 +471,11 @@ export type Translations = {
     water: (drank: string, goal: string) => string;
     playing: (title: string, artist: string) => string;
   };
+  tips: {
+    text: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
+    action: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
+    stop: string;
+  };
   welcome: {
     eyebrow: string;
     steps: { title: string; text: string }[];
@@ -527,6 +534,12 @@ export type Translations = {
     tidyRow: string;
     phoneRow: (text: string) => string;
     phoneClipRow: string;
+    readLaterRow: (link: string) => string;
+    readLaterSaved: (count: number) => string;
+    readLaterDue: (link: string) => string;
+    readLaterOpen: string;
+    readLaterSummarize: string;
+    readLaterLater: string;
     recordRow: (name: string) => string;
     macroRow: (name: string) => string;
     ruleRow: (text: string) => string;
@@ -543,6 +556,7 @@ export type Translations = {
     removeProject: string;
   };
   phone: {
+    ringing: string;
     islandTitle: string;
     islandToggle: string;
     islandHint: string;
@@ -555,6 +569,11 @@ export type Translations = {
     starting: string;
     notificationsTitle: string;
     notificationsToggle: string;
+    shareTitle: string;
+    shareClipboard: string;
+    shareClipboardHint: string;
+    shareActivity: string;
+    shareActivityHint: string;
     notificationsHint: string;
     notificationsDenied: string;
     allApps: string;
@@ -780,6 +799,9 @@ export type Translations = {
     windowTitle: string;
     close: string;
     comingSoon: string;
+    search: string;
+    searchEmpty: (query: string) => string;
+    groups: { island: string; daily: string; smart: string; connected: string };
     pages: {
       general: string;
       statusRing: string;

@@ -14,6 +14,7 @@
     "@types/react": "~19.3.0",
     "expo": "58.0.22",
     "expo-camera": "~58.0.14",
+    "expo-clipboard": "~58.0.4",
     "expo-dev-client": "~58.0.18",
     "expo-haptics": "~58.0.7",
     "expo-image": "~58.0.18",

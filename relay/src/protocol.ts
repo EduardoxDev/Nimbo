@@ -12,6 +12,14 @@ export type IslandStatus = {
   water?: { drankMl: number; goalMl: number };
   tasks?: { id: string; title: string; completed: boolean }[];
   notices?: string[];
+  /** An AI agent waiting for a yes or no; the phone can answer it. */
+  approval?: { id: string; agent: string; question: string } | null;
+  /** The latest copied text, when the user shares it (never secrets). */
+  clipboard?: { text: string; copiedAt: number } | null;
+  /** What is in front on the PC, when the user shares it. */
+  now?: { app: string; title: string } | null;
+  /** Links saved to read later, unread only. */
+  readLater?: { id: string; url: string }[];
 };
 
 /** What the Live Activity (Dynamic Island and lock screen) shows. */

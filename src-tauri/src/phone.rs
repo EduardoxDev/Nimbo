@@ -232,7 +232,8 @@ pub(crate) fn run_command(app: &AppHandle, action: &str, value: &str) -> Result<
     match action {
         "lock" => crate::pc::lock_pc().map(|_| ()),
         "shutdown_cancel" => crate::pc::shutdown_in(0).map(|_| ()),
-        "play_pause" | "next" | "previous" | "focus_start" | "focus_pause" | "focus_skip" | "task_toggle" | "task_add" | "water_add" => app
+        "approve" | "deny" => crate::agents::agents_answer_approval(app.clone(), value, action == "approve").map(|_| ()),
+        "play_pause" | "next" | "previous" | "focus_start" | "focus_pause" | "focus_skip" | "task_toggle" | "task_add" | "water_add" | "ring" | "read_later_add" | "read_later_done" => app
             .emit_to(crate::WINDOW_LABEL, "phone-command", serde_json::json!({ "action": action, "value": value }))
             .map_err(|error| error.to_string()),
         _ => Err("Unknown command.".to_string()),

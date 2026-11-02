@@ -19,7 +19,6 @@ import {
   Archive,
   Bot,
   Check,
-  CircleDot,
   Clipboard,
   ClipboardList,
   Columns2,
@@ -123,7 +122,7 @@ import "./shelf/Shelf.css";
 import { AgentsPanel } from "./agents/AgentsPanel";
 import { AssistantPanel } from "./assistant/AssistantPanel";
 import { ASSISTANT_DEMO, useAssistant, type ToolExecutor } from "./assistant/useAssistant";
-import { homeApi } from "./home/homeStore";
+import { homeApi, SETTINGS_PAGE_STORAGE_KEY } from "./home/homeStore";
 import "./assistant/Assistant.css";
 import "./hud/Hud.css";
 import {
@@ -158,6 +157,11 @@ import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
+import { playFindMeChime } from "./phone/findMe";
+import { playUiSound } from "./design/sounds";
+import { daysSince, FIRST_RUN_KEY, nextTip, parseSeen, TIPS_LAST_KEY, TIPS_OFF_KEY, TIPS_SEEN_KEY, type TipId } from "./tips/tips";
+import { activityOfWindow, latestCopiedText } from "./phone/share";
+import { addReadLater, isLink, loadReadLater, markRead, READ_LATER_KEY, READ_LATER_REMINDED_KEY, readLaterDue, shortLink, unread, type ReadLaterItem } from "./readLater/readLater";
 import { getWeather, subscribeWeather } from "./weather/weather";
 import "./IslandSummary.css";
 import "./PagesRefresh.css";
@@ -308,10 +312,16 @@ export type IslandSettings = {
   privacyGuard: boolean;
   /** Hold the island's notices during focus, calls and full screen. */
   smartDnd: boolean;
+  /** Soft sounds when the island opens, a task is done or a notice arrives. */
+  uiSounds: boolean;
   /** Serve the island to phones on the same Wi-Fi (QR code in Settings). */
   phoneIsland: boolean;
   /** Show the phone's notifications (through Windows' Phone Link) on the island. */
   phoneNotifications: boolean;
+  /** The latest copied text (never secrets) shows up on the paired phone. */
+  phoneShareClipboard: boolean;
+  /** The app and window in front show up on the phone ("continue on the phone"). */
+  phoneShareActivity: boolean;
   /** Show every app's Windows notifications, not only the phone's. */
   allNotifications: boolean;
   buddyMode: BuddyMode;
@@ -508,8 +518,11 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   meetingMode: true,
   privacyGuard: true,
   smartDnd: true,
+  uiSounds: false,
   phoneIsland: false,
   phoneNotifications: false,
+  phoneShareClipboard: false,
+  phoneShareActivity: false,
   allNotifications: false,
   buddyMode: "off",
   focusGuard: true,
@@ -871,8 +884,11 @@ export function normalizeSettings(
         : DEFAULT_SETTINGS.hideInFullscreen,
     privacyGuard: typeof settings?.privacyGuard === "boolean" ? settings.privacyGuard : DEFAULT_SETTINGS.privacyGuard,
     smartDnd: typeof settings?.smartDnd === "boolean" ? settings.smartDnd : DEFAULT_SETTINGS.smartDnd,
+    uiSounds: typeof settings?.uiSounds === "boolean" ? settings.uiSounds : DEFAULT_SETTINGS.uiSounds,
     phoneIsland: typeof settings?.phoneIsland === "boolean" ? settings.phoneIsland : DEFAULT_SETTINGS.phoneIsland,
     phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
+    phoneShareClipboard: typeof settings?.phoneShareClipboard === "boolean" ? settings.phoneShareClipboard : DEFAULT_SETTINGS.phoneShareClipboard,
+    phoneShareActivity: typeof settings?.phoneShareActivity === "boolean" ? settings.phoneShareActivity : DEFAULT_SETTINGS.phoneShareActivity,
     allNotifications: typeof settings?.allNotifications === "boolean" ? settings.allNotifications : DEFAULT_SETTINGS.allNotifications,
     meetingMode:
       typeof settings?.meetingMode === "boolean"
@@ -1312,6 +1328,8 @@ export function IslandShell({
   const isLiquidGlass = appearanceMode === "liquidGlass";
   const collapsedTime = useClockLabel(t.localeTag);
   const isMusicPlaying = mediaState.playbackStatus === "playing";
+  // Whatever the island is about right now tints its edge, like a Live Activity.
+  const topicColor = collapsedStatus.notice?.color ?? collapsedStatus.timer?.color ?? collapsedStatus.ring?.color ?? null;
   const className = [
     "island",
     `island--${mode}`,
@@ -1322,6 +1340,7 @@ export function IslandShell({
     isLiquidGlass ? `island--glass-${nativeGlassState}` : "",
     showTitle ? "" : "island--title-hidden",
     isMusicPlaying ? "island--beat" : "",
+    topicColor ? "island--topic" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -1504,7 +1523,7 @@ export function IslandShell({
   return (
     <section
       className={className}
-      style={{ "--beat": beat.toFixed(2) } as CSSProperties}
+      style={{ "--beat": beat.toFixed(2), ...(topicColor ? { "--island-topic": topicColor } : {}) } as CSSProperties}
       aria-label={collapsedLabel}
       onClick={(event) => {
         if (!isExpanded && event.target === event.currentTarget) {
@@ -1669,12 +1688,9 @@ export function IslandShell({
         >
           <header className="island__header">
             <div className="island__title">
-              <CircleDot
-                className={agentStatusIconClassName}
-                size={16}
-                strokeWidth={2.2}
-                aria-label={agentStatusLabel}
-              />
+              <span className={`island__header-mascot ${agentStatusIconClassName}`}>
+                <Mascot mood={collapsedStatus.nimbo ?? "idle"} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={22} label={agentStatusLabel} glow />
+              </span>
               {showTitle && <span>Nimbo</span>}
             </div>
 
@@ -1743,7 +1759,7 @@ export function IslandShell({
               </button>
             </div>
           </header>
-          <div className="island__content">{children}</div>
+          <div className="island__content" key={page}>{children}</div>
         </div>
       </div>
     </section>
@@ -4670,8 +4686,75 @@ function IslandApp({
   const lifePushRef = useRef(life.push);
   lifePushRef.current = life.push;
 
+  // Read later: links saved from the launcher or the phone come back in a free moment.
+  const [readLater, setReadLater] = useState<ReadLaterItem[]>(() => loadReadLater());
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(READ_LATER_KEY, JSON.stringify(readLater));
+    } catch {
+      // Kept for this run only.
+    }
+  }, [readLater]);
+  const readLaterRef = useRef(readLater);
+  readLaterRef.current = readLater;
+  const saveReadLaterRef = useRef((url: string) => {
+    const next = addReadLater(readLaterRef.current, url, Date.now());
+    if (next === readLaterRef.current) return;
+    readLaterRef.current = next;
+    setReadLater(next);
+    lifePushRef.current({ text: tRef.current.launcher.readLaterSaved(unread(next).length), actions: [{ label: tRef.current.life.ok, primary: true }] });
+  });
+  const readLaterBusyRef = useRef(false);
+  useEffect(() => {
+    const check = () => {
+      let lastRemindedAt = 0;
+      try {
+        lastRemindedAt = Number(window.localStorage.getItem(READ_LATER_REMINDED_KEY)) || 0;
+      } catch {
+        // Treat as never reminded.
+      }
+      const due = readLaterDue(readLaterRef.current, { now: Date.now(), lastRemindedAt, busy: readLaterBusyRef.current });
+      if (due) {
+        try {
+          window.localStorage.setItem(READ_LATER_REMINDED_KEY, String(Date.now()));
+        } catch {
+          // A repeat nudge is harmless.
+        }
+        const copy = tRef.current.launcher;
+        lifePushRef.current({
+          text: copy.readLaterDue(shortLink(due.url)),
+          actions: [
+            {
+              label: copy.readLaterOpen,
+              primary: true,
+              run: () => {
+                void openUrl(due.url).catch(() => {});
+                setReadLater((items) => markRead(items, due.id, Date.now()));
+              },
+            },
+            {
+              label: copy.readLaterSummarize,
+              run: () => {
+                smartAskRef.current?.summarize(due.url, due.url);
+                setReadLater((items) => markRead(items, due.id, Date.now()));
+              },
+            },
+            { label: copy.readLaterLater },
+          ],
+        });
+      }
+    };
+    const interval = window.setInterval(check, 10 * 60 * 1000);
+    const first = window.setTimeout(check, 60 * 1000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(first);
+    };
+  }, []);
+
   // Smart do-not-disturb: during focus, a call or a full-screen app, notices wait in line.
   const [fullscreenNow, setFullscreenNow] = useState(false);
+  readLaterBusyRef.current = focusTimer.state.status === "running" || Boolean(meeting) || fullscreenNow;
   useEffect(() => {
     if (!settings.smartDnd || !isTauri()) {
       setFullscreenNow(false);
@@ -4695,6 +4778,24 @@ function IslandApp({
           : null;
   const dnd = dndReason !== null;
   const lastDndRef = useRef<{ reason: string; held: number } | null>(null);
+
+  // Soft interface sounds, when the user turned them on (never during do-not-disturb).
+  const soundsOn = settings.uiSounds && !dnd;
+  const soundsOnRef = useRef(soundsOn);
+  soundsOnRef.current = soundsOn;
+  useEffect(() => {
+    if (mode === "expanded" && soundsOnRef.current) playUiSound("open");
+  }, [mode]);
+  const doneCount = todos.filter((todo) => todo.completed).length;
+  const doneCountRef = useRef(doneCount);
+  useEffect(() => {
+    if (doneCount > doneCountRef.current && soundsOnRef.current) playUiSound("done");
+    doneCountRef.current = doneCount;
+  }, [doneCount]);
+  const noticeId = life.notice?.id ?? null;
+  useEffect(() => {
+    if (noticeId && soundsOnRef.current) playUiSound("notice");
+  }, [noticeId]);
   useEffect(() => {
     if (dndReason) {
       lastDndRef.current = { reason: dndReason, held: lastDndRef.current?.held ?? 0 };
@@ -4818,6 +4919,80 @@ function IslandApp({
 
   // Explaining and summarising answer on the assistant page; set once the assistant exists below.
   const smartAskRef = useRef<{ explain: (text: string) => void; summarize: (source: string, label: string) => void } | null>(null);
+
+  // Tips at the right moment: one at a time, at most one a day, each only once.
+  const [tipClip, setTipClip] = useState(false);
+  useEffect(() => {
+    const item = clipboardHistory.items[0];
+    setTipClip(Boolean(item && item.kind === "text" && item.text && isLink(item.text) && Date.now() - item.copiedAt < 15_000));
+  }, [clipboardHistory.items]);
+  const tipFocusRunning = focusTimer.state.status === "running";
+  const tipMusicPlaying = mediaState.playbackStatus === "playing";
+  useEffect(() => {
+    const now = Date.now();
+    let seen: TipId[] = [];
+    let lastAt = 0;
+    let off = false;
+    let firstRun = now;
+    try {
+      seen = parseSeen(window.localStorage.getItem(TIPS_SEEN_KEY));
+      lastAt = Number(window.localStorage.getItem(TIPS_LAST_KEY)) || 0;
+      off = window.localStorage.getItem(TIPS_OFF_KEY) !== null;
+      firstRun = Number(window.localStorage.getItem(FIRST_RUN_KEY)) || now;
+      if (!window.localStorage.getItem(FIRST_RUN_KEY)) window.localStorage.setItem(FIRST_RUN_KEY, String(now));
+    } catch {
+      return;
+    }
+    const tip = nextTip(
+      {
+        copiedLink: tipClip,
+        focusRunning: tipFocusRunning,
+        focusGuardOn: settings.focusGuard,
+        musicPlaying: tipMusicPlaying,
+        phoneOn: settings.phoneIsland,
+        daysUsed: daysSince(firstRun, now),
+      },
+      { seen, lastAt, off, now },
+    );
+    if (!tip) return;
+    try {
+      window.localStorage.setItem(TIPS_SEEN_KEY, JSON.stringify([...seen, tip]));
+      window.localStorage.setItem(TIPS_LAST_KEY, String(now));
+    } catch {
+      return;
+    }
+    const copy = t.tips;
+    const go: Record<TipId, () => void> = {
+      copiedLink: () => openIslandPageRef.current?.("launcher"),
+      launcher: () => openIslandPageRef.current?.("launcher"),
+      music: () => openIslandPageRef.current?.("music"),
+      focusGuard: () => setSettings((current) => ({ ...current, focusGuard: true })),
+      phone: () => {
+        try {
+          window.localStorage.setItem(SETTINGS_PAGE_STORAGE_KEY, "phone");
+        } catch {
+          // Settings open on their last page instead.
+        }
+        void invoke("open_settings_window").catch(() => {});
+      },
+    };
+    lifePushRef.current({
+      text: copy.text[tip],
+      actions: [
+        { label: copy.action[tip], primary: true, run: go[tip] },
+        {
+          label: copy.stop,
+          run: () => {
+            try {
+              window.localStorage.setItem(TIPS_OFF_KEY, String(Date.now()));
+            } catch {
+              // Nothing to remember it in.
+            }
+          },
+        },
+      ],
+    });
+  }, [tipClip, tipFocusRunning, tipMusicPlaying, settings.focusGuard, settings.phoneIsland, t]);
 
   // Smart clipboard: something new was copied, so offer the obvious next step.
   const lastClipRef = useRef<string | null>(null);
@@ -6854,6 +7029,23 @@ function IslandApp({
     else void invoke("phone_stop").catch(() => {});
   }, [settings.phoneIsland]);
   const phoneStatusRef = useRef<() => unknown>(() => null);
+  // What is in front on the PC, for "continue on the phone" (only when the user turns it on).
+  const phoneNowRef = useRef<{ app: string; title: string } | null>(null);
+  useEffect(() => {
+    if (!settings.phoneIsland || !settings.phoneShareActivity || !isTauri()) {
+      phoneNowRef.current = null;
+      return;
+    }
+    const sample = () =>
+      void invoke<{ app: string; title: string } | null>("foreground_window")
+        .then((front) => {
+          phoneNowRef.current = front ? activityOfWindow(front.app, front.title) : null;
+        })
+        .catch(() => {});
+    sample();
+    const interval = window.setInterval(sample, 5_000);
+    return () => window.clearInterval(interval);
+  }, [settings.phoneIsland, settings.phoneShareActivity]);
   const phoneTodoRef = useRef<{ toggle: (id: string) => void; add: (title: string) => void }>({ toggle: () => {}, add: () => {} });
   phoneTodoRef.current = {
     toggle: toggleTodo,
@@ -6885,6 +7077,10 @@ function IslandApp({
       water: { drankMl: current.water.drankMl, goalMl: settings.waterGoalMl },
       notices: [life.notice?.text, reminders.due ? t.launcher.reminderDue(reminders.due.text) : null, meeting ? meeting.title : null].filter(Boolean),
       tasks: current.todos.slice(0, 30).map((todo) => ({ id: todo.id, title: todo.title, completed: todo.completed })),
+      approval: approval ? { id: approval.id, agent: approval.agent, question: approval.question } : null,
+      clipboard: settings.phoneShareClipboard ? latestCopiedText(clipboardHistory.items) : null,
+      now: settings.phoneShareActivity ? phoneNowRef.current : null,
+      readLater: unread(readLater).slice(0, 15).map((item) => ({ id: item.id, url: item.url })),
     };
   };
   useEffect(() => {
@@ -6927,6 +7123,12 @@ function IslandApp({
       else if (action === "water_add") current.water.add();
       else if (action === "task_toggle") phoneTodoRef.current.toggle(value);
       else if (action === "task_add") phoneTodoRef.current.add(value);
+      else if (action === "read_later_add") saveReadLaterRef.current(value);
+      else if (action === "read_later_done") setReadLater((items) => markRead(items, value, Date.now()));
+      else if (action === "ring") {
+        playFindMeChime();
+        lifePushRef.current({ text: tRef.current.phone.ringing, actions: [{ label: tRef.current.life.ok, primary: true }] });
+      }
     }).then(keep);
     void listen<{ app: string; title: string; body: string }>("windows-notification", ({ payload }) => {
       lifePushRef.current({
@@ -7238,6 +7440,7 @@ function IslandApp({
             }}
             onOpenTodos={() => openIslandPage("todo")}
             onAddRule={rules.add}
+            onReadLater={(url) => saveReadLaterRef.current(url)}
             onSendToPhone={(text) =>
               void invoke("phone_push", { text })
                 .then(() => lifePushRef.current({ text: t.phone.sentToPhone, actions: [{ label: t.life.ok, primary: true }] }))

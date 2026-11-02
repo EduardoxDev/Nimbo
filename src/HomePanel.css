@@ -44,7 +44,7 @@
   border: 0;
   border-radius: 12px;
   overflow: visible;
-  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 200ms var(--n-spring);
 }
 
 .home-ac__unit:not(:disabled) {
@@ -108,7 +108,7 @@
 .ac3d__flap {
   transform-box: fill-box;
   transform-origin: 50% 0;
-  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 600ms var(--n-spring);
 }
 
 .ac3d:not(.ac3d--off) .ac3d__flap {

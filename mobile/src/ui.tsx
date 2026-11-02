@@ -16,6 +16,7 @@ export const colors = {
   water: "#5ac8fa",
   notices: "#ffd60a",
   pc: "#bf8cff",
+  ai: "#bf8cff",
 };
 
 /** The same mascot the PC island shows (it sends the drawing), or a plain cloud. */

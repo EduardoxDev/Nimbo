@@ -77,6 +77,15 @@ export function PhoneSettings({ settings, update }: { settings: IslandSettings; 
 
       <RelaySettings />
 
+      <Section title={copy.shareTitle}>
+        <Row title={copy.shareClipboard} hint={copy.shareClipboardHint}>
+          <Toggle label={copy.shareClipboard} checked={settings.phoneShareClipboard} onChange={(phoneShareClipboard) => update({ phoneShareClipboard })} />
+        </Row>
+        <Row title={copy.shareActivity} hint={copy.shareActivityHint}>
+          <Toggle label={copy.shareActivity} checked={settings.phoneShareActivity} onChange={(phoneShareActivity) => update({ phoneShareActivity })} />
+        </Row>
+      </Section>
+
       <Section title={copy.notificationsTitle}>
         <Row title={copy.notificationsToggle} hint={copy.notificationsHint}>
           <Toggle label={copy.notificationsToggle} checked={settings.phoneNotifications} onChange={toggleNotifications} />

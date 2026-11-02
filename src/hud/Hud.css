@@ -7,7 +7,7 @@
   gap: 10px;
   color: #ffffff;
   font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  animation: island-hud-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: island-hud-in 260ms var(--n-spring);
 }
 
 @keyframes island-hud-in {

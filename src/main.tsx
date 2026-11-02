@@ -9,6 +9,7 @@ import LensWindow from "./lens/LensWindow";
 import DayWindow from "./day/DayWindow";
 import MusicWindow from "./music/MusicWindow";
 import MascotGallery from "./demo/MascotGallery";
+import "./design/tokens.css";
 import { I18nProvider } from "./i18n";
 import { installDiagnostics } from "./diagnostics";
 

@@ -183,3 +183,53 @@
     animation: none;
   }
 }
+
+/* ---------- Island 2.0: topic edge, header mascot, springy pages ---------- */
+.island--topic::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--island-topic) 45%, transparent),
+    0 0 18px -4px color-mix(in srgb, var(--island-topic) 55%, transparent);
+  animation: island-topic-breathe 3.2s ease-in-out infinite;
+  transition: box-shadow var(--n-dur) ease;
+}
+
+@keyframes island-topic-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.island__header-mascot {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: inherit;
+}
+
+.island--expanded .island__content {
+  animation: n-pop-in var(--n-dur-spring) var(--n-spring) both;
+}
+
+.island-tab {
+  transition:
+    background var(--n-dur-fast) ease,
+    color var(--n-dur-fast) ease,
+    transform var(--n-dur-spring) var(--n-spring-bouncy);
+}
+
+.island-tab:active {
+  transform: scale(0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island--topic::after,
+  .island--expanded .island__content {
+    animation: none;
+  }
+}

@@ -1,7 +1,7 @@
 import { Mascot } from "../mascot/Mascot";
 import { MASCOT_COLORS, MASCOT_SHAPES, type MascotMood } from "../mascot/engine";
 
-const MOODS: MascotMood[] = ["idle", "thinking", "working", "waiting", "done", "error", "sleeping"];
+const MOODS: MascotMood[] = ["idle", "greeting", "thinking", "working", "waiting", "done", "error", "annoyed", "dizzy", "sleeping"];
 
 export default function MascotGallery() {
   return (
@@ -18,7 +18,7 @@ export default function MascotGallery() {
             <span style={{ fontSize: 12 }}>{shape}</span>
             {MOODS.map((mood) => (
               <div key={mood} style={{ display: "grid", placeItems: "center", padding: 8, background: "#000", borderRadius: 16 }}>
-                <Mascot mood={mood} shape={shape} color={row === 0 ? "#f2f2f5" : MASCOT_COLORS[row % MASCOT_COLORS.length]} size={64} seed={`${shape}-${mood}`} />
+                <Mascot mood={mood} shape={shape} color={row === 0 ? "#f2f2f5" : MASCOT_COLORS[row % MASCOT_COLORS.length]} size={row === 0 ? 96 : 56} seed={`${shape}-${mood}`} glow={row === 0} />
               </div>
             ))}
           </div>

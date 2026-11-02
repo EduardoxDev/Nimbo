@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { WindowsFeatureRows } from "./life/WindowsFeatureRows";
 import {
   Archive,
@@ -13,6 +13,7 @@ import {
   ExternalLink,
   House,
   Info,
+  Search,
   Monitor,
   Music,
   Settings,
@@ -48,27 +49,10 @@ import { ShortcutsSettings } from "./settings/ShortcutsSettings";
 import { ThemesSettings } from "./settings/ThemesSettings";
 import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
+import { SETTINGS_GROUPS, searchSettings, type SettingsPageId } from "./settings/search";
 import "./SettingsWindow.css";
 
-type PageId =
-  | "general"
-  | "statusRing"
-  | "display"
-  | "appearance"
-  | "music"
-  | "todo"
-  | "calendar"
-  | "pomodoro"
-  | "water"
-  | "home"
-  | "shelf"
-  | "hud"
-  | "agents"
-  | "routines"
-  | "automation"
-  | "phone"
-  | "about";
-
+type PageId = SettingsPageId;
 
 /** Sidebar order and icon tiles, in the colours of the reference. */
 const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
@@ -89,6 +73,13 @@ const PAGES: { id: PageId; icon: typeof Settings; color: string }[] = [
   { id: "automation", icon: Zap, color: "#ff9f0a" },
   { id: "phone", icon: Smartphone, color: "#30d158" },
 ];
+
+const PAGE_STYLE = Object.fromEntries(
+  [...PAGES, { id: "about" as const, icon: Info, color: "#8e8e93" }].map(({ id, icon: Icon, color }) => [
+    id,
+    { color, icon: <Icon size={15} strokeWidth={2.4} /> },
+  ]),
+) as Record<PageId, { color: string; icon: ReactNode }>;
 
 const FLOATING_MARGIN = DEFAULT_SETTINGS.marginY;
 const REPOSITORY_URL = "https://github.com/EduardoxDev/Nimbo";
@@ -143,6 +134,22 @@ export default function SettingsWindow() {
   const t = useTranslation();
   const [settings, update] = useSharedSettings();
   const [page, setPage] = useState<PageId>(loadPage);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const results = useMemo(() => searchSettings(t, query), [t, query]);
+
+  // Ctrl+F jumps to the search box from anywhere in the window.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     document.title = t.prefs.windowTitle;
@@ -183,17 +190,60 @@ export default function SettingsWindow() {
             onClick={closeWindow}
           />
         </div>
+        <label className="prefs-search">
+          <Search size={14} strokeWidth={2.4} aria-hidden="true" />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            placeholder={`${t.prefs.search}  (Ctrl+F)`}
+            aria-label={t.prefs.search}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setQuery("");
+              if (event.key === "Enter" && results[0]) {
+                setPage(results[0]);
+                setQuery("");
+              }
+            }}
+          />
+        </label>
         <nav className="prefs__nav" aria-label={t.prefs.windowTitle}>
-          {PAGES.map(({ id, icon: Icon, color }) => (
-            <SidebarItem
-              key={id}
-              label={t.prefs.pages[id]}
-              color={color}
-              icon={<Icon size={15} strokeWidth={2.4} />}
-              isActive={page === id}
-              onSelect={() => setPage(id)}
-            />
-          ))}
+          {query.trim() ? (
+            results.length > 0 ? (
+              results.map((id) => (
+                <SidebarItem
+                  key={id}
+                  label={t.prefs.pages[id]}
+                  color={PAGE_STYLE[id].color}
+                  icon={PAGE_STYLE[id].icon}
+                  isActive={page === id}
+                  onSelect={() => {
+                    setPage(id);
+                    setQuery("");
+                  }}
+                />
+              ))
+            ) : (
+              <p className="prefs-search__empty">{t.prefs.searchEmpty(query.trim())}</p>
+            )
+          ) : (
+            SETTINGS_GROUPS.map((group) => (
+              <div key={group.id} className="prefs-group" role="group" aria-label={t.prefs.groups[group.id]}>
+                <span className="prefs-group__title">{t.prefs.groups[group.id]}</span>
+                {group.pages.map((id) => (
+                  <SidebarItem
+                    key={id}
+                    label={t.prefs.pages[id]}
+                    color={PAGE_STYLE[id].color}
+                    icon={PAGE_STYLE[id].icon}
+                    isActive={page === id}
+                    onSelect={() => setPage(id)}
+                  />
+                ))}
+              </div>
+            ))
+          )}
         </nav>
         <div className="prefs__nav prefs__nav--bottom">
           <SidebarItem
@@ -467,6 +517,9 @@ function GeneralPage({ settings, update }: PageProps) {
       </Row>
       <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
         <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
+      </Row>
+      <Row title={t.life.soundsTitle} hint={t.life.soundsHint}>
+        <Toggle label={t.life.soundsTitle} checked={settings.uiSounds} onChange={(uiSounds) => update({ uiSounds })} />
       </Row>
       <Row title={t.life.dndTitle} hint={t.life.dndHint}>
         <Toggle label={t.life.dndTitle} checked={settings.smartDnd} onChange={(smartDnd) => update({ smartDnd })} />

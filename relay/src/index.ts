@@ -24,7 +24,7 @@ export interface Env extends ApnsEnv, WebPushEnv {
   ASSETS?: Fetcher;
 }
 
-const COMMANDS = new Set(["play_pause", "next", "previous", "focus_start", "focus_pause", "focus_skip", "task_toggle", "task_add", "water_add", "lock", "shutdown_cancel", "send_text"]);
+const COMMANDS = new Set(["play_pause", "next", "previous", "focus_start", "focus_pause", "focus_skip", "task_toggle", "task_add", "water_add", "lock", "shutdown_cancel", "send_text", "approve", "deny", "ring", "read_later_add", "read_later_done"]);
 
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {

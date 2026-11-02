@@ -1,0 +1,133 @@
+/* Nimbo design tokens: one palette, one spacing scale and one motion language
+   for the island, its windows and the phone app (mobile/src/ui.tsx mirrors these). */
+:root {
+  /* Surfaces */
+  --n-bg: #0b0b10;
+  --n-surface: rgba(28, 28, 34, 0.94);
+  --n-surface-raised: rgba(255, 255, 255, 0.06);
+  --n-surface-hover: rgba(255, 255, 255, 0.09);
+  --n-surface-active: rgba(255, 255, 255, 0.13);
+  --n-line: rgba(255, 255, 255, 0.08);
+  --n-line-strong: rgba(255, 255, 255, 0.14);
+  --n-glass: rgba(22, 22, 28, 0.72);
+  --n-glass-blur: blur(28px) saturate(1.6);
+
+  /* Text */
+  --n-text: #f5f5f7;
+  --n-text-2: #a1a1aa;
+  --n-text-3: #6e6e78;
+
+  /* Topic colours: each feature keeps its colour everywhere */
+  --n-music: #ff375f;
+  --n-focus: #ff9f0a;
+  --n-tasks: #35e985;
+  --n-water: #5ac8fa;
+  --n-ai: #bf8cff;
+  --n-home: #40c8e0;
+  --n-alert: #ffd60a;
+  --n-danger: #ff453a;
+  --n-accent: #0a84ff;
+
+  /* Shape */
+  --n-radius-xs: 6px;
+  --n-radius-sm: 10px;
+  --n-radius-md: 14px;
+  --n-radius-lg: 20px;
+  --n-radius-xl: 28px;
+  --n-radius-pill: 999px;
+
+  /* Spacing (4-point grid) */
+  --n-space-1: 4px;
+  --n-space-2: 8px;
+  --n-space-3: 12px;
+  --n-space-4: 16px;
+  --n-space-5: 24px;
+  --n-space-6: 32px;
+
+  /* Depth */
+  --n-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.18);
+  --n-shadow-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 18px 48px rgba(0, 0, 0, 0.42);
+  --n-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  /* Type */
+  --n-font: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  --n-font-display: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+
+  /* Motion: real springs (damped oscillators sampled into linear()).
+     --n-spring settles softly (≈4% overshoot) for big surfaces like the island;
+     --n-spring-bouncy is for small things that should feel alive (chips, toggles, the mascot). */
+  --n-spring: linear(0, 0.027, 0.096, 0.191, 0.299, 0.411, 0.519, 0.62, 0.71, 0.788, 0.853, 0.906, 0.949, 0.981, 1.004, 1.02, 1.031, 1.036, 1.038, 1.038, 1.035, 1.032, 1.028, 1.024, 1.019, 1.016, 1.012, 1.009, 1);
+  --n-spring-bouncy: linear(0, 0.047, 0.163, 0.318, 0.486, 0.649, 0.794, 0.913, 1.005, 1.068, 1.106, 1.124, 1.125, 1.115, 1.098, 1.077, 1.056, 1.036, 1.019, 1.006, 0.996, 0.989, 0.985, 0.984, 0.985, 0.986, 0.989, 0.991, 1);
+  --n-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --n-dur-fast: 160ms;
+  --n-dur: 320ms;
+  --n-dur-spring: 580ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --n-spring: cubic-bezier(0.2, 0, 0, 1);
+    --n-spring-bouncy: cubic-bezier(0.2, 0, 0, 1);
+    --n-dur-spring: 200ms;
+  }
+}
+
+/* Shared building blocks */
+.n-card {
+  background: var(--n-surface-raised);
+  border: 1px solid var(--n-line);
+  border-radius: var(--n-radius-md);
+  box-shadow: var(--n-highlight);
+}
+
+.n-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px 0 6px;
+  color: var(--n-text);
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--chip, var(--n-accent)) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip, var(--n-accent)) 28%, transparent);
+  border-radius: var(--n-radius-pill);
+  transition: transform var(--n-dur-spring) var(--n-spring-bouncy), background var(--n-dur-fast) ease;
+}
+
+.n-chip:hover {
+  background: color-mix(in srgb, var(--chip, var(--n-accent)) 24%, transparent);
+}
+
+.n-chip:active {
+  transform: scale(0.95);
+}
+
+.n-pressable {
+  transition: transform var(--n-dur-spring) var(--n-spring-bouncy);
+}
+
+.n-pressable:active {
+  transform: scale(0.96);
+}
+
+@keyframes n-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.n-enter {
+  animation: n-pop-in var(--n-dur-spring) var(--n-spring) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .n-enter {
+    animation-duration: 1ms;
+  }
+}

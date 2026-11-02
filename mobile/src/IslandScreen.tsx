@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Image, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, Image, Linking, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import type { Pairing } from "./pairing";
@@ -203,6 +204,16 @@ function PageView({
             <Text style={styles.muted}>{status?.pc ?? ""}</Text>
           </View>
         </Card>
+        {status?.approval ? (
+          <Card style={{ borderWidth: 1, borderColor: colors.ai }}>
+            <Text style={[styles.label, { color: colors.ai }]}>{t.approvalTitle(status.approval.agent)}</Text>
+            <Text style={{ color: colors.text, fontSize: 16, marginBottom: 12 }}>{status.approval.question}</Text>
+            <View style={styles.row}>
+              <Button label={t.deny} onPress={async () => { await run("deny", status.approval!.id); say(t.denied); }} />
+              <Button label={t.approve} accent={colors.ai} onPress={async () => { await run("approve", status.approval!.id); say(t.approved); }} />
+            </View>
+          </Card>
+        ) : null}
         <View style={styles.row}>
           {[
             { id: "tasks" as Page, value: String(openCount), label: t.pending, color: colors.tasks },
@@ -215,6 +226,40 @@ function PageView({
             </Pressable>
           ))}
         </View>
+        {status?.now ? (
+          <Card style={{ marginTop: 10 }}>
+            <Text style={styles.label}>{t.onPcNow}</Text>
+            <Text style={{ color: colors.text, fontWeight: "700" }}>{status.now.app}</Text>
+            {status.now.title ? <Text numberOfLines={2} style={styles.muted}>{status.now.title}</Text> : null}
+          </Card>
+        ) : null}
+        {status?.clipboard ? (
+          <Card style={{ marginTop: 10 }}>
+            <Text style={styles.label}>{t.copiedOnPc}</Text>
+            <Text selectable numberOfLines={4} style={{ color: colors.text, marginBottom: 10 }}>{status.clipboard.text}</Text>
+            <View style={styles.row}>
+              {/^https?:\/\/\S+$/.test(status.clipboard.text.trim()) ? (
+                <Button label={t.openLink} accent={colors.blue} onPress={() => void Linking.openURL(status.clipboard!.text.trim())} />
+              ) : null}
+              <Button label={t.copy} onPress={async () => { await Clipboard.setStringAsync(status.clipboard!.text); say(t.copied); }} />
+            </View>
+          </Card>
+        ) : null}
+        {(status?.readLater ?? []).length > 0 ? (
+          <Card style={{ marginTop: 10 }}>
+            <Text style={styles.label}>{t.readLater}</Text>
+            {(status?.readLater ?? []).slice(0, 5).map((item) => (
+              <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>
+                <Pressable style={{ flex: 1 }} onPress={() => void Linking.openURL(item.url)}>
+                  <Text numberOfLines={1} style={{ color: colors.blue }}>{item.url.replace(/^https?:\/\/(www\.)?/, "")}</Text>
+                </Pressable>
+                <Pressable hitSlop={10} onPress={() => void run("read_later_done", item.id)}>
+                  <Text style={styles.muted}>{t.readDone}</Text>
+                </Pressable>
+              </View>
+            ))}
+          </Card>
+        ) : null}
         {music && (
           <Pressable onPress={() => go("music")}>
             <Card style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -339,6 +384,9 @@ function PageView({
           <Text style={styles.label}>{t.sendTitle}</Text>
           <TextInput value={draft} onChangeText={setDraft} placeholder={t.sendPlaceholder} placeholderTextColor={colors.muted} multiline style={[styles.input, { minHeight: 84, paddingTop: 12, textAlignVertical: "top" }]} />
           <View style={[styles.row, { marginTop: 8 }]}>
+            {/^https?:\/\/\S+$/.test(draft.trim()) ? (
+              <Button label={t.saveForLater} onPress={async () => { await run("read_later_add", draft.trim()); setDraft(""); say(t.savedForLater); }} />
+            ) : null}
             <Button label={t.send} accent={colors.blue} onPress={async () => { if (!draft.trim()) return; await run("send_text", draft); setDraft(""); say(t.sent); }} />
           </View>
         </Card>
@@ -364,6 +412,9 @@ function PageView({
         <View style={styles.row}>
           <Button label={t.lock} danger onPress={() => void run("lock")} />
           <Button label={t.cancelShutdown} onPress={() => void run("shutdown_cancel")} />
+        </View>
+        <View style={[styles.row, { marginTop: 8 }]}>
+          <Button label={t.ring} accent={colors.pc} onPress={async () => { await run("ring"); say(t.rang); }} />
         </View>
       </Card>
       {webPushAvailable() || isInstalledWebApp() ? (

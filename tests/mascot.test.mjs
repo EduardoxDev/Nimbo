@@ -34,3 +34,20 @@ test("moods change the eyes and the status dot", () => {
   const left = mascotFrame({ shape: "round", mood: "idle", t: 0.5, gaze: { x: -1, y: 0 } });
   assert.ok(right.eyes[0].cx > left.eyes[0].cx);
 });
+
+test("arms and antenna only show up for special moments", () => {
+  assert.equal(mascotFrame({ shape: "cloud", mood: "idle", t: 1 }).arms.length, 0);
+  assert.equal(mascotFrame({ shape: "cloud", mood: "idle", t: 1 }).antenna, null);
+  assert.equal(mascotFrame({ shape: "cloud", mood: "greeting", t: 1 }).arms.length, 2);
+  assert.equal(mascotFrame({ shape: "cloud", mood: "done", t: 1 }).arms.length, 2);
+  assert.ok(mascotFrame({ shape: "cloud", mood: "waiting", t: 1 }).antenna);
+});
+
+test("moods change the mouth and a poke makes the body spring", () => {
+  assert.equal(mascotFrame({ shape: "cloud", mood: "done", t: 1 }).mouth.style, "grin");
+  assert.equal(mascotFrame({ shape: "cloud", mood: "error", t: 1 }).mouth.style, "wavy");
+  const still = mascotFrame({ shape: "cloud", mood: "idle", t: 0 }).squash;
+  const poked = mascotFrame({ shape: "cloud", mood: "idle", t: 0, poke: 0.07 }).squash;
+  assert.ok(Math.abs(poked.y - still.y) > 0.05);
+  assert.ok(poked.y > 1 ? poked.x < 1 : poked.x > 1);
+});

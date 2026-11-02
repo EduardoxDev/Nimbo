@@ -1,16 +1,40 @@
 export type MascotMood = "idle" | "greeting" | "thinking" | "working" | "waiting" | "done" | "error" | "sleeping" | "annoyed" | "dizzy";
 export type MascotShape = "cloud" | "pebble" | "round" | "blob" | "drop";
 export type EyeStyle = "open" | "happy" | "closed" | "spiral";
+export type MouthStyle = "smile" | "grin" | "o" | "flat" | "wavy" | "hmm";
+export type MascotArm = { shoulder: [number, number]; hand: [number, number] };
 
 export type MascotFrame = {
   body: string;
   offsetY: number;
   rotation: number;
   scale: number;
+  /** Squash & stretch, anchored at the feet. */
+  squash: { x: number; y: number };
   eyes: { cx: number; cy: number; rx: number; ry: number; style: EyeStyle }[];
-  hands: { cx: number; cy: number; r: number }[];
+  mouth: { cx: number; cy: number; style: MouthStyle };
+  cheeks: { cx: number; cy: number }[];
+  /** Little arms, only for special moments (waving, celebrating). */
+  arms: MascotArm[];
+  /** Antenna bulb for alerts, thinking and celebrations. */
+  antenna: { tip: [number, number]; on: boolean } | null;
   dot: string | null;
 };
+
+const MOUTHS: Record<MascotMood, MouthStyle> = {
+  idle: "smile",
+  greeting: "grin",
+  thinking: "hmm",
+  working: "flat",
+  waiting: "o",
+  done: "grin",
+  error: "wavy",
+  sleeping: "o",
+  annoyed: "flat",
+  dizzy: "wavy",
+};
+
+const ANTENNA_MOODS = new Set<MascotMood>(["thinking", "waiting", "done"]);
 
 type Wave = { k: number; amplitude: number; phase: number };
 
@@ -103,6 +127,8 @@ export function mascotFrame(options: {
   t: number;
   seed?: number;
   gaze?: { x: number; y: number } | null;
+  /** Seconds since the mascot was poked, for a springy boing. */
+  poke?: number | null;
 }): MascotFrame {
   const { shape, mood, t } = options;
   const seed = options.seed ?? 0;
@@ -114,12 +140,14 @@ export function mascotFrame(options: {
   let style: EyeStyle = "open";
   let eyeHeight = 1;
   let wobble = 0.4;
+  let bounce = 0;
 
   if (mood === "thinking") {
     look = { x: 0.6 + Math.sin(t * 0.8) * 0.15, y: -0.8 };
     rotation = Math.sin(t * 1.2) * 4;
   } else if (mood === "working") {
-    offsetY = -Math.abs(Math.sin(t * 4.2)) * 3.2;
+    bounce = Math.abs(Math.sin(t * 4.2));
+    offsetY = -bounce * 3.2;
     look = { x: Math.sin(t * 1.1) * 0.5, y: 0.25 };
     wobble = 1;
   } else if (mood === "waiting") {
@@ -128,7 +156,8 @@ export function mascotFrame(options: {
     scale = 1 + Math.sin(t * 3) * 0.02;
   } else if (mood === "done") {
     style = "happy";
-    offsetY = -Math.abs(Math.sin(t * 2.4)) * 1.6;
+    bounce = Math.abs(Math.sin(t * 2.4));
+    offsetY = -bounce * 3;
   } else if (mood === "error") {
     style = "closed";
     offsetY = 1.5;
@@ -156,24 +185,56 @@ export function mascotFrame(options: {
   const blink = style === "open" ? blinkAmount(t, seed) : 0;
   const lookX = Math.max(-1, Math.min(1, look.x));
   const lookY = Math.max(-1, Math.min(1, look.y));
-  const eyeY = 46 + lookY * 5;
+  const eyeY = 44 + lookY * 5;
   const spread = 12;
   const eyes = [-1, 1].map((side) => ({
     cx: round(CENTER + side * spread + lookX * 7),
     cy: round(eyeY + side * lookX * 0.8),
-    rx: 4.6,
-    ry: round(8.6 * eyeHeight * (1 - blink * 0.92)),
+    rx: 4.8,
+    ry: round(7.8 * eyeHeight * (1 - blink * 0.92)),
     style,
   }));
 
-  const hands =
-    mood === "greeting"
-      ? [-1, 1].map((side) => ({
-          cx: round(CENTER + side * 46),
-          cy: round(58 - (side === 1 ? Math.abs(Math.sin(t * 6)) * 10 : Math.abs(Math.sin(t * 2)) * 3)),
-          r: 7.5,
-        }))
-      : [];
+  // Breathing, plus a squash when landing from a hop and a spring after a poke.
+  const breath = Math.sin(t * 1.6);
+  let squashY = 1 + breath * 0.012;
+  if (mood === "working" || mood === "done") squashY -= Math.max(0, 0.25 - bounce) * 0.4;
+  if (options.poke != null && options.poke >= 0 && options.poke < 1.2) {
+    squashY += Math.exp(-options.poke * 5) * Math.sin(options.poke * 22) * 0.14;
+  }
+  const squash = { x: round((1 + (1 - squashY) * 0.8) * 1000) / 1000, y: round(squashY * 1000) / 1000 };
 
-  return { body: bodyPath(shape, t, wobble), offsetY: round(offsetY), rotation: round(rotation), scale: round(scale * 1000) / 1000, eyes, hands, dot: MOOD_DOTS[mood] };
+  const faceX = CENTER + lookX * 6;
+  const mouth = { cx: round(faceX), cy: round(eyeY + 13), style: MOUTHS[mood] };
+  const cheeks = [-1, 1].map((side) => ({ cx: round(faceX + side * 21), cy: round(eyeY + 9) }));
+
+  const arms: MascotArm[] = [];
+  if (mood === "greeting") {
+    const wave = Math.sin(t * 7);
+    arms.push({ shoulder: [16, 60], hand: [8, round(68 + Math.sin(t * 2) * 1.5)] });
+    arms.push({ shoulder: [84, 56], hand: [round(96 + wave * 4), round(36 - Math.abs(wave) * 3)] });
+  } else if (mood === "done") {
+    const cheer = Math.abs(Math.sin(t * 2.4)) * 5;
+    arms.push({ shoulder: [18, 56], hand: [6, round(34 - cheer)] });
+    arms.push({ shoulder: [82, 56], hand: [94, round(34 - cheer)] });
+  }
+
+  const sway = mood === "thinking" ? Math.sin(t * 1.4) * 4 : mood === "waiting" ? Math.sin(t * 9) * 1.5 : Math.sin(t * 2) * 2;
+  const antenna = ANTENNA_MOODS.has(mood)
+    ? { tip: [round(56 + sway), round(mood === "waiting" ? 2 : 4)] as [number, number], on: mood !== "thinking" || Math.sin(t * 3) > 0 }
+    : null;
+
+  return {
+    body: bodyPath(shape, t, wobble),
+    offsetY: round(offsetY),
+    rotation: round(rotation),
+    scale: round(scale * 1000) / 1000,
+    squash,
+    eyes,
+    mouth,
+    cheeks,
+    arms,
+    antenna,
+    dot: MOOD_DOTS[mood],
+  };
 }

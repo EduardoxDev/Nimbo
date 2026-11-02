@@ -125,10 +125,10 @@ input,
   transform-origin: top center;
   will-change: transform;
   transition:
-    width 560ms cubic-bezier(0.16, 1, 0.3, 1),
-    height 560ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-radius 560ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+    width 560ms var(--n-spring),
+    height 560ms var(--n-spring),
+    border-radius 560ms var(--n-spring),
+    transform 560ms var(--n-spring);
 }
 
 .island__surface {
@@ -305,11 +305,11 @@ input,
 }
 
 .island--appearance-liquidGlass.island--expanded .island__glass::after {
-  animation: glassBloomExpand 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: glassBloomExpand 440ms var(--n-spring) both;
 }
 
 .island--appearance-liquidGlass.island--collapsed .island__glass::after {
-  animation: glassBloomCollapse 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: glassBloomCollapse 360ms var(--n-spring) both;
 }
 
 @keyframes glassBloomExpand {
@@ -368,7 +368,7 @@ input,
   will-change: opacity, transform;
   transition:
     opacity 120ms ease,
-    transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform 280ms var(--n-spring);
 }
 
 .island__collapsed {
@@ -654,7 +654,7 @@ input,
   transform: none;
   transition:
     opacity 260ms ease 160ms,
-    transform 280ms cubic-bezier(0.16, 1, 0.3, 1) 140ms;
+    transform 280ms var(--n-spring) 140ms;
 }
 
 .island__header {
@@ -1268,7 +1268,7 @@ input,
   display: flex;
   align-items: flex-start;
   gap: 20px;
-  animation: np-enter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: np-enter 420ms var(--n-spring);
 }
 
 @keyframes np-enter {
@@ -1292,7 +1292,7 @@ input,
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 300ms var(--n-spring);
 }
 
 .np-art img {
@@ -1474,7 +1474,7 @@ input,
   border-radius: 999px;
   cursor: pointer;
   transition:
-    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 160ms var(--n-spring),
     background 160ms ease;
 }
 
@@ -1514,7 +1514,7 @@ input,
   opacity: 0;
   pointer-events: none;
   transition:
-    width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 220ms var(--n-spring),
     opacity 160ms ease;
 }
 
@@ -1543,7 +1543,7 @@ input,
   border-radius: 999px;
   cursor: pointer;
   transition:
-    width 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 260ms var(--n-spring),
     background 200ms ease;
 }
 
@@ -1615,7 +1615,7 @@ input,
   transform-origin: 0 50%;
   transition:
     color 300ms ease,
-    transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform 300ms var(--n-spring);
 }
 
 .np-lyrics__line--past {
@@ -4286,7 +4286,7 @@ input,
 .stage--fast .island--expanded .island__expanded {
   transition:
     opacity 160ms ease 60ms,
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1) 40ms;
+    transform 180ms var(--n-spring) 40ms;
 }
 
 .stage--fast .island__collapsed {

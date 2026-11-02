@@ -28,7 +28,7 @@
   font-weight: 500;
   line-height: 1.4;
   white-space: pre-wrap;
-  animation: assistant-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: assistant-in 260ms var(--n-spring);
 }
 
 @keyframes assistant-in {
