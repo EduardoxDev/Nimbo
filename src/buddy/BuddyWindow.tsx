@@ -233,6 +233,7 @@ export default function BuddyWindow() {
   useEffect(() => {
     let raf = 0;
     let last = performance.now();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const tick = (now: number) => {
       const body0 = bodyRef.current;
       const calm =
@@ -398,7 +399,11 @@ export default function BuddyWindow() {
       const offsetY = viewRef.current.y;
       const squash = squashRef.current;
       if (wrapperRef.current) {
-        wrapperRef.current.style.transform = `translate(${body.x - offsetX}px, ${body.y - offsetY}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25})`;
+        const stepping = mode === "free" && body.ground !== null && Math.abs(body.vx) > 0 && !reducedMotion;
+        const phase = (now / 420) * Math.PI * 2;
+        const lift = stepping ? -Math.abs(Math.sin(phase)) * 4 : 0;
+        const tilt = stepping ? Math.sin(phase) * 3 : 0;
+        wrapperRef.current.style.transform = `translate(${body.x - offsetX}px, ${body.y - offsetY + lift}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25}) rotate(${tilt}deg)`;
       }
       const bubbleLeft = Math.min(Math.max(body.x + BUDDY_SIZE / 2 - BUBBLE_WIDTH / 2, 8), width - BUBBLE_WIDTH - 8);
       const bubbleTop = Math.max(body.y - BUBBLE_LIFT, 4);
@@ -498,7 +503,6 @@ export default function BuddyWindow() {
     mode === "off" || leavingRef.current
       ? { x: screenOf().width / 2 - viewRef.current.x, y: 30 - viewRef.current.y }
       : { x: body.x + BUDDY_SIZE / 2 - viewRef.current.x, y: body.y - viewRef.current.y };
-  const walking = mood === "greeting" && mode === "free" && !bubble;
   return (
     <div className="buddy-stage">
       {fx && (
@@ -532,7 +536,7 @@ export default function BuddyWindow() {
       )}
       {mode !== "off" && (
         <div
-          className={`buddy${walking ? " buddy--walking" : ""}${mode === "cursor" ? " buddy--cursor" : ""}`}
+          className={`buddy${mode === "cursor" ? " buddy--cursor" : ""}`}
           ref={wrapperRef}
           style={{ width: BUDDY_SIZE, height: BUDDY_SIZE }}
           onPointerDown={onPointerDown}

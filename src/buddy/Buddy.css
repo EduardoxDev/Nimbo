@@ -34,26 +34,6 @@ html.buddy-root #root {
   pointer-events: none;
 }
 
-.buddy--walking .mascot {
-  animation: buddy-step 0.42s ease-in-out infinite;
-}
-
-@keyframes buddy-step {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-3deg);
-  }
-  50% {
-    transform: translateY(-4px) rotate(3deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .buddy--walking .mascot {
-    animation: none;
-  }
-}
-
 .buddy-fx {
   position: fixed;
   inset: 0;
