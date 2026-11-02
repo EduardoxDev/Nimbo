@@ -3,6 +3,11 @@ import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome, ProgressRing } from "../island/PageChrome";
 import { formatClock, type FocusTimer } from "./useFocusTimer";
+import { Mascot } from "../mascot/Mascot";
+import { identityOf, type MascotMood } from "../mascot/engine";
+
+/** A friend from "focus together", as the focus page shows them. */
+export type FocusFriend = { id: string; name: string; mood: MascotMood; label: string };
 
 const PHASE_COLORS = {
   focus: "#ff7a59",
@@ -13,6 +18,8 @@ const PHASE_COLORS = {
 export function FocusPanel<Page extends string>({
   timer,
   rounds,
+  friends = [],
+  onWave,
   pages,
   currentPage,
   showPageIcons,
@@ -20,6 +27,8 @@ export function FocusPanel<Page extends string>({
 }: {
   timer: FocusTimer;
   rounds: number;
+  friends?: FocusFriend[];
+  onWave?: (id: string) => void;
   pages: IslandTab<Page>[];
   currentPage: Page;
   showPageIcons: boolean;
@@ -89,6 +98,26 @@ export function FocusPanel<Page extends string>({
               <SkipForward size={16} strokeWidth={2.3} />
             </button>
           </div>
+          {friends.length > 0 && (
+            <div className="focus-panel__friends" aria-label={t.squad.title}>
+              {friends.slice(0, 6).map((friend) => {
+                const identity = identityOf(friend.name);
+                return (
+                  <button
+                    key={friend.id}
+                    className="focus-panel__friend n-pressable"
+                    type="button"
+                    title={`${friend.label} · ${t.squad.wave}`}
+                    aria-label={`${friend.label}. ${t.squad.wave}`}
+                    onClick={() => onWave?.(friend.id)}
+                  >
+                    <Mascot mood={friend.mood} shape={identity.shape} color={identity.color} seed={friend.id} size={28} showDot={false} fps={12} />
+                    <span>{friend.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </PageChrome>

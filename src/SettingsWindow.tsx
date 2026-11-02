@@ -50,6 +50,7 @@ import { ThemesSettings } from "./settings/ThemesSettings";
 import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
 import { SETTINGS_GROUPS, searchSettings, type SettingsPageId } from "./settings/search";
+import { SquadSettings } from "./squad/SquadSettings";
 import "./SettingsWindow.css";
 
 type PageId = SettingsPageId;
@@ -518,6 +519,9 @@ function GeneralPage({ settings, update }: PageProps) {
       <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
         <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
       </Row>
+      <Row title={t.live.settingTitle} hint={t.live.settingHint}>
+        <Toggle label={t.live.settingTitle} checked={settings.liveActivities} onChange={(liveActivities) => update({ liveActivities })} />
+      </Row>
       <Row title={t.life.soundsTitle} hint={t.life.soundsHint}>
         <Toggle label={t.life.soundsTitle} checked={settings.uiSounds} onChange={(uiSounds) => update({ uiSounds })} />
       </Row>
@@ -728,18 +732,21 @@ function PomodoroPage({ settings, update }: PageProps) {
   );
 
   return (
-    <Section title={copy.section}>
-      {stepper(copy.focus, settings.focusMinutes, 5, 90, 5, minutes, (focusMinutes) => update({ focusMinutes }))}
-      {stepper(copy.shortBreak, settings.shortBreakMinutes, 1, 30, 1, minutes, (shortBreakMinutes) => update({ shortBreakMinutes }))}
-      {stepper(copy.longBreak, settings.longBreakMinutes, 5, 60, 5, minutes, (longBreakMinutes) => update({ longBreakMinutes }))}
-      {stepper(copy.rounds, settings.focusRounds, 2, 8, 1, String, (focusRounds) => update({ focusRounds }))}
-      <Row title={copy.autoStart} hint={copy.autoStartHint}>
-        <Toggle label={copy.autoStart} checked={settings.focusAutoStart} onChange={(focusAutoStart) => update({ focusAutoStart })} />
-      </Row>
-      <Row title={copy.sound}>
-        <Toggle label={copy.sound} checked={settings.focusSound} onChange={(focusSound) => update({ focusSound })} />
-      </Row>
-    </Section>
+    <>
+      <Section title={copy.section}>
+        {stepper(copy.focus, settings.focusMinutes, 5, 90, 5, minutes, (focusMinutes) => update({ focusMinutes }))}
+        {stepper(copy.shortBreak, settings.shortBreakMinutes, 1, 30, 1, minutes, (shortBreakMinutes) => update({ shortBreakMinutes }))}
+        {stepper(copy.longBreak, settings.longBreakMinutes, 5, 60, 5, minutes, (longBreakMinutes) => update({ longBreakMinutes }))}
+        {stepper(copy.rounds, settings.focusRounds, 2, 8, 1, String, (focusRounds) => update({ focusRounds }))}
+        <Row title={copy.autoStart} hint={copy.autoStartHint}>
+          <Toggle label={copy.autoStart} checked={settings.focusAutoStart} onChange={(focusAutoStart) => update({ focusAutoStart })} />
+        </Row>
+        <Row title={copy.sound}>
+          <Toggle label={copy.sound} checked={settings.focusSound} onChange={(focusSound) => update({ focusSound })} />
+        </Row>
+      </Section>
+      <SquadSettings />
+    </>
   );
 }
 

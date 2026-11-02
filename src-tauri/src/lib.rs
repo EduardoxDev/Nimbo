@@ -10,6 +10,7 @@ mod clipboard_history;
 mod diagnostics;
 mod fullscreen;
 mod lens;
+mod live;
 mod summarize;
 mod pc;
 mod downloads;
@@ -2023,6 +2024,8 @@ pub fn run() {
             relay::relay_info,
             relay::relay_configure,
             relay::relay_new_room,
+            relay::relay_send_file,
+            live::live_watch,
             devices_in_use::devices_in_use,
             workspace::workspace_snapshot,
             workspace::workspace_open,

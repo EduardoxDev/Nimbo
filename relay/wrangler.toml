@@ -13,9 +13,17 @@ name = "ROOMS"
 class_name = "Room"
 
 # SQLite-backed Durable Objects are on Cloudflare's free plan.
+[[durable_objects.bindings]]
+name = "SQUADS"
+class_name = "Squad"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Squad"]
 
 [vars]
 # Same as "ios.bundleIdentifier" in mobile/app.json.

@@ -87,7 +87,7 @@ import { DEMO_CLIPBOARD_ITEMS, PAGES_DEMO } from "./demo/pagesDemo";
 import { CALENDAR_DEMO } from "./demo/calendarDemo";
 import { HUB_DEMO } from "./demo/hubDemo";
 import { HomePanel } from "./HomePanel";
-import { FocusPanel } from "./focus/FocusPanel";
+import { FocusPanel, type FocusFriend } from "./focus/FocusPanel";
 import { useFocusTimer, formatClock, playChime } from "./focus/useFocusTimer";
 import { WaterPanel } from "./water/WaterPanel";
 import { useWater } from "./water/useWater";
@@ -159,6 +159,9 @@ import { evolutionOf } from "./stats/stats";
 import { mascotAccessory } from "./mascot/accessories";
 import { playFindMeChime } from "./phone/findMe";
 import { playUiSound } from "./design/sounds";
+import { EMPTY_LIVE, liveSummary, type LiveState } from "./live/live";
+import { friendMood } from "./squad/squad";
+import { useSquad } from "./squad/useSquad";
 import { daysSince, FIRST_RUN_KEY, nextTip, parseSeen, TIPS_LAST_KEY, TIPS_OFF_KEY, TIPS_SEEN_KEY, type TipId } from "./tips/tips";
 import { activityOfWindow, latestCopiedText } from "./phone/share";
 import { addReadLater, isLink, loadReadLater, markRead, READ_LATER_KEY, READ_LATER_REMINDED_KEY, readLaterDue, shortLink, unread, type ReadLaterItem } from "./readLater/readLater";
@@ -314,6 +317,8 @@ export type IslandSettings = {
   smartDnd: boolean;
   /** Soft sounds when the island opens, a task is done or a notice arrives. */
   uiSounds: boolean;
+  /** Browser downloads and Explorer copies show live on the island. */
+  liveActivities: boolean;
   /** Serve the island to phones on the same Wi-Fi (QR code in Settings). */
   phoneIsland: boolean;
   /** Show the phone's notifications (through Windows' Phone Link) on the island. */
@@ -519,6 +524,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   privacyGuard: true,
   smartDnd: true,
   uiSounds: false,
+  liveActivities: true,
   phoneIsland: false,
   phoneNotifications: false,
   phoneShareClipboard: false,
@@ -885,6 +891,7 @@ export function normalizeSettings(
     privacyGuard: typeof settings?.privacyGuard === "boolean" ? settings.privacyGuard : DEFAULT_SETTINGS.privacyGuard,
     smartDnd: typeof settings?.smartDnd === "boolean" ? settings.smartDnd : DEFAULT_SETTINGS.smartDnd,
     uiSounds: typeof settings?.uiSounds === "boolean" ? settings.uiSounds : DEFAULT_SETTINGS.uiSounds,
+    liveActivities: typeof settings?.liveActivities === "boolean" ? settings.liveActivities : DEFAULT_SETTINGS.liveActivities,
     phoneIsland: typeof settings?.phoneIsland === "boolean" ? settings.phoneIsland : DEFAULT_SETTINGS.phoneIsland,
     phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
     phoneShareClipboard: typeof settings?.phoneShareClipboard === "boolean" ? settings.phoneShareClipboard : DEFAULT_SETTINGS.phoneShareClipboard,
@@ -4686,6 +4693,80 @@ function IslandApp({
   const lifePushRef = useRef(life.push);
   lifePushRef.current = life.push;
 
+  // Focus together: friends' mascots focus next to yours (Settings → Pomodoro).
+  const squad = useSquad(
+    {
+      mood: focusTimer.state.status === "running" ? "working" : new Date().getHours() >= 23 || new Date().getHours() < 6 ? "sleeping" : "idle",
+      focusStatus: focusTimer.state.status,
+      remainingMs: focusTimer.remainingMs,
+    },
+    {
+      started: (friend) => {
+        if (focusTimer.state.status === "running") return;
+        const copy = tRef.current.squad;
+        lifePushRef.current({
+          text: copy.started(friend.name),
+          actions: [
+            { label: copy.focusToo, primary: true, run: () => focusTimerRef.current.start() },
+            { label: tRef.current.life.notNow },
+          ],
+        });
+      },
+      poke: (poke) => {
+        const copy = tRef.current.squad;
+        lifePushRef.current(
+          poke.kind === "focus"
+            ? { text: copy.called(poke.fromName), actions: [{ label: copy.focusToo, primary: true, run: () => focusTimerRef.current.start() }, { label: tRef.current.life.notNow }] }
+            : { text: copy.waved(poke.fromName), actions: [{ label: copy.waveBack, primary: true, run: () => void squadPokeRef.current(poke.from, "wave") }, { label: tRef.current.life.ok }] },
+        );
+      },
+    },
+  );
+  const focusTimerRef = useRef(focusTimer);
+  focusTimerRef.current = focusTimer;
+  const squadPokeRef = useRef(squad.poke);
+  squadPokeRef.current = squad.poke;
+  const focusFriends: FocusFriend[] = squad.friends.map((friend) => ({
+    id: friend.id,
+    name: friend.name,
+    mood: friendMood(friend) as MascotMood,
+    label:
+      friend.focus.status === "running"
+        ? friend.distracted
+          ? t.squad.distracted(friend.name)
+          : t.squad.focusing(friend.name, Math.max(1, Math.round(friend.focus.remainingMs / 60_000)))
+        : t.squad.online(friend.name),
+  }));
+
+  // Live activities: downloads and copies running right now, and a notice when a download ends.
+  const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("live_watch", { enabled: settings.liveActivities }).catch((error) => console.error("Live activities", error));
+    if (!settings.liveActivities) setLive(EMPTY_LIVE);
+  }, [settings.liveActivities]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const stops: (() => void)[] = [];
+    let cancelled = false;
+    const keep = (stop: () => void) => (cancelled ? stop() : stops.push(stop));
+    void listen<LiveState>("live-activities", ({ payload }) => setLive(payload)).then(keep);
+    void listen<{ name: string; path: string }>("live-download-done", ({ payload }) => {
+      const copy = tRef.current.live;
+      lifePushRef.current({
+        text: copy.done(payload.name),
+        actions: [
+          { label: copy.open, primary: true, run: () => void invoke("search_open", { path: payload.path }).catch(() => {}) },
+          { label: copy.reveal, run: () => void invoke("downloads_reveal", { path: payload.path }).catch(() => {}) },
+        ],
+      });
+    }).then(keep);
+    return () => {
+      cancelled = true;
+      stops.forEach((stop) => stop());
+    };
+  }, []);
+
   // Read later: links saved from the launcher or the phone come back in a free moment.
   const [readLater, setReadLater] = useState<ReadLaterItem[]>(() => loadReadLater());
   useEffect(() => {
@@ -5067,6 +5148,7 @@ function IslandApp({
           ? { progress: agentProgressOf(activeAgent), color: "#bf8cff" }
           : { progress: water.progress, color: "#5ac8fa" };
   const activeAgentStep = activeAgent ? currentStepOf(activeAgent) : null;
+  const liveNow = liveSummary(live, t.live, t.localeTag);
   const collapsedStatus: CollapsedStatus = {
     hud: islandHud.hud,
     agents: islandAgents,
@@ -5076,8 +5158,10 @@ function IslandApp({
       ? meeting.end === null
         ? t.calendar.inCall(meeting.title, minutesSince(meeting.start, Date.now()))
         : t.calendar.inMeeting(meeting.title, new Date(meeting.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      : liveNow
+      ? liveNow.text
       : null,
-    ring: statusRing,
+    ring: liveNow?.progress != null ? { progress: liveNow.progress, color: "#0a84ff" } : statusRing,
     notice: approval
       ? {
           text: t.agents.asks(approval.agent, approval.question),
@@ -5223,7 +5307,7 @@ function IslandApp({
           : page === "home"
           ? HOME_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
-            ? FOCUS_EXPANDED_ISLAND_HEIGHT
+            ? FOCUS_EXPANDED_ISLAND_HEIGHT + (focusFriends.length > 0 ? 50 : 0)
             : page === "clipboard"
           ? CLIPBOARD_EXPANDED_ISLAND_HEIGHT
           : EDITOR_EXPANDED_ISLAND_HEIGHT;
@@ -7370,6 +7454,8 @@ function IslandApp({
           <FocusPanel
             timer={focusTimer}
             rounds={settings.focusRounds}
+            friends={focusFriends}
+            onWave={(id) => void squad.poke(id, focusTimer.state.status === "running" ? "focus" : "wave")}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}
@@ -7533,6 +7619,13 @@ function IslandApp({
             onOpen={shelf.open}
             onReveal={shelf.reveal}
             onDragOut={shelf.dragOut}
+            onSendToPhone={(id) => {
+              const item = shelf.items.find((entry) => entry.id === id);
+              if (!item) return;
+              void invoke<string>("relay_send_file", { path: item.path })
+                .then((name) => lifePushRef.current({ text: t.shelf.sent(name), actions: [{ label: t.life.ok, primary: true }] }))
+                .catch((error) => lifePushRef.current({ text: String(error), actions: [{ label: t.life.ok, primary: true }] }));
+            }}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}

@@ -471,6 +471,44 @@ export type Translations = {
     water: (drank: string, goal: string) => string;
     playing: (title: string, artist: string) => string;
   };
+  squad: {
+    title: string;
+    hint: string;
+    yourName: string;
+    namePlaceholder: string;
+    create: string;
+    join: string;
+    codePlaceholder: string;
+    leave: string;
+    codeLabel: string;
+    codeHint: string;
+    copy: string;
+    copied: string;
+    invalid: string;
+    full: string;
+    offline: string;
+    alone: string;
+    started: (name: string) => string;
+    focusToo: string;
+    waved: (name: string) => string;
+    called: (name: string) => string;
+    waveBack: string;
+    focusing: (name: string, minutes: number) => string;
+    distracted: (name: string) => string;
+    online: (name: string) => string;
+    wave: string;
+    call: string;
+  };
+  live: {
+    downloading: (name: string, detail: string) => string;
+    copying: (percent: number) => string;
+    more: (count: number) => string;
+    done: (name: string) => string;
+    open: string;
+    reveal: string;
+    settingTitle: string;
+    settingHint: string;
+  };
   tips: {
     text: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
     action: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
@@ -791,6 +829,8 @@ export type Translations = {
     openHint: string;
     reveal: string;
     remove: string;
+    toPhone: string;
+    sent: (name: string) => string;
     clear: string;
     missing: string;
     folder: string;

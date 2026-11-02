@@ -136,7 +136,7 @@ fn safe_name(name: &str) -> String {
     if cleaned.is_empty() { "arquivo-do-celular".to_string() } else { cleaned }
 }
 
-fn uploads_dir() -> Option<PathBuf> {
+pub(crate) fn uploads_dir() -> Option<PathBuf> {
     let dir = PathBuf::from(std::env::var_os("USERPROFILE")?).join("Downloads").join("Nimbo do celular");
     fs::create_dir_all(&dir).ok()?;
     Some(dir)

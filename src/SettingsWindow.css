@@ -1494,3 +1494,10 @@
     animation: none;
   }
 }
+
+.prefs-squad__code {
+  margin-right: 10px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}

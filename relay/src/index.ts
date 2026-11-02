@@ -10,6 +10,10 @@
  *   GET /v1/rooms/:room/status?key=…             latest status (widgets)
  *   GET /v1/rooms/:room/cover?key=…              album art of what is playing
  *   POST /v1/rooms/:room/command?key=…           one command (widget and island buttons)
+ *   POST /v1/rooms/:room/files?key=…&from=…&name=…   a file for the other side (up to 25 MB, kept a day)
+ *   GET  /v1/rooms/:room/files?key=…              files waiting
+ *   GET|DELETE /v1/rooms/:room/files/:id?key=…    download or remove one
+ *   POST /v1/squads/:code/presence|poke           "focus together" with friends (src/squad.ts)
  *   GET /v1/vapid                                public key for web notifications
  *   everything else                              the Nimbo web app (mobile/, built for the web)
  */
@@ -17,19 +21,28 @@
 import { activityOf, hashKey, MAX_MESSAGE, shouldPush, validKey, validRoom, type ActivityState, type IslandStatus } from "./protocol";
 import { pushActivity, type ApnsEnv } from "./apns";
 import { sendWebPush, validSubscription, type PushSubscription, type WebPushEnv } from "./webpush";
+import { Squad, validSquadCode } from "./squad";
+import { attachmentHeader, CHUNK, chunkCount, cleanFileName, MAX_FILE, pruneFiles, validFileId, type FileMeta } from "./files";
 
 export interface Env extends ApnsEnv, WebPushEnv {
   ROOMS: DurableObjectNamespace;
+  SQUADS: DurableObjectNamespace;
   /** The web app's files (wrangler.toml [assets]). */
   ASSETS?: Fetcher;
 }
 
 const COMMANDS = new Set(["play_pause", "next", "previous", "focus_start", "focus_pause", "focus_skip", "task_toggle", "task_add", "water_add", "lock", "shutdown_cancel", "send_text", "approve", "deny", "ring", "read_later_add", "read_later_done"]);
 
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+  "access-control-allow-headers": "content-type",
+};
+
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...CORS },
   });
 }
 
@@ -42,7 +55,13 @@ export default {
     if (!url.pathname.startsWith("/v1/")) {
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Nimbo relay", { headers: { "content-type": "text/plain" } });
     }
-    const match = /^\/v1\/rooms\/([a-f0-9]{32})\/(ws|status|cover|command)$/.exec(url.pathname);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+    const squad = /^\/v1\/squads\/([A-Z0-9]{8})\/(presence|poke)$/.exec(url.pathname);
+    if (squad) {
+      if (!validSquadCode(squad[1])) return json({ error: "bad_code" }, 400);
+      return env.SQUADS.get(env.SQUADS.idFromName(squad[1])).fetch(request);
+    }
+    const match = /^\/v1\/rooms\/([a-f0-9]{32})\/(ws|status|cover|command|files(?:\/[a-f0-9]{16})?)$/.exec(url.pathname);
     if (!match || !validRoom(match[1])) return json({ error: "not_found" }, 404);
     if (!validKey(url.searchParams.get("key") ?? "")) return json({ error: "bad_key" }, 403);
     const room = env.ROOMS.get(env.ROOMS.idFromName(match[1]));
@@ -60,7 +79,10 @@ type Stored = {
   lastPushAt?: number;
   webPush?: PushSubscription[];
   lastNotice?: string;
+  files?: FileMeta[];
 };
+
+export { Squad };
 
 export class Room implements DurableObject {
   constructor(
@@ -106,6 +128,8 @@ export class Room implements DurableObject {
     if (url.pathname.endsWith("/cover")) {
       return json({ cover: (await this.get("cover")) ?? null });
     }
+    const fileMatch = /\/files(?:\/([a-f0-9]{16}))?$/.exec(url.pathname);
+    if (fileMatch) return this.files(request, url, fileMatch[1] ?? null);
     if (url.pathname.endsWith("/command") && request.method === "POST") {
       const body = (await request.json().catch(() => null)) as { action?: unknown; value?: unknown } | null;
       const action = typeof body?.action === "string" ? body.action : "";
@@ -128,6 +152,7 @@ export class Room implements DurableObject {
           status: (await this.get("status")) ?? null,
           pcOnline: this.sockets("pc").length > 0,
           inbox: (await this.get("inbox")) ?? [],
+          files: ((await this.get("files")) ?? []).filter((file) => file.from === "pc"),
         }),
       );
     }
@@ -183,6 +208,68 @@ export class Room implements DurableObject {
       await this.ctx.storage.put("webPush", [...list, subscription].slice(-5));
     } else if (message.type === "ping") {
       socket.send(JSON.stringify({ type: "pong" }));
+    }
+  }
+
+  /** Files between the PC and the phone: stored in 1 MB pieces, gone after a day. */
+  private async files(request: Request, url: URL, id: string | null): Promise<Response> {
+    const list = (await this.get("files")) ?? [];
+    if (!id && request.method === "GET") return json({ files: list });
+    if (!id && request.method === "POST") {
+      const from = url.searchParams.get("from") === "pc" ? "pc" : "phone";
+      const length = Number(request.headers.get("content-length") ?? "0");
+      if (length > MAX_FILE) return json({ ok: false, error: "too_big" }, 413);
+      const body = new Uint8Array(await request.arrayBuffer());
+      if (body.byteLength === 0) return json({ ok: false, error: "empty" }, 400);
+      if (body.byteLength > MAX_FILE) return json({ ok: false, error: "too_big" }, 413);
+      const meta: FileMeta = {
+        id: [...crypto.getRandomValues(new Uint8Array(8))].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+        name: cleanFileName(url.searchParams.get("name") ?? ""),
+        size: body.byteLength,
+        type: (request.headers.get("content-type") ?? "application/octet-stream").slice(0, 100),
+        from,
+        at: Date.now(),
+        chunks: chunkCount(body.byteLength),
+      };
+      for (let index = 0; index < meta.chunks; index += 1) {
+        await this.ctx.storage.put(`file:${meta.id}:${index}`, body.slice(index * CHUNK, (index + 1) * CHUNK));
+      }
+      const { keep, drop } = pruneFiles([meta, ...list], Date.now());
+      for (const old of drop) await this.dropChunks(old);
+      await this.ctx.storage.put("files", keep);
+      this.broadcast(from === "pc" ? "phone" : "pc", { type: "file", file: meta });
+      if (from === "pc") await this.notifyFile(meta);
+      return json({ ok: true, file: meta });
+    }
+    const meta = list.find((file) => file.id === id);
+    if (!id || !validFileId(id) || !meta) return json({ error: "not_found" }, 404);
+    if (request.method === "DELETE") {
+      await this.dropChunks(meta);
+      await this.ctx.storage.put("files", list.filter((file) => file.id !== id));
+      return json({ ok: true });
+    }
+    const body = new Uint8Array(meta.size);
+    for (let index = 0; index < meta.chunks; index += 1) {
+      const part = await this.ctx.storage.get<Uint8Array>(`file:${meta.id}:${index}`);
+      if (!part) return json({ error: "gone" }, 410);
+      body.set(new Uint8Array(part), index * CHUNK);
+    }
+    return new Response(body, {
+      headers: { "content-type": meta.type, "content-length": String(meta.size), "content-disposition": attachmentHeader(meta.name), "cache-control": "no-store", ...CORS },
+    });
+  }
+
+  private async dropChunks(meta: FileMeta) {
+    const keys = Array.from({ length: meta.chunks }, (_, index) => `file:${meta.id}:${index}`);
+    for (let start = 0; start < keys.length; start += 128) await this.ctx.storage.delete(keys.slice(start, start + 128));
+  }
+
+  /** A file from the PC also arrives as a notification on phones that asked for them. */
+  private async notifyFile(meta: FileMeta) {
+    const subscriptions = (await this.get("webPush")) ?? [];
+    const status = await this.get("status");
+    for (const subscription of subscriptions) {
+      await sendWebPush(this.env, subscription, { title: status?.pc ?? "Nimbo", body: `📎 ${meta.name}`, tag: `nimbo-file-${meta.id}` }).catch(() => true);
     }
   }
 

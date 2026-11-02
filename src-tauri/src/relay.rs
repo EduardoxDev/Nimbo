@@ -21,6 +21,8 @@ use tungstenite::{stream::MaybeTlsStream, Message, WebSocket};
 
 const SEND_EVERY: Duration = Duration::from_millis(2_000);
 const MAX_COVER: usize = 850_000;
+/** Same limit as relay/src/files.ts. */
+const MAX_FILE: u64 = 25 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct Config {
@@ -138,6 +140,15 @@ fn session(app: &AppHandle, config: &Config, generation: u64) -> Result<(), Stri
         match socket.read() {
             Ok(Message::Text(text)) => {
                 let message: serde_json::Value = serde_json::from_str(text.as_str()).unwrap_or_default();
+                if message["type"] == "file" && message["file"]["from"] == "phone" {
+                    let id = message["file"]["id"].as_str().unwrap_or_default().to_string();
+                    let name = message["file"]["name"].as_str().unwrap_or("arquivo").to_string();
+                    let app = app.clone();
+                    let config = config.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = receive_file(&app, &config, &id, &name).await;
+                    });
+                }
                 if message["type"] == "command" {
                     let action = message["action"].as_str().unwrap_or_default();
                     let value = message["value"].as_str().unwrap_or_default();
@@ -217,6 +228,90 @@ pub(crate) fn init(app: &AppHandle) {
         *slot = Some(config);
     }
     restart(app);
+}
+
+fn files_url(config: &Config, id: Option<&str>) -> String {
+    let base = config.url.trim_end_matches('/');
+    match id {
+        Some(id) => format!("{base}/v1/rooms/{}/files/{id}?key={}", config.room, config.key),
+        None => format!("{base}/v1/rooms/{}/files?key={}", config.room, config.key),
+    }
+}
+
+fn enabled_config() -> Option<Config> {
+    CONFIG.lock().ok().and_then(|config| config.clone()).filter(|config| config.enabled && !config.url.is_empty())
+}
+
+fn encode_component(text: &str) -> String {
+    text.bytes().map(|byte| if byte.is_ascii_alphanumeric() || b"-._~".contains(&byte) { (byte as char).to_string() } else { format!("%{byte:02X}") }).collect()
+}
+
+fn mime_of(name: &str) -> &'static str {
+    match name.rsplit('.').next().unwrap_or_default().to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "heic" => "image/heic",
+        "pdf" => "application/pdf",
+        "mp4" => "video/mp4",
+        "mov" => "video/quicktime",
+        "mp3" => "audio/mpeg",
+        "txt" => "text/plain",
+        "zip" => "application/zip",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        _ => "application/octet-stream",
+    }
+}
+
+/// A file the phone sent: saved next to the photos sent over Wi-Fi, then removed from the relay.
+async fn receive_file(app: &AppHandle, config: &Config, id: &str, name: &str) -> Result<(), String> {
+    if !id.chars().all(|c| c.is_ascii_hexdigit()) || id.len() != 16 {
+        return Err("Arquivo inválido.".to_string());
+    }
+    let client = reqwest::Client::new();
+    let response = client.get(files_url(config, Some(id))).send().await.map_err(|error| error.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("O servidor respondeu {}.", response.status()));
+    }
+    let bytes = response.bytes().await.map_err(|error| error.to_string())?;
+    let dir = crate::phone::uploads_dir().ok_or("Não achei a pasta Downloads.")?;
+    let base = name.rsplit(['/', '\\']).next().unwrap_or("arquivo").chars().filter(|c| !matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*') && !c.is_control()).collect::<String>();
+    let target = crate::downloads::free_path(&dir, if base.trim().is_empty() { "arquivo-do-celular" } else { base.trim() });
+    fs::write(&target, &bytes).map_err(|error| error.to_string())?;
+    let _ = tauri::Emitter::emit_to(app, crate::WINDOW_LABEL, "phone-file", target.to_string_lossy().to_string());
+    let _ = client.delete(files_url(config, Some(id))).send().await;
+    Ok(())
+}
+
+/// Sends a file to the paired phones through the relay (up to 25 MB, kept a day).
+#[tauri::command]
+pub(crate) async fn relay_send_file(path: String) -> Result<String, String> {
+    let config = enabled_config().ok_or("Ligue \"De qualquer lugar\" em Configurações → Celular para mandar arquivos.")?;
+    let path = PathBuf::from(path);
+    let size = fs::metadata(&path).map_err(|error| error.to_string())?.len();
+    if !path.is_file() {
+        return Err("Só dá para mandar arquivos, não pastas.".to_string());
+    }
+    if size > MAX_FILE {
+        return Err("Até 25 MB por arquivo.".to_string());
+    }
+    let name = path.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_else(|| "arquivo".to_string());
+    let bytes = fs::read(&path).map_err(|error| error.to_string())?;
+    let url = format!("{}&from=pc&name={}", files_url(&config, None), encode_component(&name));
+    let response = reqwest::Client::new()
+        .post(url)
+        .header("content-type", mime_of(&name))
+        .body(bytes)
+        .send()
+        .await
+        .map_err(|error| format!("Não consegui mandar: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!("O servidor recusou o arquivo ({}).", response.status()));
+    }
+    Ok(name)
 }
 
 /// Queues a text for the phones; false when the relay is off.

@@ -10,6 +10,7 @@ import {
   Folder,
   FolderOpen,
   Image,
+  Smartphone,
   Trash2,
   X,
   type LucideIcon,
@@ -41,6 +42,7 @@ export function ShelfPanel<Page extends string>({
   onOpen,
   onReveal,
   onDragOut,
+  onSendToPhone,
   pages,
   currentPage,
   showPageIcons,
@@ -53,6 +55,8 @@ export function ShelfPanel<Page extends string>({
   onOpen: (id: string) => void;
   onReveal: (id: string) => void;
   onDragOut: (paths: string[]) => void;
+  /** Sends a file to the paired iPhone through the relay. */
+  onSendToPhone?: (id: string) => void;
   pages: IslandTab<Page>[];
   currentPage: Page;
   showPageIcons: boolean;
@@ -123,6 +127,11 @@ export function ShelfPanel<Page extends string>({
                     </span>
                   </button>
                   <span className="shelf-item__actions">
+                    {item.exists && item.kind !== "folder" && onSendToPhone && (
+                      <button type="button" title={copy.toPhone} aria-label={copy.toPhone} onClick={() => onSendToPhone(item.id)}>
+                        <Smartphone size={12} strokeWidth={2.4} />
+                      </button>
+                    )}
                     {item.exists && (
                       <button type="button" title={copy.reveal} aria-label={copy.reveal} onClick={() => onReveal(item.id)}>
                         <FolderOpen size={12} strokeWidth={2.4} />

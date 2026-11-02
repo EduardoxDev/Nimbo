@@ -4,6 +4,7 @@ import type { Pairing } from "./pairing";
 
 export type Status = IslandStatus & { mascot?: string };
 export type InboxItem = { id: number; text: string };
+export type FileItem = { id: string; name: string; size: number; type: string; from: "pc" | "phone"; at: number };
 export type Link = "relay" | "lan" | "offline";
 
 /**
@@ -16,6 +17,7 @@ export function useNimbo(pairing: Pairing | null) {
   const [pcOnline, setPcOnline] = useState(false);
   const [link, setLink] = useState<Link>("offline");
   const [inbox, setInbox] = useState<InboxItem[]>([]);
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -45,6 +47,7 @@ export function useNimbo(pairing: Pairing | null) {
           setStatus(message.status);
           setPcOnline(Boolean(message.pcOnline));
           setInbox(Array.isArray(message.inbox) ? [...message.inbox].reverse() : []);
+          setFiles(Array.isArray(message.files) ? message.files : []);
         } else if (message.type === "status") {
           setStatus(message.status);
           setPcOnline(true);
@@ -52,6 +55,8 @@ export function useNimbo(pairing: Pairing | null) {
           setCover(typeof message.cover === "string" ? message.cover : null);
         } else if (message.type === "pc") {
           setPcOnline(Boolean(message.online));
+        } else if (message.type === "file" && message.file) {
+          setFiles((items) => [message.file, ...items.filter((item) => item.id !== message.file.id)].slice(0, 10));
         } else if (message.type === "inbox" && message.item) {
           setInbox((items) => [message.item, ...items].slice(0, 20));
         } else if (message.type === "error" && message.code === "pc_offline") {
@@ -157,5 +162,29 @@ export function useNimbo(pairing: Pairing | null) {
     return true;
   }, []);
 
-  return { status, cover, pcOnline, link, inbox, error, send, registerActivityToken, registerWebPush };
+  /** Where a file from the PC can be downloaded (works anywhere, through the relay). */
+  const fileUrl = useCallback(
+    (id: string) => (pairing?.relay && pairing.room && pairing.key ? `${pairing.relay.replace(/\/$/, "")}/v1/rooms/${pairing.room}/files/${id}?key=${pairing.key}` : null),
+    [pairing?.relay, pairing?.room, pairing?.key],
+  );
+
+  /** Sends a picked file (photo, PDF…) to the PC, up to 25 MB. */
+  const sendFile = useCallback(
+    async (file: { uri: string; name: string; mimeType?: string | null; size?: number | null }): Promise<"ok" | "too_big" | "no_relay" | "failed"> => {
+      if (!pairing?.relay || !pairing.room || !pairing.key) return "no_relay";
+      if ((file.size ?? 0) > 25 * 1024 * 1024) return "too_big";
+      try {
+        const blob = await (await fetch(file.uri)).blob();
+        const url = `${pairing.relay.replace(/\/$/, "")}/v1/rooms/${pairing.room}/files?key=${pairing.key}&from=phone&name=${encodeURIComponent(file.name)}`;
+        const response = await fetch(url, { method: "POST", headers: { "Content-Type": file.mimeType || "application/octet-stream" }, body: blob });
+        if (response.status === 413) return "too_big";
+        return response.ok ? "ok" : "failed";
+      } catch {
+        return "failed";
+      }
+    },
+    [pairing?.relay, pairing?.room, pairing?.key],
+  );
+
+  return { status, cover, pcOnline, link, inbox, files, error, send, fileUrl, sendFile, registerActivityToken, registerWebPush };
 }

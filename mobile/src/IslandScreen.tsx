@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Image, Linking, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import * as DocumentPicker from "expo-document-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import type { Pairing } from "./pairing";
-import { useNimbo, type Status } from "./useNimbo";
+import { useNimbo, type FileItem, type Status } from "./useNimbo";
 import { useIphoneIsland } from "./useIphoneIsland";
 import { t } from "./i18n";
 import { isInstalledWebApp, subscribeWebPush, webPushAvailable } from "./webPush";
@@ -131,6 +132,15 @@ export function IslandScreen({ pairing, onUnpair }: { pairing: Pairing; onUnpair
                   status={status}
                   cover={nimbo.cover}
                   inbox={nimbo.inbox}
+                  files={nimbo.files}
+                  fileUrl={nimbo.fileUrl}
+                  onSendFile={async () => {
+                    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false });
+                    if (picked.canceled || !picked.assets?.[0]) return;
+                    const asset = picked.assets[0];
+                    const result = await nimbo.sendFile({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType, size: asset.size });
+                    say(result === "ok" ? t.fileSent : result === "too_big" ? t.fileTooBig : result === "no_relay" ? t.filesNeedRelay : t.failed);
+                  }}
                   run={run}
                   go={setPage}
                   say={say}
@@ -166,6 +176,9 @@ function PageView({
   status,
   cover,
   inbox,
+  files,
+  fileUrl,
+  onSendFile,
   run,
   go,
   say,
@@ -177,6 +190,9 @@ function PageView({
   status: Status | null;
   cover: string | null;
   inbox: { id: number; text: string }[];
+  files: FileItem[];
+  fileUrl: (id: string) => string | null;
+  onSendFile: () => void;
   run: (action: string, value?: string) => Promise<void>;
   go: (page: Page) => void;
   say: (text: string) => void;
@@ -388,6 +404,31 @@ function PageView({
               <Button label={t.saveForLater} onPress={async () => { await run("read_later_add", draft.trim()); setDraft(""); say(t.savedForLater); }} />
             ) : null}
             <Button label={t.send} accent={colors.blue} onPress={async () => { if (!draft.trim()) return; await run("send_text", draft); setDraft(""); say(t.sent); }} />
+          </View>
+        </Card>
+        <Card>
+          <Text style={styles.label}>{t.filesTitle}</Text>
+          {files.filter((file) => file.from === "pc").length === 0 ? <Text style={[styles.muted, { marginBottom: 10 }]}>{t.filesEmpty}</Text> : null}
+          {files
+            .filter((file) => file.from === "pc")
+            .map((file) => (
+              <Pressable
+                key={file.id}
+                onPress={() => {
+                  const url = fileUrl(file.id);
+                  if (url) void Linking.openURL(url);
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}
+              >
+                <Text style={{ fontSize: 18 }}>📎</Text>
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={{ color: colors.text, fontWeight: "600" }}>{file.name}</Text>
+                  <Text style={styles.muted}>{file.size >= 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`}</Text>
+                </View>
+              </Pressable>
+            ))}
+          <View style={[styles.row, { marginTop: 6 }]}>
+            <Button label={t.sendFile} accent={colors.blue} onPress={onSendFile} />
           </View>
         </Card>
         <Card>
