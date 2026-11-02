@@ -11,6 +11,8 @@ mod diagnostics;
 mod fullscreen;
 mod lens;
 mod live;
+mod mic;
+mod share;
 mod summarize;
 mod pc;
 mod downloads;
@@ -2026,6 +2028,9 @@ pub fn run() {
             relay::relay_new_room,
             relay::relay_send_file,
             live::live_watch,
+            mic::mic_state,
+            mic::mic_unmute,
+            share::share_save_png,
             devices_in_use::devices_in_use,
             workspace::workspace_snapshot,
             workspace::workspace_open,

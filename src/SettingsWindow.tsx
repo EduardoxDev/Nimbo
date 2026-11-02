@@ -519,6 +519,9 @@ function GeneralPage({ settings, update }: PageProps) {
       <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
         <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
       </Row>
+      <Row title={t.mic.settingTitle} hint={t.mic.settingHint}>
+        <Toggle label={t.mic.settingTitle} checked={settings.muteWarning} onChange={(muteWarning) => update({ muteWarning })} />
+      </Row>
       <Row title={t.live.settingTitle} hint={t.live.settingHint}>
         <Toggle label={t.live.settingTitle} checked={settings.liveActivities} onChange={(liveActivities) => update({ liveActivities })} />
       </Row>

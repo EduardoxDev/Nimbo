@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
+import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, ScrollText, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
 import { readLaterRequestOf, shortLink } from "../readLater/readLater";
+import { isPrompterRequest } from "../prompter/prompter";
 import { useTranslation } from "../i18n";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
@@ -53,6 +54,7 @@ export function LauncherPanel<Page extends string>({
   onRecord,
   onSendToPhone,
   onReadLater,
+  onOpenPrompter,
   onDone,
 }: {
   pages: IslandTab<Page>[];
@@ -76,6 +78,7 @@ export function LauncherPanel<Page extends string>({
   onSendToPhone: (text: string) => void;
   /** Keeps a link to read in a free moment. */
   onReadLater: (url: string) => void;
+  onOpenPrompter: () => void;
   onDone: () => void;
 }) {
   const t = useTranslation();
@@ -102,6 +105,7 @@ export function LauncherPanel<Page extends string>({
   const newRule = /^(quando|sempre que|assim que|when|whenever|todo dia|todos os dias|every day|daily)\s/i.test(trimmed) ? parseRule(trimmed, ssid) : null;
   const summarySource = /^(?:resum(?:ir|e|a|o)|summari[sz]e|总结)\s+(.+)$/i.exec(query.trim())?.[1]?.trim() ?? null;
   const readLater = summarySource || toPhone ? null : readLaterRequestOf(trimmed);
+  const prompter = isPrompterRequest(trimmed);
   const dayTab = summarySource ? null : dayRequestOf(query);
   const routine = dayTab ? null : routineOf(query);
   const project = routine || dayTab ? null : workspaceRequestOf(query);
@@ -119,6 +123,15 @@ export function LauncherPanel<Page extends string>({
       ? { icon: Circle, text: copy.recordRow(recordName[1] ?? recordName[2]), run: () => recordNow((recordName[1] ?? recordName[2]).trim()) }
       : macroToRun
         ? { icon: Play, text: copy.macroRow(macroToRun.name), run: () => runMacro(macroToRun.id) }
+        : prompter
+    ? {
+        icon: ScrollText,
+        text: copy.prompterRow,
+        run: () => {
+          setQuery("");
+          onOpenPrompter();
+        },
+      }
         : readLater
     ? { icon: BookmarkPlus, text: copy.readLaterRow(shortLink(readLater)), run: () => readLaterNow(readLater) }
         : summarySource

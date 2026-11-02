@@ -1,0 +1,160 @@
+/* Nimbo Retrospective: full-height story cards, one colour per card. */
+.retro {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 420px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--retro-color) 38%, transparent), transparent 70%),
+    #0b0b12;
+  border-radius: var(--n-radius-xl);
+  transition: background 600ms ease;
+}
+
+.retro__bars {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 14px;
+  left: 14px;
+  display: flex;
+  gap: 4px;
+}
+
+.retro__bar {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.retro__bar--done {
+  background: #fff;
+}
+
+.retro__bar--now {
+  background: linear-gradient(90deg, #fff 50%, rgba(255, 255, 255, 0.2) 50%) 100% 0 / 200% 100% no-repeat;
+  animation: retro-fill 5.5s linear forwards;
+}
+
+@keyframes retro-fill {
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Tap the left third to go back, the rest to go on, like stories. */
+.retro__nav {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.retro__nav--back {
+  left: 0;
+  width: 33%;
+}
+
+.retro__nav--next {
+  right: 0;
+  width: 67%;
+}
+
+.retro__slide {
+  position: relative;
+  /* Above the tap areas; only its buttons take clicks. */
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 44px 28px 28px;
+  text-align: center;
+  pointer-events: none;
+  animation: n-pop-in var(--n-dur-spring) var(--n-spring) both;
+}
+
+.retro__eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.retro__big {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--retro-color);
+  font-family: var(--n-font-display);
+  font-size: clamp(32px, 7vw, 60px);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.retro__caption {
+  max-width: 420px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.retro__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  pointer-events: auto;
+}
+
+.retro__share,
+.retro__again {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  font-weight: 700;
+  border: 0;
+  border-radius: var(--n-radius-pill);
+  cursor: pointer;
+}
+
+.retro__share {
+  color: #1a1400;
+  background: #ffd60a;
+}
+
+.retro__again {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.retro__notice {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12.5px;
+}
+
+.retro__loading {
+  color: var(--n-text-2);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retro__bar--now {
+    animation: none;
+    background: #fff;
+  }
+}

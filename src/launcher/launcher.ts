@@ -19,7 +19,7 @@ function score(name: string, query: string) {
   return 3;
 }
 
-export type DayRequest = "today" | "xray" | "diary" | "plan";
+export type DayRequest = "today" | "xray" | "diary" | "plan" | "retro";
 
 /** "meu dia", "raio-x", "diário", "planejar meu dia" open the My day window. */
 export function dayRequestOf(query: string): DayRequest | null {
@@ -28,6 +28,7 @@ export function dayRequestOf(query: string): DayRequest | null {
   if (/^(raio-?x( do tempo)?|tempo nos apps|meu tempo|time x-?ray|screen time|时间分析)$/.test(text)) return "xray";
   if (/^(di[aá]rio( do dia)?|resumo do dia|diary|journal|日记)$/.test(text)) return "diary";
   if (/^(planejar|planeja|organizar|organiza)( o| meu)? dia$|^plan( my| the)? day$|^规划(今天|一天)$/.test(text)) return "plan";
+  if (/^(retrospectiva|retro|meu m[eê]s|wrapped|retrospective|my month|回顾|月度回顾)$/.test(text)) return "retro";
   return null;
 }
 

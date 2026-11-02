@@ -162,6 +162,9 @@ import { playUiSound } from "./design/sounds";
 import { EMPTY_LIVE, liveSummary, type LiveState } from "./live/live";
 import { friendMood } from "./squad/squad";
 import { useSquad } from "./squad/useSquad";
+import { PrompterPanel } from "./prompter/PrompterPanel";
+import { logPlay, MUSIC_LOG_KEY, RETRO_SEEN_KEY, retroDue } from "./retro/retro";
+import { IDLE_MUTE_WATCH, isOff, watchMute, type MicReading, type MuteWatch } from "./mic/muteWatch";
 import { daysSince, FIRST_RUN_KEY, nextTip, parseSeen, TIPS_LAST_KEY, TIPS_OFF_KEY, TIPS_SEEN_KEY, type TipId } from "./tips/tips";
 import { activityOfWindow, latestCopiedText } from "./phone/share";
 import { addReadLater, isLink, loadReadLater, markRead, READ_LATER_KEY, READ_LATER_REMINDED_KEY, readLaterDue, shortLink, unread, type ReadLaterItem } from "./readLater/readLater";
@@ -172,7 +175,7 @@ import "./FocusWater.css";
 
 export type IslandMode = "collapsed" | "expanded";
 
-type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "week" | "shelf" | "agents" | "clipboard" | "layout";
+type IslandPage = "hub" | "todo" | "assistant" | "launcher" | "system" | "music" | "calendar" | "home" | "focus" | "water" | "week" | "shelf" | "agents" | "clipboard" | "layout" | "prompter";
 type TodoPageMode = "today" | "daily" | "archive" | "review";
 type ArchiveLayout = "cards" | "timeline";
 type MediaPlaybackStatus = "unavailable" | "playing" | "paused";
@@ -319,6 +322,8 @@ export type IslandSettings = {
   uiSounds: boolean;
   /** Browser downloads and Explorer copies show live on the island. */
   liveActivities: boolean;
+  /** Warns when a call starts with the microphone off, or you talk while it is off. */
+  muteWarning: boolean;
   /** Serve the island to phones on the same Wi-Fi (QR code in Settings). */
   phoneIsland: boolean;
   /** Show the phone's notifications (through Windows' Phone Link) on the island. */
@@ -451,6 +456,7 @@ const TODO_ARCHIVE_EXPANDED_ISLAND_HEIGHT = 352;
 const MUSIC_EXPANDED_ISLAND_HEIGHT = 232;
 const HOME_EXPANDED_ISLAND_HEIGHT = 226;
 const FOCUS_EXPANDED_ISLAND_HEIGHT = 226;
+const PROMPTER_EXPANDED_ISLAND_HEIGHT = 340;
 const AGENTS_EXPANDED_ISLAND_HEIGHT = 268;
 const CARDS_EXPANDED_ISLAND_HEIGHT = 220;
 const ASSISTANT_EXPANDED_ISLAND_HEIGHT = 300;
@@ -525,6 +531,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   smartDnd: true,
   uiSounds: false,
   liveActivities: true,
+  muteWarning: true,
   phoneIsland: false,
   phoneNotifications: false,
   phoneShareClipboard: false,
@@ -892,6 +899,7 @@ export function normalizeSettings(
     smartDnd: typeof settings?.smartDnd === "boolean" ? settings.smartDnd : DEFAULT_SETTINGS.smartDnd,
     uiSounds: typeof settings?.uiSounds === "boolean" ? settings.uiSounds : DEFAULT_SETTINGS.uiSounds,
     liveActivities: typeof settings?.liveActivities === "boolean" ? settings.liveActivities : DEFAULT_SETTINGS.liveActivities,
+    muteWarning: typeof settings?.muteWarning === "boolean" ? settings.muteWarning : DEFAULT_SETTINGS.muteWarning,
     phoneIsland: typeof settings?.phoneIsland === "boolean" ? settings.phoneIsland : DEFAULT_SETTINGS.phoneIsland,
     phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
     phoneShareClipboard: typeof settings?.phoneShareClipboard === "boolean" ? settings.phoneShareClipboard : DEFAULT_SETTINGS.phoneShareClipboard,
@@ -1336,7 +1344,8 @@ export function IslandShell({
   const collapsedTime = useClockLabel(t.localeTag);
   const isMusicPlaying = mediaState.playbackStatus === "playing";
   // Whatever the island is about right now tints its edge, like a Live Activity.
-  const topicColor = collapsedStatus.notice?.color ?? collapsedStatus.timer?.color ?? collapsedStatus.ring?.color ?? null;
+  // The status ring is always there, so it does not count: only a notice or a running timer.
+  const topicColor = collapsedStatus.notice?.color ?? collapsedStatus.timer?.color ?? null;
   const className = [
     "island",
     `island--${mode}`,
@@ -4651,6 +4660,35 @@ function IslandApp({
         ? { id: call.id, title: call.app, start: call.since, end: null }
         : null;
   const meetingIdRef = useRef<string | null>(null);
+
+  // "You're on mute!": while a call is on, look at the microphone every 1.5 s.
+  const callNow = devices ? liveCallOf(devices) : null;
+  const [micAlert, setMicAlert] = useState<{ kind: "startedMuted" | "speakingMuted"; app: string; until: number } | null>(null);
+  const muteWatchRef = useRef<MuteWatch>(IDLE_MUTE_WATCH);
+  useEffect(() => {
+    if (!settings.muteWarning || !callNow || !isTauri()) {
+      muteWatchRef.current = IDLE_MUTE_WATCH;
+      setMicAlert(null);
+      return;
+    }
+    const sample = () =>
+      void invoke<MicReading>("mic_state")
+        .then((reading) => {
+          const step = watchMute(muteWatchRef.current, { callId: callNow.id, callStart: callNow.since, reading, now: Date.now() });
+          muteWatchRef.current = step.watch;
+          if (step.alert) setMicAlert({ kind: step.alert, app: callNow.app, until: Date.now() + 12_000 });
+          else if (!isOff(reading)) setMicAlert(null);
+        })
+        .catch(() => {});
+    sample();
+    const interval = window.setInterval(sample, 1_500);
+    return () => window.clearInterval(interval);
+  }, [settings.muteWarning, callNow?.id]);
+  useEffect(() => {
+    if (!micAlert) return;
+    const timer = window.setTimeout(() => setMicAlert(null), Math.max(0, micAlert.until - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [micAlert]);
   const [pausedForMeeting, setPausedForMeeting] = useState(false);
   const [meetingEnded, setMeetingEnded] = useState(false);
   useWeather(settings.weatherPlace);
@@ -4692,6 +4730,44 @@ function IslandApp({
   const runMediaCommandRef = useRef<(command: "media_play_pause" | "media_next" | "media_previous") => Promise<void>>(async () => {});
   const lifePushRef = useRef(life.push);
   lifePushRef.current = life.push;
+
+  // Retrospective: count each song once per play, and offer the month's story at its start.
+  const playingSong = mediaState.playbackStatus === "playing" && mediaState.title ? [mediaState.artist, mediaState.title].filter(Boolean).join(" — ") : null;
+  useEffect(() => {
+    if (!playingSong) return;
+    try {
+      const log = JSON.parse(window.localStorage.getItem(MUSIC_LOG_KEY) ?? "{}");
+      window.localStorage.setItem(MUSIC_LOG_KEY, JSON.stringify(logPlay(log && typeof log === "object" ? log : {}, playingSong.slice(0, 160), Date.now())));
+    } catch {
+      // The retrospective just has fewer songs.
+    }
+  }, [playingSong]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      let seen: string | null = null;
+      try {
+        seen = window.localStorage.getItem(RETRO_SEEN_KEY);
+      } catch {
+        return;
+      }
+      const month = retroDue(Date.now(), seen);
+      if (!month) return;
+      try {
+        window.localStorage.setItem(RETRO_SEEN_KEY, month);
+      } catch {
+        return;
+      }
+      const copy = tRef.current.retro;
+      lifePushRef.current({
+        text: copy.ready,
+        actions: [
+          { label: copy.open, primary: true, run: () => void invoke("open_day_window", { tab: "retro" }).catch(() => {}) },
+          { label: tRef.current.life.notNow },
+        ],
+      });
+    }, 90_000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Focus together: friends' mascots focus next to yours (Settings → Pomodoro).
   const squad = useSquad(
@@ -4892,7 +4968,7 @@ function IslandApp({
     }
   }, [dndReason]);
 
-  const watchDevices = settings.meetingMode || settings.privacyGuard;
+  const watchDevices = settings.meetingMode || settings.privacyGuard || settings.muteWarning;
   const devicesRef = useRef<DevicesInUse | null>(null);
   const callRef = useRef(call);
   callRef.current = call;
@@ -5162,7 +5238,24 @@ function IslandApp({
       ? liveNow.text
       : null,
     ring: liveNow?.progress != null ? { progress: liveNow.progress, color: "#0a84ff" } : statusRing,
-    notice: approval
+    notice: micAlert
+      ? {
+          text: micAlert.kind === "speakingMuted" ? t.mic.speakingMuted : t.mic.startedMuted(micAlert.app),
+          color: "#ff453a",
+          page,
+          actions: [
+            {
+              label: t.mic.unmute,
+              primary: true,
+              onClick: () => {
+                void invoke("mic_unmute").catch(() => {});
+                setMicAlert(null);
+              },
+            },
+            { label: t.mic.keep, onClick: () => setMicAlert(null) },
+          ],
+        }
+      : approval
       ? {
           text: t.agents.asks(approval.agent, approval.question),
           color: "#bf8cff",
@@ -5306,6 +5399,8 @@ function IslandApp({
             ? ASSISTANT_EXPANDED_ISLAND_HEIGHT
           : page === "home"
           ? HOME_EXPANDED_ISLAND_HEIGHT
+          : page === "prompter"
+            ? PROMPTER_EXPANDED_ISLAND_HEIGHT
           : page === "focus"
             ? FOCUS_EXPANDED_ISLAND_HEIGHT + (focusFriends.length > 0 ? 50 : 0)
             : page === "clipboard"
@@ -7527,6 +7622,7 @@ function IslandApp({
             onOpenTodos={() => openIslandPage("todo")}
             onAddRule={rules.add}
             onReadLater={(url) => saveReadLaterRef.current(url)}
+            onOpenPrompter={() => openIslandPage("prompter")}
             onSendToPhone={(text) =>
               void invoke("phone_push", { text })
                 .then(() => lifePushRef.current({ text: t.phone.sentToPhone, actions: [{ label: t.life.ok, primary: true }] }))
@@ -7562,6 +7658,9 @@ function IslandApp({
             showPageIcons={settings.showPageIcons}
             onPageChange={openIslandPage}
           />
+        )}
+        {page === "prompter" && (
+          <PrompterPanel pages={islandPageLinks} currentPage={page} showPageIcons={settings.showPageIcons} onPageChange={openIslandPage} />
         )}
         {page === "week" && (
           <WeekPanel

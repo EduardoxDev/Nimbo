@@ -1,0 +1,155 @@
+.prompter__editor,
+.prompter__stage {
+  position: absolute;
+  top: 50px;
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+}
+
+.prompter__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompter__script {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 12px;
+  color: var(--n-text);
+  font: 14px/1.5 var(--n-font);
+  background: var(--n-surface-raised);
+  border: 1px solid var(--n-line);
+  border-radius: var(--n-radius-md);
+  outline: none;
+  resize: none;
+  user-select: text;
+}
+
+.prompter__script:focus {
+  border-color: color-mix(in srgb, #64d2ff 60%, transparent);
+}
+
+.prompter__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompter__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--n-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompter__steps,
+.prompter__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--n-text-2);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.prompter__steps button,
+.prompter__controls button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--n-text);
+  background: var(--n-surface-raised);
+  border: 0;
+  border-radius: var(--n-radius-pill);
+  cursor: pointer;
+}
+
+.prompter__steps button:hover,
+.prompter__controls button:hover {
+  background: var(--n-surface-hover);
+}
+
+.prompter__start {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 14px;
+  color: #001018;
+  font-weight: 700;
+  background: #64d2ff;
+  border: 0;
+  border-radius: var(--n-radius-pill);
+  cursor: pointer;
+}
+
+.prompter__start:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Reading: big text rolling up past a line near the top, close to the webcam. */
+.prompter__stage {
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--n-radius-lg);
+  mask-image: linear-gradient(transparent 0, #000 14%, #000 70%, transparent 100%);
+}
+
+.prompter__text {
+  padding: 22% 18px 120%;
+  color: #fff;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  white-space: pre-wrap;
+  will-change: transform;
+}
+
+.prompter__line {
+  position: absolute;
+  top: 26%;
+  right: 8px;
+  left: 8px;
+  height: 2px;
+  background: color-mix(in srgb, #64d2ff 55%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.prompter__count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #64d2ff;
+  font-size: 64px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.55);
+  animation: n-pop-in 600ms var(--n-spring-bouncy) both;
+}
+
+.prompter__controls {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(30, 30, 36, 0.85);
+  border-radius: var(--n-radius-pill);
+  opacity: 0.35;
+  transform: translateX(-50%);
+  transition: opacity var(--n-dur-fast) ease;
+}
+
+.prompter__stage:hover .prompter__controls,
+.prompter--paused .prompter__controls {
+  opacity: 1;
+}

@@ -37,10 +37,11 @@ import {
   type Segment,
 } from "./activity";
 import { planDay, type Plan } from "./planner";
+import { RetroView } from "../retro/RetroView";
 import "./Day.css";
 
-export type DayTab = "today" | "xray" | "diary" | "plan";
-const TABS: DayTab[] = ["today", "xray", "diary", "plan"];
+export type DayTab = "today" | "xray" | "diary" | "plan" | "retro";
+const TABS: DayTab[] = ["today", "xray", "diary", "plan", "retro"];
 const COLORS: Record<Category, string> = { work: "#35e985", communication: "#64d2ff", distraction: "#ff6b8b", other: "#8e8e93" };
 const GOAL_KEY = "nimbo-distraction-goal";
 const END_KEY = "nimbo-plan-end";
@@ -181,6 +182,7 @@ export default function DayWindow() {
         {tab === "xray" && <XRay />}
         {tab === "diary" && <Diary segments={segments} summary={summary} date={date} time={time} locale={locale} />}
         {tab === "plan" && <PlanView time={time} />}
+        {tab === "retro" && <RetroView />}
       </main>
 
       <footer className="day__privacy">

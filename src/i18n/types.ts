@@ -499,6 +499,70 @@ export type Translations = {
     wave: string;
     call: string;
   };
+  retro: {
+    loading: string;
+    back: string;
+    next: string;
+    introEyebrow: (from: string, to: string) => string;
+    introBig: string;
+    introCaption: string;
+    hours: (hours: number) => string;
+    focusEyebrow: string;
+    focusCaption: (sessions: number, bestDay: string, best: number) => string;
+    focusNone: string;
+    todosEyebrow: string;
+    todosCaption: (agents: number) => string;
+    todosNone: string;
+    appsEyebrow: string;
+    appsCaption: (hours: number, others: string[], total: number) => string;
+    nightEyebrow: string;
+    nightCaption: (date: string) => string;
+    musicEyebrow: string;
+    musicCaption: (plays: number, songs: number) => string;
+    waterEyebrow: string;
+    waterCaption: string;
+    youEyebrow: string;
+    archetypes: Record<"nightOwl" | "focused" | "social" | "explorer" | "maker", { name: string; text: string }>;
+    share: string;
+    save: string;
+    saved: string;
+    again: string;
+    copied: string;
+    copyFailed: string;
+    cardTitle: string;
+    cardFocus: string;
+    cardTodos: string;
+    cardApp: string;
+    cardSong: string;
+    ready: string;
+    open: string;
+  };
+  prompter: {
+    title: string;
+    placeholder: string;
+    empty: string;
+    meta: (words: number, duration: string) => string;
+    pace: string;
+    wpm: (wpm: number) => string;
+    slower: string;
+    faster: string;
+    size: string;
+    smaller: string;
+    bigger: string;
+    start: string;
+    pause: string;
+    resume: string;
+    stop: string;
+    space: string;
+  };
+  mic: {
+    startedMuted: (app: string) => string;
+    speakingMuted: string;
+    unmute: string;
+    keep: string;
+    settingTitle: string;
+    settingHint: string;
+  };
   live: {
     downloading: (name: string, detail: string) => string;
     copying: (percent: number) => string;
@@ -573,6 +637,7 @@ export type Translations = {
     phoneRow: (text: string) => string;
     phoneClipRow: string;
     readLaterRow: (link: string) => string;
+    prompterRow: string;
     readLaterSaved: (count: number) => string;
     readLaterDue: (link: string) => string;
     readLaterOpen: string;
@@ -671,7 +736,7 @@ export type Translations = {
   };
   day: {
     title: string;
-    tabs: Record<"today" | "xray" | "diary" | "plan", string>;
+    tabs: Record<"today" | "xray" | "diary" | "plan" | "retro", string>;
     minimize: string;
     close: string;
     today: string;
