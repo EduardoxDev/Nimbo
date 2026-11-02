@@ -1,6 +1,6 @@
 [package]
 name = "nimbo"
-version = "0.8.0"
+version = "0.9.0"
 description = "Nimbo: a customizable floating island for Windows."
 authors = ["EduardoxDev"]
 edition = "2021"
