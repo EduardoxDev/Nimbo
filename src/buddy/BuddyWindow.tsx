@@ -388,7 +388,7 @@ export default function BuddyWindow() {
       }
       const full = Boolean(fxRef.current);
       const view = viewRef.current;
-      const wanted = full ? { x: 0, y: 0, width: screen.width, height: screen.height } : fitsInView(body, view) && view.width <= VIEW_WIDTH ? null : viewAround(body, screen);
+      const wanted = full ? { x: 0, y: 0, width: screen.width, height: screen.height } : fitsInView(body, view, screen) && view.width <= VIEW_WIDTH ? null : viewAround(body, screen);
       if (wanted && isTauri() && !placingRef.current && (wanted.x !== view.x || wanted.y !== view.y || wanted.width !== view.width || wanted.height !== view.height)) {
         placingRef.current = true;
         void invoke("buddy_place", {

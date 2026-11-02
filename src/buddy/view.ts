@@ -18,11 +18,10 @@ export function viewAround(body: { x: number; y: number }, screen: { width: numb
   };
 }
 
-export function fitsInView(body: { x: number; y: number }, view: View) {
-  return (
-    body.x - VIEW_MARGIN >= view.x - 1 &&
-    body.x + BUDDY_SIZE + VIEW_MARGIN <= view.x + view.width + 1 &&
-    body.y - BUBBLE_LIFT - 10 >= view.y - 1 &&
-    body.y + BUDDY_SIZE + 10 <= view.y + view.height + 1
-  );
+export function fitsInView(body: { x: number; y: number }, view: View, screen: { width: number; height: number }) {
+  const left = Math.max(0, body.x - VIEW_MARGIN);
+  const right = Math.min(screen.width, body.x + BUDDY_SIZE + VIEW_MARGIN);
+  const top = Math.max(0, body.y - BUBBLE_LIFT - 10);
+  const bottom = Math.min(screen.height, body.y + BUDDY_SIZE + 10);
+  return left >= view.x - 1 && right <= view.x + view.width + 1 && top >= view.y - 1 && bottom <= view.y + view.height + 1;
 }
