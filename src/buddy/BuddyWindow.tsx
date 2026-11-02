@@ -145,6 +145,10 @@ export default function BuddyWindow() {
   }, []);
 
   useEffect(() => {
+    if (isTauri()) void invoke("buddy_follow_cursor", { enabled: mode === "cursor" }).catch(() => {});
+  }, [mode]);
+
+  useEffect(() => {
     if (!bubble) return;
     const timer = window.setTimeout(() => setBubble(null), Math.max(0, bubble.until - Date.now()));
     return () => window.clearTimeout(timer);
@@ -438,14 +442,16 @@ export default function BuddyWindow() {
   const walking = mood === "greeting" && mode === "free" && !bubble;
   return (
     <div className="buddy-stage">
-      <FxLayer
-        fx={fx}
-        origin={origin}
-        onDone={() => {
-          setFx(null);
-          if (modeRef.current === "off" && isTauri()) void invoke("buddy_hide");
-        }}
-      />
+      {fx && (
+        <FxLayer
+          fx={fx}
+          origin={origin}
+          onDone={() => {
+            setFx(null);
+            if (modeRef.current === "off" && isTauri()) void invoke("buddy_hide");
+          }}
+        />
+      )}
       {mode !== "off" &&
         minis.map((agent, index) => (
           <div

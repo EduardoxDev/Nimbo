@@ -76,6 +76,8 @@ struct Hitbox {
 }
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
+static FOLLOW_CURSOR: AtomicBool = AtomicBool::new(false);
+const CURSOR_EVERY: Duration = Duration::from_millis(250);
 static HIDDEN_FOR_FULLSCREEN: AtomicBool = AtomicBool::new(false);
 static HITBOX: Mutex<Hitbox> = Mutex::new(Hitbox { x: 0.0, y: 0.0, width: 0.0, height: 0.0, capture: false });
 static LAST_APP: Mutex<String> = Mutex::new(String::new());
@@ -306,13 +308,16 @@ fn watch(app: AppHandle) {
     let mut last_cursor = (i32::MIN, i32::MIN);
     let mut last_check = Instant::now() - FULLSCREEN_CHECK;
     let mut previous_foreground: Option<isize> = None;
+    let mut cached_bounds: Option<Rect> = None;
+    let mut last_emit = Instant::now() - CURSOR_EVERY;
     while RUNNING.load(Ordering::SeqCst) {
         let Some(window) = app.get_webview_window(BUDDY_LABEL) else { break };
         if !HITBOX.lock().map(|hitbox| hitbox.capture).unwrap_or(false) {
             give_focus_back(&window, &mut previous_foreground);
         }
-        if last_check.elapsed() >= FULLSCREEN_CHECK {
+        if last_check.elapsed() >= FULLSCREEN_CHECK || cached_bounds.is_none() {
             last_check = Instant::now();
+            cached_bounds = bounds_of(&window);
             let covered = crate::fullscreen::screen_is_covered(&window);
             if covered && !HIDDEN_FOR_FULLSCREEN.load(Ordering::SeqCst) {
                 if window.hide().is_ok() {
@@ -327,7 +332,7 @@ fn watch(app: AppHandle) {
         }
         let mut point = POINT::default();
         if unsafe { GetCursorPos(&mut point) }.is_ok() {
-            if let Some(bounds) = bounds_of(&window) {
+            if let Some(bounds) = cached_bounds {
                 let (x, y) = (point.x - bounds.left, point.y - bounds.top);
                 let hitbox = HITBOX.lock().map(|hitbox| *hitbox).unwrap_or_default();
                 let inside = hitbox.capture
@@ -336,8 +341,10 @@ fn watch(app: AppHandle) {
                     ignoring = !inside;
                     let _ = window.set_ignore_cursor_events(ignoring);
                 }
-                if (x, y) != last_cursor {
+                let due = FOLLOW_CURSOR.load(Ordering::SeqCst) || last_emit.elapsed() >= CURSOR_EVERY;
+                if (x, y) != last_cursor && due {
                     last_cursor = (x, y);
+                    last_emit = Instant::now();
                     let _ = window.emit_to(BUDDY_LABEL, "buddy-cursor", (x, y));
                 }
             }
@@ -388,6 +395,11 @@ pub(crate) async fn buddy_hide(app: AppHandle) -> Result<(), String> {
         window.destroy().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn buddy_follow_cursor(enabled: bool) {
+    FOLLOW_CURSOR.store(enabled, Ordering::SeqCst);
 }
 
 #[tauri::command]

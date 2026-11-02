@@ -1990,6 +1990,7 @@ pub fn run() {
             buddy::buddy_show,
             buddy::buddy_hide,
             buddy::buddy_set_hitbox,
+            buddy::buddy_follow_cursor,
             buddy::buddy_scene,
             buddy::buddy_move_monitor,
             buddy::foreground_window,
