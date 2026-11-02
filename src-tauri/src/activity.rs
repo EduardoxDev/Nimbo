@@ -50,6 +50,11 @@ fn day_key(ms: u64) -> String {
         .unwrap_or_default()
 }
 
+#[tauri::command]
+pub(crate) fn idle_seconds() -> u32 {
+    idle_ms() / 1000
+}
+
 fn idle_ms() -> u32 {
     let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
     unsafe {

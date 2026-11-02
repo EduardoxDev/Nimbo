@@ -11,7 +11,8 @@
     "lens",
     "day",
     "music",
-    "dock"
+    "dock",
+    "automations"
   ],
   "permissions": [
     "core:default",

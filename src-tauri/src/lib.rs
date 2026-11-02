@@ -5,6 +5,7 @@ mod broadlink;
 mod buddy;
 mod calendar;
 mod dock;
+mod automations;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -1994,6 +1995,8 @@ pub fn run() {
             buddy::buddy_follow_cursor,
             buddy::buddy_place,
             dock::dock_apps,
+            activity::idle_seconds,
+            automations::automations_open,
             dock::dock_icon,
             dock::dock_focus,
             dock::dock_close,

@@ -10,7 +10,16 @@ export type Trigger =
   | { kind: "charging" }
   | { kind: "wifi"; ssid: string }
   | { kind: "app"; app: string }
-  | { kind: "time"; time: string };
+  | { kind: "time"; time: string; days?: number[] }
+  | { kind: "idle"; minutes: number }
+  | { kind: "focusStart" }
+  | { kind: "focusEnd" }
+  | { kind: "meetingStart" }
+  | { kind: "claudeDone" }
+  | { kind: "startup" };
+
+export type RuleEvent = "focusStart" | "focusEnd" | "meetingStart" | "claudeDone" | "startup";
+export const RULE_EVENTS: RuleEvent[] = ["focusStart", "focusEnd", "meetingStart", "claudeDone", "startup"];
 
 export type Action =
   | { kind: "music"; query: string }
@@ -21,10 +30,44 @@ export type Action =
   | { kind: "dark"; on: boolean }
   | { kind: "open"; app: string }
   | { kind: "macro"; name: string }
-  | { kind: "notify"; text: string };
+  | { kind: "notify"; text: string }
+  | { kind: "volume"; level: number }
+  | { kind: "say"; text: string }
+  | { kind: "url"; url: string }
+  | { kind: "lock" }
+  | { kind: "claude"; prompt: string };
 
-export type Rule = { id: string; text: string; enabled: boolean; trigger: Trigger; action: Action };
-export type RuleContext = { headphones: boolean; battery: number | null; charging: boolean; ssid: string | null; app: string; time: string };
+export type Rule = { id: string; text: string; enabled: boolean; trigger: Trigger; action: Action; actions?: Action[]; name?: string };
+export type RuleContext = { headphones: boolean; battery: number | null; charging: boolean; ssid: string | null; app: string; time: string; day?: number; idleMinutes?: number };
+export type RuleRun = { id: string; ruleId: string; name: string; at: number; ok: boolean; error?: string };
+
+export const RULES_LOG_KEY = "nimbo-rules-log";
+const LOG_LIMIT = 40;
+
+export function actionsOf(rule: Pick<Rule, "action" | "actions">): Action[] {
+  return rule.actions && rule.actions.length > 0 ? rule.actions : [rule.action];
+}
+
+export function isEventTrigger(trigger: Trigger): trigger is Extract<Trigger, { kind: RuleEvent }> {
+  return (RULE_EVENTS as string[]).includes(trigger.kind);
+}
+
+export function rulesForEvent(rules: Rule[], event: RuleEvent) {
+  return rules.filter((rule) => rule.enabled && rule.trigger.kind === event);
+}
+
+export function parseRunLog(raw: string | null): RuleRun[] {
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is RuleRun => !!item && typeof item.ruleId === "string" && Number.isFinite(item.at)).slice(0, LOG_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addRun(log: RuleRun[], run: RuleRun) {
+  return [run, ...log].slice(0, LOG_LIMIT);
+}
 
 export const RULES_KEY = "nimbo-rules";
 
@@ -51,7 +94,11 @@ export function triggerActive(trigger: Trigger, context: RuleContext): boolean {
     case "app":
       return !!context.app && fold(context.app).includes(fold(trigger.app).replace(/\s+/g, ""));
     case "time":
-      return context.time === trigger.time;
+      return context.time === trigger.time && (!trigger.days || trigger.days.length === 0 || (context.day !== undefined && trigger.days.includes(context.day)));
+    case "idle":
+      return (context.idleMinutes ?? 0) >= trigger.minutes;
+    default:
+      return false;
   }
 }
 
@@ -65,7 +112,7 @@ export function parseRules(raw: string | null): Rule[] {
   try {
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
-      ? parsed.filter((item): item is Rule => !!item && typeof item.id === "string" && typeof item.text === "string" && !!item.trigger && !!item.action).slice(0, 40)
+      ? parsed.filter((item): item is Rule => !!item && typeof item.id === "string" && typeof item.text === "string" && !!item.trigger && !!item.action).slice(0, 80)
       : [];
   } catch {
     return [];
