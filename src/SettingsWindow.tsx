@@ -562,6 +562,18 @@ function GeneralPage({ settings, update }: PageProps) {
           onChange={(buddyMode) => update({ buddyMode })}
         />
       </Row>
+      <Row title={t.buddy.dockLift} hint={t.buddy.dockLiftHint}>
+        <Stepper
+          value={settings.buddyDockLift}
+          min={0}
+          max={200}
+          step={4}
+          format={(value) => `${value} px`}
+          decreaseLabel={t.buddy.dockLift}
+          increaseLabel={t.buddy.dockLift}
+          onChange={(buddyDockLift) => update({ buddyDockLift })}
+        />
+      </Row>
     </Section>
     <WeatherSettings place={settings.weatherPlace} onChange={(weatherPlace) => update({ weatherPlace })} />
     <ShortcutsSettings shortcuts={settings.shortcuts} onChange={(shortcuts) => update({ shortcuts })} />

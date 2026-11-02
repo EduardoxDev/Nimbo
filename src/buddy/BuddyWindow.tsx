@@ -10,14 +10,14 @@ import { NIMBO_COLOR } from "../mascot/nimboMood";
 import { useAgentBoard } from "../agents/agentsStore";
 import { islandAgentsOf } from "../agents/moods";
 import { BUDDY_SIZE, follow, step, supportsOf, throwVelocity, type Body, type Platform } from "./physics";
-import { readBuddyMode, type BuddyMode } from "./mode";
+import { readBuddyMode, readDockLift, type BuddyMode } from "./mode";
 import { fitsInView, viewAround, VIEW_WIDTH, type View } from "./view";
 import { INBOX_KEY, parseMessage, readVital, type BuddyFx } from "./channel";
 import { auraOf, LEVEL_KEY, PET_KEY, isRub, parsePet, type Pet } from "./pet";
 import { FxLayer } from "./Confetti";
 import "./Buddy.css";
 
-type Scene = { width: number; height: number; floor: number; platforms: Platform[]; app: string; hasLeft: boolean; hasRight: boolean };
+type Scene = { width: number; height: number; floor: number; platforms: Platform[]; app: string; hasLeft: boolean; hasRight: boolean; dock: boolean };
 type Behavior = { kind: "idle" | "walk" | "sit"; until: number };
 type Bubble = { text: string; page?: string; until: number };
 
@@ -122,7 +122,8 @@ export default function BuddyWindow() {
   const lastCursorMoveRef = useRef(performance.now());
   const squashRef = useRef(0);
   const facingRef = useRef(1);
-  const supportsRef = useRef<{ scene: Scene | null; width: number; list: Platform[] }>({ scene: null, width: 0, list: [] });
+  const supportsRef = useRef<{ scene: Scene | null; width: number; floor: number; list: Platform[] }>({ scene: null, width: 0, floor: 0, list: [] });
+  const dockLiftRef = useRef(readDockLift());
   const vitalRef = useRef<{ value: ReturnType<typeof readVital>; at: number }>({ value: null, at: -Infinity });
   const rubRef = useRef<{ samples: { x: number; t: number }[]; cooldown: number }>({ samples: [], cooldown: 0 });
   const hitboxRef = useRef({ key: "", at: 0 });
@@ -158,7 +159,10 @@ export default function BuddyWindow() {
     const onStorage = (event: StorageEvent) => {
       if (event.key === INBOX_KEY) handle(event.newValue);
       else if (event.key === LEVEL_KEY) setLevel(readLevel());
-      else setMode(readBuddyMode());
+      else {
+        setMode(readBuddyMode());
+        dockLiftRef.current = readDockLift();
+      }
     };
     window.addEventListener("storage", onStorage);
     const pet = readPet();
@@ -266,11 +270,12 @@ export default function BuddyWindow() {
       const scene = sceneRef.current;
       const screen = screenOf();
       const width = screen.width;
-      const floor = scene ? scene.floor / ratio : screen.height - 48;
-      if (supportsRef.current.scene !== scene || supportsRef.current.width !== width) {
+      const floor = scene ? scene.floor / ratio - (scene.dock ? dockLiftRef.current : 0) : screen.height - 48;
+      if (supportsRef.current.scene !== scene || supportsRef.current.width !== width || supportsRef.current.floor !== floor) {
         supportsRef.current = {
           scene,
           width,
+          floor,
           list: supportsOf(
             (scene?.platforms ?? []).map((platform) => ({ left: platform.left / ratio, right: platform.right / ratio, top: platform.top / ratio })),
             floor,
@@ -369,6 +374,9 @@ export default function BuddyWindow() {
         }
       }
 
+      if (!dragRef.current && mode === "free" && !hidingRef.current && body.y + BUDDY_SIZE > floor + 1) {
+        body = { ...body, y: floor - BUDDY_SIZE, vy: 0, ground: floor };
+      }
       bodyRef.current = body;
       facingRef.current = facing;
       squashRef.current = Math.max(0, squashRef.current - dt * 4);

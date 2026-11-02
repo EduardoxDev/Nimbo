@@ -354,6 +354,7 @@ export type IslandSettings = {
   /** Show every app's Windows notifications, not only the phone's. */
   allNotifications: boolean;
   buddyMode: BuddyMode;
+  buddyDockLift: number;
   focusGuard: boolean;
   habitTips: boolean;
   /** Offer an action for what was just copied (open link, map, track…). */
@@ -567,6 +568,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   alexaPinHash: "",
   allNotifications: false,
   buddyMode: "off",
+  buddyDockLift: 88,
   focusGuard: true,
   habitTips: true,
   smartClipboard: true,
@@ -947,6 +949,7 @@ export function normalizeSettings(
         ? settings.meetingMode
         : DEFAULT_SETTINGS.meetingMode,
     buddyMode: isBuddyMode(settings?.buddyMode) ? settings.buddyMode : DEFAULT_SETTINGS.buddyMode,
+    buddyDockLift: stepped(settings?.buddyDockLift, DEFAULT_SETTINGS.buddyDockLift, 0, 200, 4),
     focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
     habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
     smartClipboard: typeof settings?.smartClipboard === "boolean" ? settings.smartClipboard : DEFAULT_SETTINGS.smartClipboard,

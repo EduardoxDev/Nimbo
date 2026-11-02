@@ -16,7 +16,7 @@ use windows::{
         UI::Shell::{DefSubclassProc, SetWindowSubclass},
         System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION},
         UI::WindowsAndMessaging::{
-            EnumWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextLengthW,
+            EnumWindows, FindWindowW, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextLengthW,
             GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetForegroundWindow, SetWindowLongPtrW, SetWindowPos,
             SystemParametersInfoW, MA_NOACTIVATE, WM_MOUSEACTIVATE,
             GWL_EXSTYLE, HWND_TOPMOST, SPI_GETWORKAREA, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WS_EX_NOACTIVATE,
@@ -57,6 +57,15 @@ pub(crate) struct Scene {
     app: String,
     has_left: bool,
     has_right: bool,
+    dock: bool,
+}
+
+const DOCK_CLASSES: [&str; 3] = ["MyDockAPP", "RocketDock", "ObjectDock"];
+
+fn dock_running() -> bool {
+    DOCK_CLASSES.iter().any(|class| unsafe {
+        FindWindowW(&windows::core::HSTRING::from(*class), None).is_ok_and(|window| !window.is_invalid() && IsWindowVisible(window).as_bool())
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -449,6 +458,7 @@ pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
         app: foreground_app(),
         has_left,
         has_right,
+        dock: dock_running(),
     })
 }
 
