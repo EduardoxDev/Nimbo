@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -30,8 +31,8 @@ const CURSOR_OFFSET = { x: 18, y: 22 };
 const MINI_SIZE = 26;
 const BUBBLE_MS = 6_000;
 const DELIVER_BUBBLE_MS = 9_000;
-const BUBBLE_WIDTH = 220;
-const BUBBLE_LIFT = 62;
+const BUBBLE_GAP = 14;
+const TYPE_MS = 22;
 function pick<T>(items: T[]) {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -104,6 +105,8 @@ export default function BuddyWindow() {
   const bodyRef = useRef<Body>({ x: window.innerWidth / 2 - BUDDY_SIZE / 2, y: 4, vx: (Math.random() - 0.5) * 500, vy: -650, ground: null });
   const wrapperRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const bubbleSizeRef = useRef({ width: 200, height: 52 });
+  const [typed, setTyped] = useState(0);
   const miniRefs = useRef<(HTMLDivElement | null)[]>([]);
   const miniPositions = useRef<{ x: number; y: number }[]>([]);
   const shownMoodRef = useRef<MascotMood>("greeting");
@@ -182,6 +185,23 @@ export default function BuddyWindow() {
   useEffect(() => {
     if (isTauri()) void invoke("buddy_follow_cursor", { enabled: mode === "cursor" }).catch(() => {});
   }, [mode]);
+
+  useEffect(() => {
+    setTyped(0);
+    if (!bubble) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setTyped(bubble.text.length);
+      return;
+    }
+    const typing = window.setInterval(() => {
+      setTyped((count) => {
+        if (count >= bubble.text.length) window.clearInterval(typing);
+        return Math.min(bubble.text.length, count + 2);
+      });
+    }, TYPE_MS);
+    return () => window.clearInterval(typing);
+  }, [bubble]);
 
   useEffect(() => {
     if (!bubble) return;
@@ -431,9 +451,15 @@ export default function BuddyWindow() {
         const tilt = stepping ? Math.sin(phase) * 3 : 0;
         wrapperRef.current.style.transform = `translate(${body.x - offsetX}px, ${body.y - offsetY + lift}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25}) rotate(${tilt}deg)`;
       }
-      const bubbleLeft = Math.min(Math.max(body.x + BUDDY_SIZE / 2 - BUBBLE_WIDTH / 2, 8), width - BUBBLE_WIDTH - 8);
-      const bubbleTop = Math.max(body.y - BUBBLE_LIFT, 4);
-      if (bubbleRef.current) bubbleRef.current.style.transform = `translate(${bubbleLeft - offsetX}px, ${bubbleTop - offsetY}px)`;
+      if (bubbleRef.current) bubbleSizeRef.current = { width: bubbleRef.current.offsetWidth || 200, height: bubbleRef.current.offsetHeight || 52 };
+      const bubbleWidth = bubbleSizeRef.current.width;
+      const bubbleHeight = bubbleSizeRef.current.height;
+      const bubbleLeft = Math.min(Math.max(body.x + BUDDY_SIZE / 2 - bubbleWidth / 2, 8), width - bubbleWidth - 8);
+      const bubbleTop = Math.max(body.y - bubbleHeight - BUBBLE_GAP, 4);
+      if (bubbleRef.current) {
+        bubbleRef.current.style.transform = `translate(${bubbleLeft - offsetX}px, ${bubbleTop - offsetY}px)`;
+        bubbleRef.current.style.setProperty("--tail", `${Math.min(Math.max(body.x + BUDDY_SIZE / 2 - bubbleLeft, 18), bubbleWidth - 18)}px`);
+      }
       let leader = { x: body.x + BUDDY_SIZE / 2 - MINI_SIZE / 2, y: body.y + BUDDY_SIZE - MINI_SIZE };
       miniPositions.current = minis.map((_, index) => {
         const previous = miniPositions.current[index] ?? leader;
@@ -449,7 +475,7 @@ export default function BuddyWindow() {
       const withBubble = now < bubbleUntilRef.current;
       const left = withBubble ? Math.min(body.x, bubbleLeft) : body.x;
       const top = withBubble ? Math.min(body.y, bubbleTop) : body.y;
-      const right = withBubble ? Math.max(body.x + BUDDY_SIZE, bubbleLeft + BUBBLE_WIDTH) : body.x + BUDDY_SIZE;
+      const right = withBubble ? Math.max(body.x + BUDDY_SIZE, bubbleLeft + bubbleWidth) : body.x + BUDDY_SIZE;
       const box = showing
         ? { x: left * ratio, y: top * ratio, width: (right - left) * ratio, height: (body.y + BUDDY_SIZE - top) * ratio }
         : { x: 0, y: 0, width: 0, height: 0 };
@@ -559,8 +585,24 @@ export default function BuddyWindow() {
           </div>
         ))}
       {mode !== "off" && bubble && (
-        <div ref={bubbleRef} className={`buddy-bubble${bubble.page ? " buddy-bubble--action" : ""}`} onClick={() => openPage(bubble.page)}>
-          {bubble.text}
+        <div ref={bubbleRef} className={`buddy-bubble${bubble.page ? " buddy-bubble--action" : ""}`} role="status">
+          <p className="buddy-bubble__text" onClick={() => openPage(bubble.page)}>
+            {bubble.text.slice(0, typed)}
+            <span className="buddy-bubble__ghost" aria-hidden="true">
+              {bubble.text.slice(typed)}
+            </span>
+          </p>
+          <div className="buddy-bubble__actions">
+            {bubble.page && (
+              <button type="button" className="buddy-bubble__open" onClick={() => openPage(bubble.page)}>
+                {copy.open}
+              </button>
+            )}
+            <button type="button" className="buddy-bubble__close" aria-label={copy.close} title={copy.close} onClick={() => openPage()}>
+              <X size={11} strokeWidth={2.6} />
+            </button>
+          </div>
+          <span className="buddy-bubble__timer" style={{ animationDuration: `${Math.max(0, bubble.until - Date.now())}ms` }} aria-hidden="true" />
         </div>
       )}
       {mode !== "off" && (

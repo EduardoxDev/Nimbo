@@ -441,6 +441,8 @@ const ptBR: Translations = {
     hints: { off: "O Nimbo fica dentro da ilha.", free: "Ele sai da ilha, anda pela barra de tarefas e sobe nas janelas. Arraste e jogue ele; clique para ele pular.", cursor: "Ele segue o seu mouse como um bichinho e dorme quando você para." },
     dockLift: "Altura do dock",
     dockLiftHint: "Quando o MyDock (ou outro dock) está aberto, o Nimbo livre anda por cima dele nesta altura, contada a partir da borda de baixo da tela.",
+    open: "Abrir",
+    close: "Fechar",
     missedYou: "Senti sua falta! Onde você tava?",
     found: "Achou! 👀",
     ate: (count) => (count === 1 ? "Nhac! Guardei na Prateleira." : `Nhac! Guardei ${count} arquivos na Prateleira.`),

@@ -444,6 +444,8 @@ const zhCN: Translations = {
     hints: { off: "Nimbo 待在灵动岛里。", free: "它离开灵动岛，在任务栏上走动并爬上窗口。可以拖动和扔它，点击让它跳。", cursor: "它像宠物一样跟着鼠标，你停下时它会睡觉。" },
     dockLift: "程序坞高度",
     dockLiftHint: "当 MyDock（或其他程序坞）打开时，自由 Nimbo 会在这个高度（从屏幕底部算起）走在它上面。",
+    open: "打开",
+    close: "关闭",
     missedYou: "我好想你！你去哪了？",
     found: "被你发现了！👀",
     ate: (count) => `啊呜！已把 ${count} 个文件放进收纳架。`,

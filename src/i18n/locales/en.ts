@@ -441,6 +441,8 @@ const en: Translations = {
     hints: { off: "Nimbo stays inside the island.", free: "He leaves the island, walks on the taskbar and climbs on windows. Drag and throw him; click to make him jump.", cursor: "He follows your mouse like a pet and naps when you stop." },
     dockLift: "Dock height",
     dockLiftHint: "When MyDock (or another dock) is open, free Nimbo walks on top of it at this height, counted from the bottom of the screen.",
+    open: "Open",
+    close: "Close",
     missedYou: "I missed you! Where were you?",
     found: "Found me! 👀",
     ate: (count) => (count === 1 ? "Nom! Saved it to the Shelf." : `Nom! Saved ${count} files to the Shelf.`),

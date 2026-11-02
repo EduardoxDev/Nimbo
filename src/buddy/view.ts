@@ -1,6 +1,6 @@
 import { BUDDY_SIZE } from "./physics";
 
-const BUBBLE_LIFT = 62;
+const BUBBLE_LIFT = 96;
 export const VIEW_WIDTH = 460;
 const VIEW_HEIGHT = 300;
 const VIEW_MARGIN = 70;

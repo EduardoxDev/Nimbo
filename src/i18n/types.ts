@@ -434,6 +434,8 @@ export type Translations = {
     hints: Record<"off" | "free" | "cursor", string>;
     dockLift: string;
     dockLiftHint: string;
+    open: string;
+    close: string;
     missedYou: string;
     found: string;
     ate: (count: number) => string;
