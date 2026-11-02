@@ -549,6 +549,29 @@ function GeneralPage({ settings, update }: PageProps) {
       </Row>
       <WindowsFeatureRows />
     </Section>
+    <Section title={t.dock.section}>
+      <Row title={t.dock.enable} hint={t.dock.enableHint}>
+        <Toggle label={t.dock.enable} checked={settings.dockEnabled} onChange={(dockEnabled) => update({ dockEnabled })} />
+      </Row>
+      <Row title={t.dock.hideTaskbar} hint={t.dock.hideTaskbarHint}>
+        <Toggle label={t.dock.hideTaskbar} checked={settings.dockHideTaskbar} disabled={!settings.dockEnabled} onChange={(dockHideTaskbar) => update({ dockHideTaskbar })} />
+      </Row>
+      <Row title={t.dock.iconSize}>
+        <Stepper
+          value={settings.dockIconSize}
+          min={36}
+          max={72}
+          step={4}
+          format={(value) => `${value} px`}
+          decreaseLabel={t.dock.iconSize}
+          increaseLabel={t.dock.iconSize}
+          onChange={(dockIconSize) => update({ dockIconSize })}
+        />
+      </Row>
+      <Row title={t.dock.magnify}>
+        <Toggle label={t.dock.magnify} checked={settings.dockMagnify} onChange={(dockMagnify) => update({ dockMagnify })} />
+      </Row>
+    </Section>
     <Section title={t.buddy.section}>
       <Row title={t.buddy.mode} hint={t.buddy.hints[settings.buddyMode]}>
         <Segmented

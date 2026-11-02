@@ -5,6 +5,7 @@ import TranslationWindow from "./TranslationWindow";
 import SettingsWindow from "./SettingsWindow";
 import BuddyWindow from "./buddy/BuddyWindow";
 import DrawWindow from "./draw/DrawWindow";
+import DockWindow from "./dock/DockWindow";
 import LensWindow from "./lens/LensWindow";
 import DayWindow from "./day/DayWindow";
 import MusicWindow from "./music/MusicWindow";
@@ -46,6 +47,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <BuddyWindow />
       ) : windowKind === "draw" ? (
         <DrawWindow />
+      ) : windowKind === "dock" ? (
+        <DockWindow />
       ) : windowKind === "day" ? (
         <DayWindow />
       ) : windowKind === "lens" ? (

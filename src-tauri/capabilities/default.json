@@ -10,7 +10,8 @@
     "draw",
     "lens",
     "day",
-    "music"
+    "music",
+    "dock"
   ],
   "permissions": [
     "core:default",

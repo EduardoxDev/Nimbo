@@ -358,6 +358,11 @@ export type IslandSettings = {
   allNotifications: boolean;
   buddyMode: BuddyMode;
   buddyDockLift: number;
+  dockEnabled: boolean;
+  dockHideTaskbar: boolean;
+  dockPinned: string[];
+  dockIconSize: number;
+  dockMagnify: boolean;
   focusGuard: boolean;
   habitTips: boolean;
   /** Offer an action for what was just copied (open link, map, track…). */
@@ -572,6 +577,11 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   allNotifications: false,
   buddyMode: "off",
   buddyDockLift: 88,
+  dockEnabled: false,
+  dockHideTaskbar: false,
+  dockPinned: [],
+  dockIconSize: 48,
+  dockMagnify: true,
   focusGuard: true,
   habitTips: true,
   smartClipboard: true,
@@ -953,6 +963,11 @@ export function normalizeSettings(
         : DEFAULT_SETTINGS.meetingMode,
     buddyMode: isBuddyMode(settings?.buddyMode) ? settings.buddyMode : DEFAULT_SETTINGS.buddyMode,
     buddyDockLift: stepped(settings?.buddyDockLift, DEFAULT_SETTINGS.buddyDockLift, 0, 200, 4),
+    dockEnabled: typeof settings?.dockEnabled === "boolean" ? settings.dockEnabled : DEFAULT_SETTINGS.dockEnabled,
+    dockHideTaskbar: typeof settings?.dockHideTaskbar === "boolean" ? settings.dockHideTaskbar : DEFAULT_SETTINGS.dockHideTaskbar,
+    dockPinned: Array.isArray(settings?.dockPinned) ? settings.dockPinned.filter((item): item is string => typeof item === "string").slice(0, 30) : DEFAULT_SETTINGS.dockPinned,
+    dockIconSize: stepped(settings?.dockIconSize, DEFAULT_SETTINGS.dockIconSize, 36, 72, 4),
+    dockMagnify: typeof settings?.dockMagnify === "boolean" ? settings.dockMagnify : DEFAULT_SETTINGS.dockMagnify,
     focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
     habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
     smartClipboard: typeof settings?.smartClipboard === "boolean" ? settings.smartClipboard : DEFAULT_SETTINGS.smartClipboard,
@@ -4649,6 +4664,25 @@ function IslandApp({
   const water = useWater(waterSettings);
   const reminders = useReminders();
   const [voiceToken, setVoiceToken] = useState(0);
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (settings.dockEnabled) void invoke("dock_show", { width: 640, height: 128 }).catch((error) => console.error("Failed to open the Nimbo Dock", error));
+    else void invoke("dock_hide").catch(() => {});
+  }, [settings.dockEnabled]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("dock_hide_taskbar", { enabled: settings.dockEnabled && settings.dockHideTaskbar }).catch(() => {});
+  }, [settings.dockEnabled, settings.dockHideTaskbar]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void listen("dock-open-island", () => shortcutHandlerRef.current("toggle")).then((unlisten) => (cancelled ? unlisten() : (stop = unlisten)));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
   const focusDoneRef = useRef<() => void>(() => {});
   const islandPageIdsRef = useRef<string[]>([]);
   const buddyOutRef = useRef(false);

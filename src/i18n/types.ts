@@ -413,6 +413,22 @@ export type Translations = {
     close: string;
     hint: string;
   };
+  dock: {
+    section: string;
+    enable: string;
+    enableHint: string;
+    hideTaskbar: string;
+    hideTaskbarHint: string;
+    iconSize: string;
+    magnify: string;
+    nimbo: string;
+    show: string;
+    newWindow: string;
+    pin: string;
+    unpin: string;
+    close: string;
+    closeAll: (count: number) => string;
+  };
   alexa: {
     title: string;
     connect: string;

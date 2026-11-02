@@ -4,6 +4,7 @@ mod assistant;
 mod broadlink;
 mod buddy;
 mod calendar;
+mod dock;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -1992,6 +1993,14 @@ pub fn run() {
             buddy::buddy_set_hitbox,
             buddy::buddy_follow_cursor,
             buddy::buddy_place,
+            dock::dock_apps,
+            dock::dock_icon,
+            dock::dock_focus,
+            dock::dock_close,
+            dock::dock_hide_taskbar,
+            dock::dock_show,
+            dock::dock_resize,
+            dock::dock_hide,
             buddy::buddy_scene,
             buddy::buddy_move_monitor,
             buddy::foreground_window,

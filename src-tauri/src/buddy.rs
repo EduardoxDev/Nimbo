@@ -290,6 +290,10 @@ unsafe extern "system" fn no_activate(hwnd: HWND, message: u32, wparam: WPARAM, 
     unsafe { DefSubclassProc(hwnd, message, wparam, lparam) }
 }
 
+pub(crate) fn make_window_passive(window: &WebviewWindow) {
+    make_passive(window);
+}
+
 fn make_passive(window: &WebviewWindow) {
     if let Ok(hwnd) = window.hwnd() {
         unsafe {
@@ -449,7 +453,9 @@ pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
     let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
     let bounds = monitor_rect().ok_or("Sem tamanho de tela.")?;
     let (has_left, has_right) = neighbors(&window, bounds);
+    let own_dock = crate::dock::bar_top(&app).map(|top| top - bounds.top);
     let floor = work_area().map(|area| area.bottom.min(bounds.bottom) - bounds.top).unwrap_or(bounds.bottom - bounds.top);
+    let floor = own_dock.map_or(floor, |top| top.min(floor));
     Ok(Scene {
         width: bounds.right - bounds.left,
         height: bounds.bottom - bounds.top,
@@ -458,7 +464,7 @@ pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
         app: foreground_app(),
         has_left,
         has_right,
-        dock: dock_running(),
+        dock: own_dock.is_none() && dock_running(),
     })
 }
 
