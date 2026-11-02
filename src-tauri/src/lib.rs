@@ -398,7 +398,7 @@ fn start_island_drag(app: AppHandle) -> Result<(), String> {
             y: position.y,
         });
         let did_finish_drag = {
-            let mut state = window_state().lock().expect("window state poisoned");
+            let mut state = window_state().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             if !state.is_dragging {
                 false
             } else {
@@ -1279,12 +1279,12 @@ fn window_state() -> &'static Mutex<IslandWindowState> {
 fn mutate_window_state(
     update: impl FnOnce(&mut IslandWindowState) -> IslandWindowState,
 ) -> IslandWindowState {
-    let mut state = window_state().lock().expect("window state poisoned");
+    let mut state = window_state().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     update(&mut state)
 }
 
 fn read_window_state() -> IslandWindowState {
-    *window_state().lock().expect("window state poisoned")
+    *window_state().lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn parse_hex_color(value: &str) -> Option<(u8, u8, u8)> {

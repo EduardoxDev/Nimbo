@@ -11,12 +11,14 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Webview
 use windows::{
     core::BOOL,
     Win32::{
-        Foundation::{CloseHandle, HWND, LPARAM, POINT, RECT},
+        Foundation::{CloseHandle, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
         Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS},
+        UI::Shell::{DefSubclassProc, SetWindowSubclass},
         System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION},
         UI::WindowsAndMessaging::{
             EnumWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextLengthW,
-            GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetWindowLongPtrW, SetWindowPos, SystemParametersInfoW,
+            GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed, SetForegroundWindow, SetWindowLongPtrW, SetWindowPos,
+            SystemParametersInfoW, MA_NOACTIVATE, WM_MOUSEACTIVATE,
             GWL_EXSTYLE, HWND_TOPMOST, SPI_GETWORKAREA, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WS_EX_NOACTIVATE,
             WS_EX_TOOLWINDOW,
         },
@@ -255,12 +257,39 @@ fn bounds_of(window: &WebviewWindow) -> Option<Rect> {
     Some(Rect { left: position.x, top: position.y, right: position.x + size.width as i32, bottom: position.y + size.height as i32 })
 }
 
+const NO_ACTIVATE_SUBCLASS: usize = 0x4e494d;
+
+unsafe extern "system" fn no_activate(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM, _id: usize, _data: usize) -> LRESULT {
+    if message == WM_MOUSEACTIVATE {
+        return LRESULT(MA_NOACTIVATE as isize);
+    }
+    unsafe { DefSubclassProc(hwnd, message, wparam, lparam) }
+}
+
 fn make_passive(window: &WebviewWindow) {
     if let Ok(hwnd) = window.hwnd() {
         unsafe {
             let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_NOACTIVATE.0 as isize | WS_EX_TOOLWINDOW.0 as isize);
+            let _ = SetWindowSubclass(hwnd, Some(no_activate), NO_ACTIVATE_SUBCLASS, 0);
         }
+    }
+}
+
+fn give_focus_back(window: &WebviewWindow, previous: &mut Option<isize>) {
+    let Ok(own) = window.hwnd() else { return };
+    let foreground = unsafe { GetForegroundWindow() };
+    if foreground.is_invalid() {
+        return;
+    }
+    if foreground == own {
+        if let Some(raw) = *previous {
+            unsafe {
+                let _ = SetForegroundWindow(HWND(raw as *mut _));
+            }
+        }
+    } else if process_of(foreground) != std::process::id() {
+        *previous = Some(foreground.0 as isize);
     }
 }
 
@@ -276,8 +305,12 @@ fn watch(app: AppHandle) {
     let mut ignoring = true;
     let mut last_cursor = (i32::MIN, i32::MIN);
     let mut last_check = Instant::now() - FULLSCREEN_CHECK;
+    let mut previous_foreground: Option<isize> = None;
     while RUNNING.load(Ordering::SeqCst) {
         let Some(window) = app.get_webview_window(BUDDY_LABEL) else { break };
+        if !HITBOX.lock().map(|hitbox| hitbox.capture).unwrap_or(false) {
+            give_focus_back(&window, &mut previous_foreground);
+        }
         if last_check.elapsed() >= FULLSCREEN_CHECK {
             last_check = Instant::now();
             let covered = crate::fullscreen::screen_is_covered(&window);

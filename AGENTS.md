@@ -13,17 +13,17 @@ Plano e próximos passos: [PLANO.md](PLANO.md).
 - React 19, TypeScript, Vite 7
 - Tauri 2, Rust, crate `windows`
 - Ícones: lucide-react
-- Pacotes: npm (há também um `pnpm-lock.yaml` herdado; mantenha os dois em sincronia ou remova um)
+- Pacotes: pnpm (`pnpm-lock.yaml`). O CI e o build de release usam pnpm; não crie `package-lock.json`.
 
 ## Comandos
 
 ```powershell
-npm install
-npm run dev                         # só a interface no navegador
-npm run tauri dev                   # app de verdade
-npm run build                       # checa tipos e gera a interface
-npm run tauri build -- --no-bundle  # gera o .exe
-npm test                            # testes
+pnpm install
+pnpm dev                            # só a interface no navegador
+pnpm tauri dev                      # app de verdade
+pnpm build                          # checa tipos e gera a interface
+pnpm tauri build --no-bundle        # gera o .exe
+pnpm test                           # testes
 ```
 
 ## Onde está cada coisa
@@ -41,6 +41,6 @@ npm test                            # testes
 - Comando Tauri novo: registrar no `generate_handler!` em `lib.rs` e conferir `src-tauri/capabilities/`.
 - Comandos Rust devolvem `Result<_, String>` com erro claro.
 - Mudou janela, posição, transparência ou bandeja? Teste ilha fechada, aberta, escondida na borda e na bandeja.
-- Mudou a interface: rode `npm run build`. Mudou Rust ou configuração do Tauri: rode também o build do Tauri.
+- Mudou a interface: rode `pnpm build`. Mudou Rust ou configuração do Tauri: rode também o build do Tauri.
 - Estado da interface fica em `localStorage` com chaves `nimbo-*`.
 - Só copie código de projetos MIT ou Apache-2.0, mantendo o aviso de copyright.
