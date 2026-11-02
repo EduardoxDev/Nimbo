@@ -122,6 +122,8 @@ export default function BuddyWindow() {
   const lastCursorMoveRef = useRef(performance.now());
   const squashRef = useRef(0);
   const facingRef = useRef(1);
+  const supportsRef = useRef<{ scene: Scene | null; width: number; list: Platform[] }>({ scene: null, width: 0, list: [] });
+  const vitalRef = useRef<{ value: ReturnType<typeof readVital>; at: number }>({ value: null, at: -Infinity });
   const rubRef = useRef<{ samples: { x: number; t: number }[]; cooldown: number }>({ samples: [], cooldown: 0 });
   const hitboxRef = useRef({ key: "", at: 0 });
   const seenMessageRef = useRef("");
@@ -257,14 +259,22 @@ export default function BuddyWindow() {
       const screen = screenOf();
       const width = screen.width;
       const floor = scene ? scene.floor / ratio : screen.height - 48;
-      const supports = supportsOf(
-        (scene?.platforms ?? []).map((platform) => ({ left: platform.left / ratio, right: platform.right / ratio, top: platform.top / ratio })),
-        floor,
-        width,
-      );
+      if (supportsRef.current.scene !== scene || supportsRef.current.width !== width) {
+        supportsRef.current = {
+          scene,
+          width,
+          list: supportsOf(
+            (scene?.platforms ?? []).map((platform) => ({ left: platform.left / ratio, right: platform.right / ratio, top: platform.top / ratio })),
+            floor,
+            width,
+          ),
+        };
+      }
+      const supports = supportsRef.current.list;
       let body = body0;
       let facing = facingRef.current;
-      const vital = readVital();
+      if (now - vitalRef.current.at > 5_000) vitalRef.current = { value: readVital(), at: now };
+      const vital = vitalRef.current.value;
       const steer = (target: { x: number; y: number }, speed = 1) => {
         const next = follow(body, target, dt * speed);
         if (Math.abs(next.x - body.x) > 0.3) facing = next.x > body.x ? 1 : -1;
