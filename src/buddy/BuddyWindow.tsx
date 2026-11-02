@@ -21,7 +21,7 @@ type Scene = { width: number; height: number; floor: number; platforms: Platform
 type Behavior = { kind: "idle" | "walk" | "sit"; until: number };
 type Bubble = { text: string; page?: string; until: number };
 
-const SCENE_MS = 450;
+const SCENE_MS = 1_200;
 const SLEEP_AFTER_MS = 25_000;
 const SLEEPY_AFTER_MS = 8_000;
 const HIDE_AFTER_MS = 120_000;
@@ -422,8 +422,8 @@ export default function BuddyWindow() {
       const box = showing
         ? { x: left * ratio, y: top * ratio, width: (right - left) * ratio, height: (body.y + BUDDY_SIZE - top) * ratio }
         : { x: 0, y: 0, width: 0, height: 0 };
-      const key = `${Math.round(box.x / 3)}:${Math.round(box.y / 3)}:${Math.round(box.width)}:${Math.round(box.height)}:${capture}`;
-      if (isTauri() && key !== hitboxRef.current.key && now - hitboxRef.current.at > 40) {
+      const key = `${Math.round(box.x / 8)}:${Math.round(box.y / 8)}:${Math.round(box.width)}:${Math.round(box.height)}:${capture}`;
+      if (isTauri() && key !== hitboxRef.current.key && (capture || now - hitboxRef.current.at > 90)) {
         hitboxRef.current = { key, at: now };
         void invoke("buddy_set_hitbox", { ...box, capture });
       }
@@ -522,7 +522,7 @@ export default function BuddyWindow() {
             style={{ width: MINI_SIZE, height: MINI_SIZE }}
             title={agent.name}
           >
-            <Mascot mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={MINI_SIZE} showDot={false} fps={8} />
+            <Mascot mood={agent.mood} shape={agent.shape} color={agent.color} seed={agent.name} size={MINI_SIZE} showDot={false} fps={6} />
           </div>
         ))}
       {mode !== "off" && bubble && (
@@ -540,7 +540,7 @@ export default function BuddyWindow() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} aura={auraOf(level)} label="Nimbo" fps={20} />
+          <Mascot mood={mood} shape="cloud" color={NIMBO_COLOR} seed="nimbo" size={BUDDY_SIZE} glow accessory={accessory} aura={auraOf(level)} label="Nimbo" fps={mood === "sleeping" || mood === "idle" ? 8 : 18} />
         </div>
       )}
     </div>

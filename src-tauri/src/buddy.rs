@@ -26,7 +26,7 @@ use windows::{
 };
 
 pub(crate) const BUDDY_LABEL: &str = "buddy";
-const POLL: Duration = Duration::from_millis(33);
+const POLL: Duration = Duration::from_millis(50);
 const FULLSCREEN_CHECK: Duration = Duration::from_millis(800);
 const MIN_WIDTH: i32 = 160;
 const MIN_HEIGHT: i32 = 80;
