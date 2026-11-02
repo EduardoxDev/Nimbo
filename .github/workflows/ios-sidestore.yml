@@ -52,7 +52,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            | tail -n 60
+            > build.log 2>&1 || {
+              # Compiler errors become annotations, readable on the run page without logging in.
+              grep -E "error:|fatal error|ld: |Error:" build.log | grep -v "^\s*$" | sort -u | head -n 30 | while IFS= read -r line; do
+                echo "::error::${line:0:900}"
+              done
+              tail -n 40 build.log
+              exit 1
+            }
+          tail -n 20 build.log
 
       - name: Package Nimbo.ipa
         run: |
