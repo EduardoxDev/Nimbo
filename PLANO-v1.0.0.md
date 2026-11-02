@@ -1,6 +1,6 @@
 # Nimbo v1.0.0: plano
 
-> Data: 02/11/2026. Versão atual publicada: v0.4.0.
+> Data: 02/11/2026. Base: **v0.9.0** (publicada hoje por outra sessão no ramo `claude/untitled-session-e9dd45`, agora juntada na `main`).
 > Objetivo da 1.0: **Nimbo conversa com a Alexa** e fica **estável de verdade**: sem bugs conhecidos, leve no processador, fácil de instalar e de configurar.
 
 ---
@@ -130,8 +130,8 @@ Peças novas:
 
 | # | Problema | Onde | Correção planejada |
 |---|---|---|---|
-| B1 | Clicar no Nimbo livre tira o foco da janela que você estava usando | `buddy.rs` | Responder `WM_MOUSEACTIVATE` com "não ativar" na janela do WebView, ou devolver o foco à janela anterior logo após o clique |
-| B2 | Processador: ~10% de um núcleo com a ilha parada, ~35% com Nimbo livre + mini-agentes | Mascote em SVG redesenhado pelo React a cada quadro | Animar sem React (atributos direto no SVG ou canvas), parar quando ninguém vê, mini-agentes mais simples. **Meta: ≤ 3% parado, ≤ 12% com Nimbo livre** |
+| B1 | Clicar no Nimbo livre tira o foco da janela que você estava usando (**corrigido na etapa 1, falta conferir no app instalado**) | `buddy.rs` | Responder `WM_MOUSEACTIVATE` com "não ativar" na janela do WebView, ou devolver o foco à janela anterior logo após o clique |
+| B2 | Processador: ~10% de um núcleo com a ilha parada, ~35% com Nimbo livre + mini-agentes (medido na 0.4.0; remedir na 0.9.0, que tem um mascote mais detalhado) | Mascote em SVG redesenhado pelo React a cada quadro | Animar sem React (atributos direto no SVG ou canvas), parar quando ninguém vê, mini-agentes mais simples. **Meta: ≤ 3% parado, ≤ 12% com Nimbo livre** |
 | B3 | "Ei Nimbo" não testado com voz real; não há sinal de que está ouvindo; possível briga com o ditado pelo microfone | `speech.rs` | Ícone de "ouvindo" na ilha, teste com voz, ajuste de confiança, um só dono do microfone por vez |
 | B4 | O microfone disse "reconhecimento online desligado" enquanto o Windows mostra ligado | `speech.rs` (`error_message`) | Mapear os códigos de erro de verdade, mostrar o código cru nos detalhes |
 | B5 | Sessão do Claude aparece como "Parece esperando você" durante comandos longos | `sessions_watch.rs` | Usar o tipo de ferramenta e o modo de permissão; esperar mais tempo para comandos de terminal |
@@ -143,9 +143,9 @@ Peças novas:
 | B11 | Resumo do dia só aparece se o app estiver aberto entre 18:00 e 18:59 | `useLifeHelpers.ts` | Mostrar ao abrir o PC depois das 18h se ainda não mostrou |
 | B12 | Atualização: o instalador vem com "Desinstalar antes de instalar" marcado. Preciso confirmar que água, lembretes, tarefas e configurações sobrevivem | Instalador NSIS | Teste de atualização 0.4 → 1.0 com dados; mudar o padrão para "não desinstalar" |
 | B13 | "Comer arquivos" e arremesso do Nimbo livre nunca testados ao vivo | `BuddyWindow.tsx` | Testes manuais guiados + teste automático da física |
-| B14 | 40 `unwrap()` no Rust (10 em `agents.rs`, 7 em `ir_climate.rs`…): qualquer um pode derrubar o app | Rust | Trocar por erro tratado; registrar falhas no diagnóstico |
-| B15 | 30 `.catch(() => {})` na interface: erros somem sem aviso | React | Mandar para o log de diagnóstico; mostrar ao usuário quando for ação dele |
-| B16 | AGENTS.md manda usar `npm`, mas só existe `pnpm-lock.yaml` | Raiz | Escolher um gerenciador, um só lock, CI usando o mesmo |
+| B14 | ~~`unwrap()` que derrubam o app~~ **Feito na etapa 1.** Fora dos testes eram só 8; os 3 de risco real (trava da janela) agora se recuperam | Rust | — |
+| B15 | 81 `.catch(() => {})` na interface (contando a 0.9.0): erros somem sem aviso | React | Mandar para o log de diagnóstico; mostrar ao usuário quando for ação dele |
+| B16 | ~~AGENTS.md dizia npm~~ **Feito na etapa 1.** O projeto usa pnpm (CI e release); o guia foi corrigido | Raiz | — |
 
 ### 3.2 Auditoria completa (para achar os que eu ainda não vi)
 
@@ -176,10 +176,10 @@ Para cada área:
 1. **Desempenho**: metas da B2; memória abaixo de 250 MB somando todas as janelas; abrir a ilha em menos de 150 ms.
 2. **Estabilidade**: zero `unwrap` fora de testes; log de diagnóstico com botão "Copiar relatório" em Configurações → Sobre.
 3. **Código**:
-   - quebrar o `App.tsx` (6.738 linhas) e o `App.css` (4.499) por página, sem mudar comportamento;
-   - quebrar o `lib.rs` (1.984).
+   - quebrar o `App.tsx` (7.861 linhas na 0.9.0) e o `App.css` (4.510) por página, sem mudar comportamento;
+   - quebrar o `lib.rs` (2.100).
 4. **Testes**:
-   - hoje são 59 da interface e 67 do Rust;
+   - hoje são 153 da interface e 106 do Rust (0.9.0);
    - meta: lógica nova sempre com teste;
    - testes de ponta a ponta com o app real (tauri-driver);
    - teste de atualização no CI.
