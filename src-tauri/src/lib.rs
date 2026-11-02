@@ -2031,6 +2031,7 @@ pub fn run() {
             relay::relay_info,
             relay::relay_configure,
             relay::relay_new_room,
+            relay::relay_alexa_code,
             relay::relay_send_file,
             live::live_watch,
             mic::mic_state,

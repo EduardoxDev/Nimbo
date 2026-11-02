@@ -14,6 +14,8 @@
  *   GET  /v1/rooms/:room/files?key=…              files waiting
  *   GET|DELETE /v1/rooms/:room/files/:id?key=…    download or remove one
  *   POST /v1/squads/:code/presence|poke           "focus together" with friends (src/squad.ts)
+ *   POST /v1/rooms/:room/alexa-code?key=…        a 6-digit code to connect the Alexa skill (src/alexa.ts)
+ *   POST /v1/alexa/pair                          the skill trades the code for the room (needs ALEXA_SKILL_SECRET)
  *   GET /v1/vapid                                public key for web notifications
  *   everything else                              the Nimbo web app (mobile/, built for the web)
  */
@@ -22,11 +24,15 @@ import { activityOf, hashKey, MAX_MESSAGE, shouldPush, validKey, validRoom, type
 import { pushActivity, type ApnsEnv } from "./apns";
 import { sendWebPush, validSubscription, type PushSubscription, type WebPushEnv } from "./webpush";
 import { Squad, validSquadCode } from "./squad";
+import { CODE_TTL_MS, newCode, Pairings, sameSecret, validCode } from "./alexa";
 import { attachmentHeader, CHUNK, chunkCount, cleanFileName, MAX_FILE, pruneFiles, validFileId, type FileMeta } from "./files";
 
 export interface Env extends ApnsEnv, WebPushEnv {
   ROOMS: DurableObjectNamespace;
   SQUADS: DurableObjectNamespace;
+  PAIRINGS: DurableObjectNamespace;
+  /** Shared with the Alexa skill's config.js: npx wrangler secret put ALEXA_SKILL_SECRET */
+  ALEXA_SKILL_SECRET?: string;
   /** The web app's files (wrangler.toml [assets]). */
   ASSETS?: Fetcher;
 }
@@ -56,12 +62,20 @@ export default {
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Nimbo relay", { headers: { "content-type": "text/plain" } });
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+    if (url.pathname === "/v1/alexa/pair" && request.method === "POST") {
+      if (!sameSecret(request.headers.get("x-nimbo-skill"), env.ALEXA_SKILL_SECRET)) return json({ error: "forbidden" }, 403);
+      const body = (await request.json().catch(() => null)) as { code?: unknown } | null;
+      if (!validCode(body?.code)) return json({ error: "bad_code" }, 400);
+      const taken = await env.PAIRINGS.get(env.PAIRINGS.idFromName(body.code)).fetch("https://pairing/take", { method: "POST" });
+      if (!taken.ok) return json({ error: "expired" }, 404);
+      return json(await taken.json());
+    }
     const squad = /^\/v1\/squads\/([A-Z0-9]{8})\/(presence|poke)$/.exec(url.pathname);
     if (squad) {
       if (!validSquadCode(squad[1])) return json({ error: "bad_code" }, 400);
       return env.SQUADS.get(env.SQUADS.idFromName(squad[1])).fetch(request);
     }
-    const match = /^\/v1\/rooms\/([a-f0-9]{32})\/(ws|status|cover|command|files(?:\/[a-f0-9]{16})?)$/.exec(url.pathname);
+    const match = /^\/v1\/rooms\/([a-f0-9]{32})\/(ws|status|cover|command|alexa-code|files(?:\/[a-f0-9]{16})?)$/.exec(url.pathname);
     if (!match || !validRoom(match[1])) return json({ error: "not_found" }, 404);
     if (!validKey(url.searchParams.get("key") ?? "")) return json({ error: "bad_key" }, 403);
     const room = env.ROOMS.get(env.ROOMS.idFromName(match[1]));
@@ -82,7 +96,7 @@ type Stored = {
   files?: FileMeta[];
 };
 
-export { Squad };
+export { Squad, Pairings };
 
 export class Room implements DurableObject {
   constructor(
@@ -130,6 +144,13 @@ export class Room implements DurableObject {
     }
     const fileMatch = /\/files(?:\/([a-f0-9]{16}))?$/.exec(url.pathname);
     if (fileMatch) return this.files(request, url, fileMatch[1] ?? null);
+    if (url.pathname.endsWith("/alexa-code") && request.method === "POST") {
+      const code = newCode(crypto.getRandomValues(new Uint8Array(3)));
+      const room = /\/v1\/rooms\/([a-f0-9]{32})\//.exec(url.pathname)?.[1] ?? "";
+      const pairing = { room, key: url.searchParams.get("key") ?? "", expiresAt: Date.now() + CODE_TTL_MS };
+      await this.env.PAIRINGS.get(this.env.PAIRINGS.idFromName(code)).fetch("https://pairing/store", { method: "POST", body: JSON.stringify(pairing) });
+      return json({ code, expiresAt: pairing.expiresAt });
+    }
     if (url.pathname.endsWith("/command") && request.method === "POST") {
       const body = (await request.json().catch(() => null)) as { action?: unknown; value?: unknown } | null;
       const action = typeof body?.action === "string" ? body.action : "";

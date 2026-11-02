@@ -1,0 +1,110 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "nimbo",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        {
+          "name": "ConnectIntent",
+          "slots": [{ "name": "code", "type": "AMAZON.NUMBER" }],
+          "samples": ["conectar com o código {code}", "conectar o código {code}", "o código é {code}", "código {code}", "conectar meu computador", "conectar"]
+        },
+        {
+          "name": "DisconnectIntent",
+          "slots": [],
+          "samples": ["desconectar", "desconectar meu computador", "esquecer meu computador"]
+        },
+        {
+          "name": "FocusStartIntent",
+          "slots": [],
+          "samples": ["começar um foco", "começa um foco", "começar o foco", "iniciar o foco", "começa um pomodoro", "começar a focar", "modo foco"]
+        },
+        {
+          "name": "FocusPauseIntent",
+          "slots": [],
+          "samples": ["pausar o foco", "pausa o foco", "parar o foco", "para o foco"]
+        },
+        {
+          "name": "FocusStatusIntent",
+          "slots": [],
+          "samples": ["quanto falta do foco", "quanto tempo falta", "como está o foco", "quanto falta"]
+        },
+        {
+          "name": "WaterAddIntent",
+          "slots": [],
+          "samples": ["eu bebi água", "bebi água", "bebi um copo de água", "anota um copo de água", "anotar água"]
+        },
+        {
+          "name": "WaterStatusIntent",
+          "slots": [],
+          "samples": ["quanta água eu bebi", "quanta água eu bebi hoje", "como está minha água", "minha meta de água"]
+        },
+        {
+          "name": "TaskAddIntent",
+          "slots": [{ "name": "task", "type": "AMAZON.SearchQuery" }],
+          "samples": ["anotar {task}", "anota {task}", "adicionar a tarefa {task}", "nova tarefa {task}", "me lembra de fazer {task}"]
+        },
+        {
+          "name": "TasksListIntent",
+          "slots": [],
+          "samples": ["quais são minhas tarefas", "o que falta fazer", "minhas tarefas", "lista de tarefas"]
+        },
+        {
+          "name": "PlayPauseIntent",
+          "slots": [],
+          "samples": ["pausar a música", "pausa a música", "tocar a música", "continua a música", "pausar", "tocar"]
+        },
+        {
+          "name": "NextIntent",
+          "slots": [],
+          "samples": ["próxima música", "pular a música", "pula a música", "próxima"]
+        },
+        {
+          "name": "PreviousIntent",
+          "slots": [],
+          "samples": ["música anterior", "voltar a música", "volta a música", "anterior"]
+        },
+        {
+          "name": "NowPlayingIntent",
+          "slots": [],
+          "samples": ["o que está tocando", "que música é essa", "qual música está tocando"]
+        },
+        {
+          "name": "LockIntent",
+          "slots": [],
+          "samples": ["bloquear o computador", "bloqueia o computador", "trava o computador", "travar o computador"]
+        },
+        {
+          "name": "AgendaIntent",
+          "slots": [],
+          "samples": ["o que eu tenho hoje", "minha agenda", "qual meu próximo compromisso", "meus compromissos de hoje"]
+        },
+        {
+          "name": "StatusIntent",
+          "slots": [],
+          "samples": ["como está o computador", "o que está acontecendo", "como está meu dia", "resumo"]
+        },
+        {
+          "name": "ApprovalStatusIntent",
+          "slots": [],
+          "samples": ["tem algum pedido", "o claude precisa de algo", "tem alguma aprovação", "o que o claude quer"]
+        },
+        {
+          "name": "ApproveIntent",
+          "slots": [{ "name": "pin", "type": "AMAZON.NUMBER" }],
+          "samples": ["aprovar com o código {pin}", "aprova com o código {pin}", "aprovar com o pin {pin}", "aprovar"]
+        },
+        {
+          "name": "DenyIntent",
+          "slots": [],
+          "samples": ["recusar", "recusar o pedido", "nega o pedido", "negar"]
+        }
+      ],
+      "types": []
+    }
+  }
+}

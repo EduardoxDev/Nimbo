@@ -314,6 +314,31 @@ pub(crate) async fn relay_send_file(path: String) -> Result<String, String> {
     Ok(name)
 }
 
+#[derive(Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AlexaCode {
+    code: String,
+    expires_at: i64,
+}
+
+/// A six-digit code the user says to the "Nimbo" Alexa skill (valid ten minutes, once).
+#[tauri::command]
+pub(crate) async fn relay_alexa_code() -> Result<AlexaCode, String> {
+    let config = enabled_config().ok_or("Ligue \"De qualquer lugar\" em Configurações → Celular para conectar a Alexa.")?;
+    if !CONNECTED.load(Ordering::SeqCst) {
+        return Err("O Nimbo ainda não está conectado ao servidor. Espere o ponto ficar verde.".to_string());
+    }
+    let url = format!("{}/v1/rooms/{}/alexa-code?key={}", config.url.trim_end_matches('/'), config.room, config.key);
+    let response = reqwest::Client::new().post(url).send().await.map_err(|error| format!("Não consegui falar com o servidor: {error}"))?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err("Seu servidor ainda não tem a parte da Alexa. Atualize o relay (veja docs/ALEXA.md).".to_string());
+    }
+    if !response.status().is_success() {
+        return Err(format!("O servidor recusou ({}).", response.status()));
+    }
+    response.json::<AlexaCode>().await.map_err(|error| error.to_string())
+}
+
 /// Queues a text for the phones; false when the relay is off.
 pub(crate) fn push_text(text: &str) -> bool {
     let enabled = CONFIG.lock().ok().and_then(|config| config.as_ref().map(|config| config.enabled && !config.url.is_empty())).unwrap_or(false);

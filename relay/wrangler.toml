@@ -17,6 +17,11 @@ class_name = "Room"
 name = "SQUADS"
 class_name = "Squad"
 
+# Alexa pairing codes (src/alexa.ts).
+[[durable_objects.bindings]]
+name = "PAIRINGS"
+class_name = "Pairings"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
@@ -24,6 +29,10 @@ new_sqlite_classes = ["Room"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Squad"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Pairings"]
 
 [vars]
 # Same as "ios.bundleIdentifier" in mobile/app.json.
@@ -39,3 +48,4 @@ VAPID_PUBLIC_KEY = "BCqxSsi1QCpYaMSXH8vka0Vrg73keb12m33EsGu1SMVcFhqHHXj1RgQ8iw4G
 #   npx wrangler secret put APNS_KEY       (contents of the AuthKey_XXXX.p8 file)
 #   npx wrangler secret put APNS_KEY_ID
 #   npx wrangler secret put APNS_TEAM_ID
+#   npx wrangler secret put ALEXA_SKILL_SECRET   (same value as alexa/skill/lambda/config.js)

@@ -1,0 +1,29 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "pt-BR": {
+          "name": "Nimbo",
+          "summary": "Controle o Nimbo do seu computador pela Alexa.",
+          "description": "Com o Nimbo você começa um foco, anota água e tarefas, controla a música do computador, ouve sua agenda e acompanha os agentes de IA, tudo pela voz.",
+          "examplePhrases": ["Alexa, abre o Nimbo", "Alexa, pede pro Nimbo começar um foco", "Alexa, pergunta pro Nimbo o que eu tenho hoje"],
+          "keywords": ["produtividade", "foco", "computador"]
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": ["BR"],
+      "category": "PRODUCTIVITY"
+    },
+    "apis": {
+      "custom": {}
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": false,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false
+    }
+  }
+}

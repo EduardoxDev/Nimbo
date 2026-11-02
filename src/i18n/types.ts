@@ -409,6 +409,22 @@ export type Translations = {
     close: string;
     hint: string;
   };
+  alexa: {
+    title: string;
+    connect: string;
+    connectHint: string;
+    newCode: string;
+    say: (first: string, second: string) => string;
+    expiresIn: (minutes: number, seconds: number) => string;
+    expired: string;
+    approve: string;
+    approveHint: string;
+    pinPlaceholder: string;
+    pinSave: string;
+    pinInvalid: string;
+    pinFirst: string;
+    privacy: string;
+  };
   buddy: {
     section: string;
     mode: string;

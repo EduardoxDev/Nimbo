@@ -5,6 +5,7 @@ import { useTranslation } from "../i18n";
 import { Row, Section, Toggle } from "../settings/controls";
 import type { IslandSettings } from "../App";
 import { RelaySettings } from "./RelaySettings";
+import { AlexaSettings } from "./AlexaSettings";
 
 type PhoneInfo = { running: boolean; url: string | null; qrSvg: string | null };
 
@@ -76,6 +77,8 @@ export function PhoneSettings({ settings, update }: { settings: IslandSettings; 
       </Section>
 
       <RelaySettings />
+
+      <AlexaSettings settings={settings} update={update} />
 
       <Section title={copy.shareTitle}>
         <Row title={copy.shareClipboard} hint={copy.shareClipboardHint}>

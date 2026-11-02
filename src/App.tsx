@@ -151,6 +151,7 @@ import { ClipboardAiButton } from "./clipboard/ClipboardAiButton";
 import { WeekPanel } from "./week/WeekPanel";
 import { IslandWeather } from "./island/IslandWeather";
 import { useBuddyDirector } from "./buddy/useBuddyDirector";
+import { agendaOfToday, validPinHash } from "./phone/alexa";
 import { useLifeHelpers } from "./life/useLifeHelpers";
 import { dayKey } from "./water/water";
 import { isBuddyMode, type BuddyMode } from "./buddy/mode";
@@ -348,6 +349,8 @@ export type IslandSettings = {
   phoneShareClipboard: boolean;
   /** The app and window in front show up on the phone ("continue on the phone"). */
   phoneShareActivity: boolean;
+  alexaLinked: boolean;
+  alexaPinHash: string;
   /** Show every app's Windows notifications, not only the phone's. */
   allNotifications: boolean;
   buddyMode: BuddyMode;
@@ -560,6 +563,8 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   phoneNotifications: false,
   phoneShareClipboard: false,
   phoneShareActivity: false,
+  alexaLinked: false,
+  alexaPinHash: "",
   allNotifications: false,
   buddyMode: "off",
   focusGuard: true,
@@ -934,6 +939,8 @@ export function normalizeSettings(
     phoneNotifications: typeof settings?.phoneNotifications === "boolean" ? settings.phoneNotifications : DEFAULT_SETTINGS.phoneNotifications,
     phoneShareClipboard: typeof settings?.phoneShareClipboard === "boolean" ? settings.phoneShareClipboard : DEFAULT_SETTINGS.phoneShareClipboard,
     phoneShareActivity: typeof settings?.phoneShareActivity === "boolean" ? settings.phoneShareActivity : DEFAULT_SETTINGS.phoneShareActivity,
+    alexaLinked: typeof settings?.alexaLinked === "boolean" ? settings.alexaLinked : DEFAULT_SETTINGS.alexaLinked,
+    alexaPinHash: validPinHash(settings?.alexaPinHash) ? settings.alexaPinHash : DEFAULT_SETTINGS.alexaPinHash,
     allNotifications: typeof settings?.allNotifications === "boolean" ? settings.allNotifications : DEFAULT_SETTINGS.allNotifications,
     meetingMode:
       typeof settings?.meetingMode === "boolean"
@@ -7313,15 +7320,17 @@ function IslandApp({
       clipboard: settings.phoneShareClipboard ? latestCopiedText(clipboardHistory.items) : null,
       now: settings.phoneShareActivity ? phoneNowRef.current : null,
       readLater: unread(readLater).slice(0, 15).map((item) => ({ id: item.id, url: item.url })),
+      agenda: agendaOfToday(calendar.events, Date.now(), (time) => new Date(time).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" })),
+      alexaPinHash: settings.alexaPinHash || null,
     };
   };
   useEffect(() => {
-    if (!settings.phoneIsland || !isTauri()) return;
+    if ((!settings.phoneIsland && !settings.alexaLinked) || !isTauri()) return;
     const publish = () => void invoke("phone_publish", { status: phoneStatusRef.current() }).catch(() => {});
     publish();
     const interval = window.setInterval(publish, 2_500);
     return () => window.clearInterval(interval);
-  }, [settings.phoneIsland]);
+  }, [settings.phoneIsland, settings.alexaLinked]);
   useEffect(() => {
     if (!isTauri()) return;
     const stops: (() => void)[] = [];
