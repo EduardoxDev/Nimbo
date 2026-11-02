@@ -11,6 +11,7 @@ import { useAgentBoard } from "../agents/agentsStore";
 import { islandAgentsOf } from "../agents/moods";
 import { BUDDY_SIZE, follow, step, supportsOf, throwVelocity, type Body, type Platform } from "./physics";
 import { readBuddyMode, type BuddyMode } from "./mode";
+import { fitsInView, viewAround, VIEW_WIDTH, type View } from "./view";
 import { INBOX_KEY, parseMessage, readVital, type BuddyFx } from "./channel";
 import { auraOf, LEVEL_KEY, PET_KEY, isRub, parsePet, type Pet } from "./pet";
 import { FxLayer } from "./Confetti";
@@ -31,7 +32,6 @@ const BUBBLE_MS = 6_000;
 const DELIVER_BUBBLE_MS = 9_000;
 const BUBBLE_WIDTH = 220;
 const BUBBLE_LIFT = 62;
-
 function pick<T>(items: T[]) {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -68,6 +68,35 @@ export default function BuddyWindow() {
   const [accessory, setAccessory] = useState<MascotAccessory | null>(null);
   const [bubble, setBubble] = useState<Bubble | null>(null);
   const [fx, setFx] = useState<{ kind: BuddyFx; id: string } | null>(null);
+  const fxRef = useRef(fx);
+  fxRef.current = fx;
+  const viewRef = useRef<View>({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight });
+  const placingRef = useRef(false);
+  const showFxRef = useRef((next: { kind: BuddyFx; id: string }) => setFx(next));
+  showFxRef.current = (next) => {
+    const screen = screenOf();
+    const view = viewRef.current;
+    if (!isTauri() || (view.x === 0 && view.y === 0 && view.width >= screen.width && view.height >= screen.height)) {
+      setFx(next);
+      return;
+    }
+    const ratio = window.devicePixelRatio || 1;
+    placingRef.current = true;
+    void invoke("buddy_place", { x: 0, y: 0, width: Math.round(screen.width * ratio), height: Math.round(screen.height * ratio) })
+      .then(() => {
+        viewRef.current = { x: 0, y: 0, width: screen.width, height: screen.height };
+      })
+      .catch(() => {})
+      .finally(() => {
+        placingRef.current = false;
+        setFx(next);
+      });
+  };
+  const screenOf = () => {
+    const ratio = window.devicePixelRatio || 1;
+    const scene = sceneRef.current;
+    return scene ? { width: scene.width / ratio, height: scene.height / ratio } : { width: window.screen.width, height: window.screen.height };
+  };
   const [level, setLevel] = useState(readLevel);
   const [agentClock, setAgentClock] = useState(() => Date.now());
   const minis = islandAgentsOf(board, agentClock).slice(0, 3);
@@ -114,7 +143,7 @@ export default function BuddyWindow() {
       const message = parseMessage(raw, Date.now());
       if (!message || message.id === seenMessageRef.current) return;
       seenMessageRef.current = message.id;
-      if (message.kind === "fx") setFx({ kind: message.fx, id: message.id });
+      if (message.kind === "fx") showFxRef.current({ kind: message.fx, id: message.id });
       else if (message.kind === "attention") attentionRef.current = message.on;
       else if (message.kind === "deliver") deliverRef.current = { text: message.text, page: message.page };
       else sayRef.current(message.text, message.page);
@@ -184,8 +213,8 @@ export default function BuddyWindow() {
         if (payload.type !== "drop" || payload.paths.length === 0) return;
         const ratio = window.devicePixelRatio || 1;
         const body = bodyRef.current;
-        const x = payload.position.x / ratio;
-        const y = payload.position.y / ratio;
+        const x = payload.position.x / ratio + viewRef.current.x;
+        const y = payload.position.y / ratio + viewRef.current.y;
         if (x < body.x - 20 || x > body.x + BUDDY_SIZE + 20 || y < body.y - 20 || y > body.y + BUDDY_SIZE + 20) return;
         squashRef.current = 1;
         moodRef.current = { mood: "greeting", until: performance.now() + 2000 };
@@ -224,8 +253,9 @@ export default function BuddyWindow() {
       last = now;
       const ratio = window.devicePixelRatio || 1;
       const scene = sceneRef.current;
-      const width = window.innerWidth;
-      const floor = scene ? scene.floor / ratio : window.innerHeight - 48;
+      const screen = screenOf();
+      const width = screen.width;
+      const floor = scene ? scene.floor / ratio : screen.height - 48;
       const supports = supportsOf(
         (scene?.platforms ?? []).map((platform) => ({ left: platform.left / ratio, right: platform.right / ratio, top: platform.top / ratio })),
         floor,
@@ -312,7 +342,8 @@ export default function BuddyWindow() {
           const direction = atLeft ? "left" : "right";
           void invoke<boolean>("buddy_move_monitor", { direction })
             .then((moved) => {
-              if (moved) bodyRef.current = { ...bodyRef.current, x: direction === "left" ? window.innerWidth - BUDDY_SIZE - 2 : 2, ground: null };
+              if (moved) bodyRef.current = { ...bodyRef.current, x: direction === "left" ? screenOf().width - BUDDY_SIZE - 2 : 2, ground: null };
+              viewRef.current = { x: 0, y: 0, width: screenOf().width, height: screenOf().height };
             })
             .catch(() => {})
             .finally(() => window.setTimeout(() => (hoppingRef.current = false), 1500));
@@ -344,19 +375,40 @@ export default function BuddyWindow() {
         shownMoodRef.current = nextMood;
         setMood(nextMood);
       }
+      const full = Boolean(fxRef.current);
+      const view = viewRef.current;
+      const wanted = full ? { x: 0, y: 0, width: screen.width, height: screen.height } : fitsInView(body, view) && view.width <= VIEW_WIDTH ? null : viewAround(body, screen);
+      if (wanted && isTauri() && !placingRef.current && (wanted.x !== view.x || wanted.y !== view.y || wanted.width !== view.width || wanted.height !== view.height)) {
+        placingRef.current = true;
+        void invoke("buddy_place", {
+          x: Math.round(wanted.x * ratio),
+          y: Math.round(wanted.y * ratio),
+          width: Math.round(wanted.width * ratio),
+          height: Math.round(wanted.height * ratio),
+        })
+          .then(() => {
+            viewRef.current = wanted;
+          })
+          .catch(() => {})
+          .finally(() => {
+            placingRef.current = false;
+          });
+      }
+      const offsetX = viewRef.current.x;
+      const offsetY = viewRef.current.y;
       const squash = squashRef.current;
       if (wrapperRef.current) {
-        wrapperRef.current.style.transform = `translate(${body.x}px, ${body.y}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25})`;
+        wrapperRef.current.style.transform = `translate(${body.x - offsetX}px, ${body.y - offsetY}px) scale(${facing * (1 + squash * 0.25)}, ${1 - squash * 0.25})`;
       }
       const bubbleLeft = Math.min(Math.max(body.x + BUDDY_SIZE / 2 - BUBBLE_WIDTH / 2, 8), width - BUBBLE_WIDTH - 8);
       const bubbleTop = Math.max(body.y - BUBBLE_LIFT, 4);
-      if (bubbleRef.current) bubbleRef.current.style.transform = `translate(${bubbleLeft}px, ${bubbleTop}px)`;
+      if (bubbleRef.current) bubbleRef.current.style.transform = `translate(${bubbleLeft - offsetX}px, ${bubbleTop - offsetY}px)`;
       let leader = { x: body.x + BUDDY_SIZE / 2 - MINI_SIZE / 2, y: body.y + BUDDY_SIZE - MINI_SIZE };
       miniPositions.current = minis.map((_, index) => {
         const previous = miniPositions.current[index] ?? leader;
         const next = follow(previous, { x: leader.x - facing * (MINI_SIZE + 6), y: leader.y }, dt * 0.6);
         const element = miniRefs.current[index];
-        if (element) element.style.transform = `translate(${next.x}px, ${next.y + Math.sin(now / 200 + index) * 2}px)`;
+        if (element) element.style.transform = `translate(${next.x - offsetX}px, ${next.y - offsetY + Math.sin(now / 200 + index) * 2}px)`;
         leader = next;
         return next;
       });
@@ -392,7 +444,9 @@ export default function BuddyWindow() {
     event.currentTarget.setPointerCapture(event.pointerId);
     const body = bodyRef.current;
     hidingRef.current = false;
-    dragRef.current = { dx: event.clientX - body.x, dy: event.clientY - body.y, samples: [{ x: event.clientX, y: event.clientY, t: performance.now() }], moved: false };
+    const worldX = event.clientX + viewRef.current.x;
+    const worldY = event.clientY + viewRef.current.y;
+    dragRef.current = { dx: worldX - body.x, dy: worldY - body.y, samples: [{ x: worldX, y: worldY, t: performance.now() }], moved: false };
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -405,7 +459,7 @@ export default function BuddyWindow() {
         rub.cooldown = now + 4000;
         rub.samples = [];
         const body = bodyRef.current;
-        setFx({ kind: "hearts", id: `pet-${now}` });
+        showFxRef.current({ kind: "hearts", id: `pet-${now}` });
         moodRef.current = { mood: "greeting", until: now + 2500 };
         const pet = readPet();
         savePet({ ...pet, affection: pet.affection + 1 });
@@ -413,9 +467,11 @@ export default function BuddyWindow() {
       }
       return;
     }
-    drag.samples = [...drag.samples.filter((sample) => now - sample.t < 150), { x: event.clientX, y: event.clientY, t: now }];
-    if (Math.hypot(event.clientX - drag.samples[0].x, event.clientY - drag.samples[0].y) > 4) drag.moved = true;
-    bodyRef.current = { x: event.clientX - drag.dx, y: event.clientY - drag.dy, vx: 0, vy: 0, ground: null };
+    const worldX = event.clientX + viewRef.current.x;
+    const worldY = event.clientY + viewRef.current.y;
+    drag.samples = [...drag.samples.filter((sample) => now - sample.t < 150), { x: worldX, y: worldY, t: now }];
+    if (Math.hypot(worldX - drag.samples[0].x, worldY - drag.samples[0].y) > 4) drag.moved = true;
+    bodyRef.current = { x: worldX - drag.dx, y: worldY - drag.dy, vx: 0, vy: 0, ground: null };
   };
 
   const onPointerUp = () => {
@@ -438,7 +494,10 @@ export default function BuddyWindow() {
   };
 
   const body = bodyRef.current;
-  const origin = mode === "off" || leavingRef.current ? { x: window.innerWidth / 2, y: 30 } : { x: body.x + BUDDY_SIZE / 2, y: body.y };
+  const origin =
+    mode === "off" || leavingRef.current
+      ? { x: screenOf().width / 2 - viewRef.current.x, y: 30 - viewRef.current.y }
+      : { x: body.x + BUDDY_SIZE / 2 - viewRef.current.x, y: body.y - viewRef.current.y };
   const walking = mood === "greeting" && mode === "free" && !bubble;
   return (
     <div className="buddy-stage">

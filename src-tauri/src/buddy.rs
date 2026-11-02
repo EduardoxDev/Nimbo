@@ -7,7 +7,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::{
     core::BOOL,
     Win32::{
@@ -81,6 +81,25 @@ const CURSOR_EVERY: Duration = Duration::from_millis(250);
 static HIDDEN_FOR_FULLSCREEN: AtomicBool = AtomicBool::new(false);
 static HITBOX: Mutex<Hitbox> = Mutex::new(Hitbox { x: 0.0, y: 0.0, width: 0.0, height: 0.0, capture: false });
 static LAST_APP: Mutex<String> = Mutex::new(String::new());
+static MONITOR: Mutex<Option<Rect>> = Mutex::new(None);
+
+fn monitor_rect() -> Option<Rect> {
+    MONITOR.lock().ok().and_then(|monitor| *monitor)
+}
+
+fn set_monitor(rect: Rect) {
+    if let Ok(mut monitor) = MONITOR.lock() {
+        *monitor = Some(rect);
+    }
+}
+
+fn place(window: &WebviewWindow, rect: Rect) -> Result<(), String> {
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+    unsafe {
+        SetWindowPos(hwnd, Some(HWND_TOPMOST), rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE)
+            .map_err(|error| error.to_string())
+    }
+}
 
 pub(crate) fn visible_platforms(windows: &[Rect], bounds: Rect) -> Vec<Platform> {
     let mut platforms = Vec::new();
@@ -253,12 +272,6 @@ fn neighbors(window: &WebviewWindow, bounds: Rect) -> (bool, bool) {
     (left, right)
 }
 
-fn bounds_of(window: &WebviewWindow) -> Option<Rect> {
-    let position = window.outer_position().ok()?;
-    let size = window.outer_size().ok()?;
-    Some(Rect { left: position.x, top: position.y, right: position.x + size.width as i32, bottom: position.y + size.height as i32 })
-}
-
 const NO_ACTIVATE_SUBCLASS: usize = 0x4e494d;
 
 unsafe extern "system" fn no_activate(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM, _id: usize, _data: usize) -> LRESULT {
@@ -308,16 +321,14 @@ fn watch(app: AppHandle) {
     let mut last_cursor = (i32::MIN, i32::MIN);
     let mut last_check = Instant::now() - FULLSCREEN_CHECK;
     let mut previous_foreground: Option<isize> = None;
-    let mut cached_bounds: Option<Rect> = None;
     let mut last_emit = Instant::now() - CURSOR_EVERY;
     while RUNNING.load(Ordering::SeqCst) {
         let Some(window) = app.get_webview_window(BUDDY_LABEL) else { break };
         if !HITBOX.lock().map(|hitbox| hitbox.capture).unwrap_or(false) {
             give_focus_back(&window, &mut previous_foreground);
         }
-        if last_check.elapsed() >= FULLSCREEN_CHECK || cached_bounds.is_none() {
+        if last_check.elapsed() >= FULLSCREEN_CHECK {
             last_check = Instant::now();
-            cached_bounds = bounds_of(&window);
             let covered = crate::fullscreen::screen_is_covered(&window);
             if covered && !HIDDEN_FOR_FULLSCREEN.load(Ordering::SeqCst) {
                 if window.hide().is_ok() {
@@ -332,7 +343,7 @@ fn watch(app: AppHandle) {
         }
         let mut point = POINT::default();
         if unsafe { GetCursorPos(&mut point) }.is_ok() {
-            if let Some(bounds) = cached_bounds {
+            if let Some(bounds) = monitor_rect() {
                 let (x, y) = (point.x - bounds.left, point.y - bounds.top);
                 let hitbox = HITBOX.lock().map(|hitbox| *hitbox).unwrap_or_default();
                 let inside = hitbox.capture
@@ -372,8 +383,14 @@ pub(crate) async fn buddy_show(app: AppHandle) -> Result<(), String> {
                 .build()
                 .map_err(|error| error.to_string())?;
             if let Some(monitor) = window.primary_monitor().map_err(|error| error.to_string())? {
-                window.set_position(PhysicalPosition::new(monitor.position().x, monitor.position().y)).map_err(|error| error.to_string())?;
-                window.set_size(PhysicalSize::new(monitor.size().width, monitor.size().height)).map_err(|error| error.to_string())?;
+                let rect = Rect {
+                    left: monitor.position().x,
+                    top: monitor.position().y,
+                    right: monitor.position().x + monitor.size().width as i32,
+                    bottom: monitor.position().y + monitor.size().height as i32,
+                };
+                set_monitor(rect);
+                place(&window, rect)?;
             }
             make_passive(&window);
             window
@@ -403,6 +420,15 @@ pub(crate) fn buddy_follow_cursor(enabled: bool) {
 }
 
 #[tauri::command]
+pub(crate) fn buddy_place(app: AppHandle, x: i32, y: i32, width: i32, height: i32) -> Result<(), String> {
+    let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
+    let monitor = monitor_rect().ok_or("Sem tamanho de tela.")?;
+    let left = monitor.left + x.clamp(0, (monitor.right - monitor.left - 1).max(0));
+    let top = monitor.top + y.clamp(0, (monitor.bottom - monitor.top - 1).max(0));
+    place(&window, Rect { left, top, right: left + width.max(1), bottom: top + height.max(1) })
+}
+
+#[tauri::command]
 pub(crate) fn buddy_set_hitbox(x: f64, y: f64, width: f64, height: f64, capture: bool) {
     if let Ok(mut hitbox) = HITBOX.lock() {
         *hitbox = Hitbox { x, y, width, height, capture };
@@ -412,7 +438,7 @@ pub(crate) fn buddy_set_hitbox(x: f64, y: f64, width: f64, height: f64, capture:
 #[tauri::command]
 pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
     let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
-    let bounds = bounds_of(&window).ok_or("Sem tamanho de tela.")?;
+    let bounds = monitor_rect().ok_or("Sem tamanho de tela.")?;
     let (has_left, has_right) = neighbors(&window, bounds);
     let floor = work_area().map(|area| area.bottom.min(bounds.bottom) - bounds.top).unwrap_or(bounds.bottom - bounds.top);
     Ok(Scene {
@@ -429,7 +455,7 @@ pub(crate) fn buddy_scene(app: AppHandle) -> Result<Scene, String> {
 #[tauri::command]
 pub(crate) async fn buddy_move_monitor(app: AppHandle, direction: String) -> Result<bool, String> {
     let window = app.get_webview_window(BUDDY_LABEL).ok_or("O Nimbo livre está desligado.")?;
-    let bounds = bounds_of(&window).ok_or("Sem tamanho de tela.")?;
+    let bounds = monitor_rect().ok_or("Sem tamanho de tela.")?;
     let target = window.available_monitors().map_err(|error| error.to_string())?.into_iter().find(|monitor| {
         if direction == "left" {
             monitor.position().x + monitor.size().width as i32 == bounds.left
@@ -438,8 +464,14 @@ pub(crate) async fn buddy_move_monitor(app: AppHandle, direction: String) -> Res
         }
     });
     let Some(monitor) = target else { return Ok(false) };
-    window.set_position(PhysicalPosition::new(monitor.position().x, monitor.position().y)).map_err(|error| error.to_string())?;
-    window.set_size(PhysicalSize::new(monitor.size().width, monitor.size().height)).map_err(|error| error.to_string())?;
+    let rect = Rect {
+        left: monitor.position().x,
+        top: monitor.position().y,
+        right: monitor.position().x + monitor.size().width as i32,
+        bottom: monitor.position().y + monitor.size().height as i32,
+    };
+    set_monitor(rect);
+    place(&window, rect)?;
     Ok(true)
 }
 
