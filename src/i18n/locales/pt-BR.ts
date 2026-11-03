@@ -435,6 +435,8 @@ const ptBR: Translations = {
     unpin: "Tirar do Dock",
     close: "Fechar",
     closeAll: (count) => `Fechar ${count} janelas`,
+    bigIsland: "Ilha maior com o Dock",
+    bigIslandHint: "Com o Nimbo Dock ligado, a ilha lá em cima fica maior, como a barra de um Mac.",
   },
   alexa: {
     title: "Alexa",

@@ -438,6 +438,8 @@ const zhCN: Translations = {
     unpin: "从程序坞移除",
     close: "关闭",
     closeAll: (count) => `关闭 ${count} 个窗口`,
+    bigIsland: "开启程序坞时放大灵动岛",
+    bigIslandHint: "开启 Nimbo 程序坞时，顶部的灵动岛会变大，像 Mac 的菜单栏。",
   },
   alexa: {
     title: "Alexa",

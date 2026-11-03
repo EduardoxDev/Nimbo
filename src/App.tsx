@@ -304,6 +304,11 @@ export type IslandOpenMode = "hover" | "click";
 export type AnimationSpeed = "normal" | "fast";
 export type StatusRingSource = "auto" | "focus" | "water" | "none";
 
+export function islandWithDock(settings: IslandSettings): IslandSettings {
+  if (!settings.dockEnabled || !settings.dockBigIsland) return settings;
+  return { ...settings, collapsedScale: Math.min(1.4, settings.collapsedScale * 1.18), expandedScale: Math.min(1.4, settings.expandedScale * 1.12) };
+}
+
 export type IslandSettings = {
   topEdgeLayoutVersion: 1;
   appearanceMode: AppearanceMode;
@@ -364,6 +369,7 @@ export type IslandSettings = {
   dockPinned: string[];
   dockIconSize: number;
   dockMagnify: boolean;
+  dockBigIsland: boolean;
   focusGuard: boolean;
   habitTips: boolean;
   /** Offer an action for what was just copied (open link, map, track…). */
@@ -583,6 +589,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   dockPinned: [],
   dockIconSize: 48,
   dockMagnify: true,
+  dockBigIsland: true,
   focusGuard: true,
   habitTips: true,
   smartClipboard: true,
@@ -969,6 +976,7 @@ export function normalizeSettings(
     dockPinned: Array.isArray(settings?.dockPinned) ? settings.dockPinned.filter((item): item is string => typeof item === "string").slice(0, 30) : DEFAULT_SETTINGS.dockPinned,
     dockIconSize: stepped(settings?.dockIconSize, DEFAULT_SETTINGS.dockIconSize, 36, 72, 4),
     dockMagnify: typeof settings?.dockMagnify === "boolean" ? settings.dockMagnify : DEFAULT_SETTINGS.dockMagnify,
+    dockBigIsland: typeof settings?.dockBigIsland === "boolean" ? settings.dockBigIsland : DEFAULT_SETTINGS.dockBigIsland,
     focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
     habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
     smartClipboard: typeof settings?.smartClipboard === "boolean" ? settings.smartClipboard : DEFAULT_SETTINGS.smartClipboard,
@@ -5549,7 +5557,7 @@ function IslandApp({
       return ({
         "--island-opacity": settings.opacity / 100,
         "--glass-tint": settings.glassTint / 100,
-        "--island-scale": mode === "collapsed" ? settings.collapsedScale : settings.expandedScale,
+        "--island-scale": mode === "collapsed" ? islandWithDock(settings).collapsedScale : islandWithDock(settings).expandedScale,
         "--collapsed-island-width": `${collapsedIslandWidth}px`,
         "--expanded-island-height": `${expandedIslandHeight}px`,
         "--task-text-color": settings.taskTextColor,
@@ -5594,6 +5602,8 @@ function IslandApp({
       settings.pulseColor,
       settings.collapsedScale,
       settings.expandedScale,
+      settings.dockEnabled,
+      settings.dockBigIsland,
       settings.taskTextColor,
       settings.todoBackgroundColor,
     ],
@@ -6956,7 +6966,7 @@ function IslandApp({
   useEffect(() => {
     void syncNativeInteraction(
       mode,
-      settings,
+      islandWithDock(settings),
       expandedIslandHeight,
       collapsedIslandWidth,
       isTucked,
@@ -6974,6 +6984,8 @@ function IslandApp({
     settings.islandBackgroundColor,
     settings.collapsedScale,
     settings.expandedScale,
+    settings.dockEnabled,
+    settings.dockBigIsland,
     showReadyIsland,
     syncNativeInteraction,
   ]);

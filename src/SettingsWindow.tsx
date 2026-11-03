@@ -375,6 +375,30 @@ function AppearancePage({ settings, update }: PageProps) {
       </Section>
 
       <Section title={copy.notch}>
+        <Row title={t.settings.layout.collapsedScale}>
+          <Stepper
+            value={Math.round(settings.collapsedScale * 100)}
+            min={75}
+            max={140}
+            step={5}
+            format={(value) => `${value}%`}
+            decreaseLabel={`${copy.decrease} ${t.settings.layout.collapsedScale}`}
+            increaseLabel={`${copy.increase} ${t.settings.layout.collapsedScale}`}
+            onChange={(value) => update({ collapsedScale: value / 100 })}
+          />
+        </Row>
+        <Row title={t.settings.layout.expandedScale}>
+          <Stepper
+            value={Math.round(settings.expandedScale * 100)}
+            min={75}
+            max={140}
+            step={5}
+            format={(value) => `${value}%`}
+            decreaseLabel={`${copy.decrease} ${t.settings.layout.expandedScale}`}
+            increaseLabel={`${copy.increase} ${t.settings.layout.expandedScale}`}
+            onChange={(value) => update({ expandedScale: value / 100 })}
+          />
+        </Row>
         <Row title={copy.openNotch}>
           <Segmented
             label={copy.openNotch}
@@ -570,6 +594,9 @@ function GeneralPage({ settings, update }: PageProps) {
       </Row>
       <Row title={t.dock.magnify}>
         <Toggle label={t.dock.magnify} checked={settings.dockMagnify} onChange={(dockMagnify) => update({ dockMagnify })} />
+      </Row>
+      <Row title={t.dock.bigIsland} hint={t.dock.bigIslandHint}>
+        <Toggle label={t.dock.bigIsland} checked={settings.dockBigIsland} onChange={(dockBigIsland) => update({ dockBigIsland })} />
       </Row>
     </Section>
     <Section title={t.buddy.section}>

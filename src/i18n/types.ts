@@ -428,6 +428,8 @@ export type Translations = {
     unpin: string;
     close: string;
     closeAll: (count: number) => string;
+    bigIsland: string;
+    bigIslandHint: string;
   };
   alexa: {
     title: string;

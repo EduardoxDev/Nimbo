@@ -435,6 +435,8 @@ const en: Translations = {
     unpin: "Remove from Dock",
     close: "Close",
     closeAll: (count) => `Close ${count} windows`,
+    bigIsland: "Bigger island with the Dock",
+    bigIslandHint: "With the Nimbo Dock on, the island at the top gets bigger, like a Mac menu bar.",
   },
   alexa: {
     title: "Alexa",
