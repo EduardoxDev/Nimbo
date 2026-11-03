@@ -24,6 +24,7 @@ const BROWSER_SUFFIX = /\s[-–—]\s(Google Chrome|Microsoft​?\s?Edge|Mozilla
 const URL_PATTERN = /^https?:\/\/\S+$/i;
 const APP_SUFFIX = /\s[-–—|]\s(Visual Studio Code|Cursor|Notion|Microsoft Teams|Teams|Discord|Slack|Spotify Premium|Spotify|WhatsApp|Figma|Obsidian|Word|Excel|PowerPoint|Bloco de Notas|Notepad|Claude)$/i;
 
+const SECRET_FILE = /(\.(key|pem|pfx|p12|ppk|kdbx|keystore|jks|gpg|asc)$)|(^\.env(\..+)?$)|(^id_(rsa|ed25519|ecdsa|dsa)(\.pub)?$)|(^(credentials|secrets?)(\.[a-z]+)?$)/i;
 const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 const STOP = new Set(
@@ -73,6 +74,7 @@ export function buildItems(days: { segments: Segment[] }[], files: RecentFile[],
     items.push({ id: `w${segment.start}`, kind: "window", title, subtitle: labelOf(segment), at: segment.start, end: segment.end, app: segment.app });
   }
   for (const file of files) {
+    if (SECRET_FILE.test(file.name)) continue;
     const folder = file.path.slice(0, Math.max(0, file.path.length - file.name.length)).replace(/[\\/]+$/, "");
     items.push({ id: `f${file.path}`, kind: "file", title: file.name, subtitle: folder, at: file.at, end: file.at, path: file.path, folder: file.folder });
   }

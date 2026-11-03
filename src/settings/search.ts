@@ -48,9 +48,9 @@ function pageTexts(t: Translations, page: SettingsPageId): unknown[] {
     hud: [prefs.hudPrefs],
     agents: [prefs.agents, prefs.assistant, prefs.claudeTask],
     routines: [t.routines],
-    automation: [prefs.automations, t.automation],
+    automation: [prefs.automations, t.automation, t.automations.open, t.automations.openHint],
     phone: [t.phone],
-    tools: [t.tools, t.ambient],
+    tools: [t.tools, t.ambient, t.memory.openWindow, t.memory.openWindowHint],
     about: [prefs.about],
   };
   return [prefs.pages[page], (prefs.soon as Partial<Record<SettingsPageId, string>>)[page], ...own[page]];

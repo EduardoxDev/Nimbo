@@ -67,6 +67,12 @@ test("finds the right thing for natural questions", () => {
   assert.deepEqual(search(items, parseQuery("algo que nunca existiu", NOW)), []);
 });
 
+test("key and secret files never show up", () => {
+  const secretFiles = ["nimbo-updater.key", "server.pem", ".env", ".env.local", "id_ed25519", "cofre.kdbx", "credentials.json"].map((name, index) => ({ path: `C:/Users/voce/${name}`, name, folder: false, at: at(3, 8, index) }));
+  const kept = buildItems([], [...secretFiles, { path: "C:/Users/voce/notas.md", name: "notas.md", folder: false, at: at(3, 9) }], []);
+  assert.deepEqual(kept.map((item) => item.title), ["notas.md"]);
+});
+
 test("results group by day, newest first", () => {
   const groups = groupByDay(search(items, parseQuery("", NOW)));
   assert.deepEqual(groups.map((group) => new Date(group.day).getDate()), [3, 2, 1]);
