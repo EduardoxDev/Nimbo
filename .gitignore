@@ -39,3 +39,5 @@ relay/.dev.vars
 
 # QR de pareamento (contém o código da sala)
 nimbo-pareamento.png
+
+divulgacao/*.mp4
