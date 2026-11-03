@@ -111,7 +111,20 @@ fn skip(name: &str) -> bool {
     name.starts_with('.') || SKIP.contains(&name.to_lowercase().as_str())
 }
 
-fn find(home: &Path, query: &str) -> Vec<String> {
+const PROJECT_MARKERS: &[&str] = &["package.json", ".git", "cargo.toml", "pyproject.toml", "go.mod", "pom.xml", "composer.json", "requirements.txt", "tauri.conf.json"];
+
+fn is_project(dir: &Path) -> bool {
+    PROJECT_MARKERS.iter().any(|marker| dir.join(marker).exists())
+        || fs::read_dir(dir).map(|entries| entries.flatten().any(|entry| entry.file_name().to_string_lossy().to_lowercase().ends_with(".sln"))).unwrap_or(false)
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct FoundFolder {
+    path: String,
+    project: bool,
+}
+
+fn find(home: &Path, query: &str) -> Vec<FoundFolder> {
     let wanted = fold(query);
     if wanted.is_empty() {
         return Vec::new();
@@ -146,8 +159,9 @@ fn find(home: &Path, query: &str) -> Vec<String> {
             }
         }
     }
-    found.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
-    found.into_iter().take(MAX_FOUND).map(|(_, _, path)| path.display().to_string()).collect()
+    let mut ranked: Vec<(u8, bool, usize, PathBuf)> = found.into_iter().map(|(rank, depth, path)| (rank, !is_project(&path), depth, path)).collect();
+    ranked.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)).then(a.3.cmp(&b.3)));
+    ranked.into_iter().take(MAX_FOUND).map(|(_, plain, _, path)| FoundFolder { path: path.display().to_string(), project: !plain }).collect()
 }
 
 #[derive(Serialize)]
@@ -159,7 +173,7 @@ struct Entry {
 }
 
 #[tauri::command]
-pub(crate) async fn agent_find_folders(query: String) -> Result<Vec<String>, String> {
+pub(crate) async fn agent_find_folders(query: String) -> Result<Vec<FoundFolder>, String> {
     let home = home()?;
     tauri::async_runtime::spawn_blocking(move || find(&home, &query)).await.map_err(|error| error.to_string())
 }
@@ -309,6 +323,20 @@ mod tests {
         fs::create_dir_all(home.join("Downloads").join("otimiza").join("node_modules").join("kyvopay")).unwrap();
         let found = find(&home, "kyvoPay");
         assert_eq!(found.len(), 1);
-        assert!(found[0].ends_with("kyvopay"));
+        assert!(found[0].path.ends_with("kyvopay"));
+        assert!(!found[0].project);
+    }
+
+    #[test]
+    fn code_projects_come_before_plain_folders_with_the_same_name() {
+        let home = std::env::temp_dir().join("nimbo-agent-rank");
+        fs::create_dir_all(home.join("Documents").join("Nimbo")).unwrap();
+        let project = home.join("Downloads").join("otimiza").join("nimbo");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("package.json"), b"{}").unwrap();
+        let found = find(&home, "nimbo");
+        assert_eq!(found.len(), 2);
+        assert!(found[0].project && found[0].path.ends_with("nimbo"));
+        assert!(!found[1].project);
     }
 }

@@ -140,7 +140,7 @@ fn tools() -> Value {
         ),
         strict("open_app", "Open an installed program by the name shown in the Start menu (for example 'Visual Studio Code', 'Spotify', 'Discord').", json!({ "name": { "type": "string" } }), json!(["name"])),
         strict("open_url", "Open a web address (http or https) in the default browser, including local ones such as http://localhost:3000.", json!({ "url": { "type": "string" } }), json!(["url"])),
-        strict("find_folders", "Find folders inside the user's folder whose name matches, to locate projects or documents. Returns full paths, best match first.", json!({ "query": { "type": "string", "description": "Folder name or part of it." } }), json!(["query"])),
+        strict("find_folders", "Find folders inside the user's folder whose name matches, to locate projects or documents. Returns full paths, best match first; project is true for code projects (with package.json, .git, Cargo.toml and similar).", json!({ "query": { "type": "string", "description": "Folder name or part of it." } }), json!(["query"])),
         strict(
             "list_files",
             "List what is inside a folder of the user's (name, whether it is a folder, size in bytes, modified time in ms). Paths can be absolute or relative to the user's folder, like 'Downloads'.",

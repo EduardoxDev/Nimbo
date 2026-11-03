@@ -7198,7 +7198,7 @@ function IslandApp({
         return `Opened ${url}.`;
       }
       case "find_folders": {
-        const found = await invoke<string[]>("agent_find_folders", { query: String(input.query ?? "") });
+        const found = await invoke<{ path: string; project: boolean }[]>("agent_find_folders", { query: String(input.query ?? "") });
         return found.length > 0 ? JSON.stringify(found) : `No folder in the user's folder matches "${input.query}".`;
       }
       case "list_files":
