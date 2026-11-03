@@ -34,7 +34,7 @@ export const SETTINGS_GROUPS: { id: SettingsGroupId; pages: SettingsPageId[] }[]
 function pageTexts(t: Translations, page: SettingsPageId): unknown[] {
   const prefs = t.prefs;
   const own: Record<SettingsPageId, unknown[]> = {
-    general: [prefs.general],
+    general: [prefs.general, t.life.focusGuardTitle, t.life.focusGuardHint, t.life.deepFocusTitle, t.life.deepFocusHint, t.life.blocklistTitle, t.life.habitsTitle, t.life.habitsHint, t.life.dndTitle, t.life.dndHint, t.mic.settingTitle, t.mic.settingHint, t.live.settingTitle, t.live.settingHint, t.dock, t.buddy.section],
     statusRing: [prefs.statusRing],
     display: [prefs.display],
     appearance: [prefs.appearance, t.themes],

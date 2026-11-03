@@ -148,6 +148,7 @@ import { useRules } from "./rules/useRules";
 import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
 import { sendBuddy } from "./buddy/channel";
 import { safeUrl } from "./assistant/agent";
+import { cleanBlocklist, DEFAULT_BLOCKLIST, FOCUS_LOG_KEY, lastWeek, parseFocusLog, weekKey, weekReport } from "./focus/deepFocus";
 import { parseQuery, search } from "./memory/memory";
 import { loadMemory } from "./memory/memoryClient";
 import { LEARN_NOTIFIED_KEY, nextToAnnounce, titleOf } from "./automations/learn";
@@ -376,6 +377,8 @@ export type IslandSettings = {
   dockMagnify: boolean;
   dockBigIsland: boolean;
   focusGuard: boolean;
+  deepFocus: boolean;
+  focusBlocklist: string[];
   habitTips: boolean;
   /** Offer an action for what was just copied (open link, map, track…). */
   smartClipboard: boolean;
@@ -596,6 +599,8 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   dockMagnify: true,
   dockBigIsland: true,
   focusGuard: true,
+  deepFocus: false,
+  focusBlocklist: DEFAULT_BLOCKLIST,
   habitTips: true,
   smartClipboard: true,
   routines: DEFAULT_ROUTINES,
@@ -983,6 +988,8 @@ export function normalizeSettings(
     dockMagnify: typeof settings?.dockMagnify === "boolean" ? settings.dockMagnify : DEFAULT_SETTINGS.dockMagnify,
     dockBigIsland: typeof settings?.dockBigIsland === "boolean" ? settings.dockBigIsland : DEFAULT_SETTINGS.dockBigIsland,
     focusGuard: typeof settings?.focusGuard === "boolean" ? settings.focusGuard : DEFAULT_SETTINGS.focusGuard,
+    deepFocus: typeof settings?.deepFocus === "boolean" ? settings.deepFocus : DEFAULT_SETTINGS.deepFocus,
+    focusBlocklist: settings?.focusBlocklist === undefined ? DEFAULT_SETTINGS.focusBlocklist : cleanBlocklist(settings.focusBlocklist),
     habitTips: typeof settings?.habitTips === "boolean" ? settings.habitTips : DEFAULT_SETTINGS.habitTips,
     smartClipboard: typeof settings?.smartClipboard === "boolean" ? settings.smartClipboard : DEFAULT_SETTINGS.smartClipboard,
     routines: normalizeRoutines(settings?.routines),
@@ -4834,6 +4841,8 @@ function IslandApp({
   const life = useLifeHelpers({
     focusRunning: focusTimer.state.status === "running" && focusTimer.state.phase === "focus",
     focusGuard: settings.focusGuard,
+    deepFocus: settings.deepFocus,
+    blocklist: settings.focusBlocklist,
     habitTips: settings.habitTips,
     dailySummary: settings.dailySummary,
     buddyMode: settings.buddyMode,
@@ -7393,6 +7402,35 @@ function IslandApp({
   const rulesFireRef = useRef(rules.fire);
   rulesFireRef.current = rules.fire;
   const rulesTestRef = useRef(rules.test);
+  const statsHistoryRef = useRef(statsHistory);
+  statsHistoryRef.current = statsHistory;
+  useEffect(() => {
+    if (!settings.dailySummary) return;
+    const check = () => {
+      const now = new Date();
+      const key = `nimbo-focus-week-${weekKey(now)}`;
+      try {
+        if (window.localStorage.getItem(key)) return;
+        const report = weekReport(statsHistoryRef.current, parseFocusLog(window.localStorage.getItem(FOCUS_LOG_KEY)), lastWeek(now), settings.focusMinutes);
+        window.localStorage.setItem(key, "1");
+        if (report.sessions === 0) return;
+        const hours = report.minutes >= 60 ? `${Math.floor(report.minutes / 60)}h${String(report.minutes % 60).padStart(2, "0")}` : `${report.minutes} min`;
+        const best = report.bestDay ? new Date(`${report.bestDay}T12:00:00`).toLocaleDateString(t.localeTag, { weekday: "long" }) : "";
+        lifePushRef.current({
+          text: t.life.weekly(report.sessions, hours, best, report.top?.name ?? null, report.top?.count ?? 0),
+          actions: [{ label: t.life.ok, primary: true }],
+        });
+      } catch {
+        return;
+      }
+    };
+    const first = window.setTimeout(check, 90_000);
+    const every = window.setInterval(check, 60 * 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, [settings.dailySummary, settings.focusMinutes, t]);
   const learnCopyRef = useRef(t.learn);
   learnCopyRef.current = t.learn;
   useEffect(() => {

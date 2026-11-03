@@ -371,6 +371,17 @@ export type Translations = {
   };
   life: {
     focusGuard: (name: string) => string;
+    blocked: (name: string) => string;
+    allow5: string;
+    weekly: (sessions: number, hours: string, bestDay: string, top: string | null, topCount: number) => string;
+    deepFocusTitle: string;
+    deepFocusHint: string;
+    blocklistTitle: string;
+    blocklistHint: string;
+    blocklistPlaceholder: string;
+    blocklistAdd: string;
+    blocklistRemove: (name: string) => string;
+    blocklistReset: string;
     habit: (app: string, weekday: string, hour: number) => string;
     open: string;
     notNow: string;

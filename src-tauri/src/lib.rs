@@ -8,6 +8,7 @@ mod dock;
 mod automations;
 mod agent_tools;
 mod memory;
+mod focus_block;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -2012,6 +2013,7 @@ pub fn run() {
             memory::memory_recent_files,
             memory::memory_open_file,
             memory::memory_open,
+            focus_block::focus_minimize_foreground,
             dock::dock_icon,
             dock::dock_focus,
             dock::dock_close,

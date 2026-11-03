@@ -50,6 +50,7 @@ import { ShortcutsSettings } from "./settings/ShortcutsSettings";
 import { ThemesSettings } from "./settings/ThemesSettings";
 import { welcomePending } from "./welcome/welcome";
 import { Row, Section, Segmented, Stepper, Toggle } from "./settings/controls";
+import { cleanBlocklist, DEFAULT_BLOCKLIST } from "./focus/deepFocus";
 import { SETTINGS_GROUPS, searchSettings, type SettingsPageId } from "./settings/search";
 import { SquadSettings } from "./squad/SquadSettings";
 import { ToolsSettings } from "./tools/ToolsSettings";
@@ -544,6 +545,10 @@ function GeneralPage({ settings, update }: PageProps) {
       <Row title={t.life.focusGuardTitle} hint={t.life.focusGuardHint}>
         <Toggle label={t.life.focusGuardTitle} checked={settings.focusGuard} onChange={(focusGuard) => update({ focusGuard })} />
       </Row>
+      <Row title={t.life.deepFocusTitle} hint={t.life.deepFocusHint}>
+        <Toggle label={t.life.deepFocusTitle} checked={settings.deepFocus} onChange={(deepFocus) => update({ deepFocus })} />
+      </Row>
+      {settings.deepFocus && <BlocklistEditor list={settings.focusBlocklist} onChange={(focusBlocklist) => update({ focusBlocklist })} />}
       <Row title={t.life.habitsTitle} hint={t.life.habitsHint}>
         <Toggle label={t.life.habitsTitle} checked={settings.habitTips} onChange={(habitTips) => update({ habitTips })} />
       </Row>
@@ -986,6 +991,48 @@ function AboutPage() {
           {copy.diagnosticsCopied}
         </span>
       )}
+    </div>
+  );
+}
+
+function BlocklistEditor({ list, onChange }: { list: string[]; onChange: (list: string[]) => void }) {
+  const t = useTranslation();
+  const copy = t.life;
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const next = cleanBlocklist([...list, draft]);
+    onChange(next);
+    setDraft("");
+  };
+  return (
+    <div className="prefs-blocklist">
+      <div className="prefs-blocklist__head">
+        <strong>{copy.blocklistTitle}</strong>
+        <span>{copy.blocklistHint}</span>
+      </div>
+      <div className="prefs-blocklist__chips">
+        {list.map((item) => (
+          <button key={item} type="button" className="prefs-blocklist__chip" aria-label={copy.blocklistRemove(item)} title={copy.blocklistRemove(item)} onClick={() => onChange(list.filter((other) => other !== item))}>
+            {item}
+            <span aria-hidden="true">×</span>
+          </button>
+        ))}
+      </div>
+      <form
+        className="prefs-blocklist__add"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (draft.trim()) add();
+        }}
+      >
+        <input value={draft} maxLength={40} placeholder={copy.blocklistPlaceholder} aria-label={copy.blocklistPlaceholder} onChange={(event) => setDraft(event.currentTarget.value)} />
+        <button type="submit" className="prefs-button" disabled={!draft.trim()}>
+          {copy.blocklistAdd}
+        </button>
+        <button type="button" className="prefs-button prefs-button--quiet" onClick={() => onChange(DEFAULT_BLOCKLIST)}>
+          {copy.blocklistReset}
+        </button>
+      </form>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { sendBuddy } from "../buddy/channel";
 import type { BuddyMode } from "../buddy/mode";
 import { speak } from "../voice/voice";
 import { distractionOf } from "./distraction";
+import { allowed, ALLOW_MS, blockedName, FOCUS_LOG_KEY, parseFocusLog, recordAttempt } from "../focus/deepFocus";
 import { bucketOf, parseHabits, prettyApp, recordHabit, suggestHabit } from "./habits";
 import { summaryParts, type DaySummary } from "./summary";
 
@@ -13,6 +14,8 @@ type Foreground = { app: string; path: string; title: string };
 
 type Copy = {
   focusGuard: (name: string) => string;
+  blocked: (name: string) => string;
+  allow5: string;
   habit: (app: string, weekday: string, hour: number) => string;
   open: string;
   notNow: string;
@@ -25,6 +28,8 @@ const HABITS_KEY = "nimbo-habits";
 const FOCUS_POLL_MS = 5_000;
 const IDLE_POLL_MS = 60_000;
 const WARN_EVERY_MS = 120_000;
+const BLOCK_POLL_MS = 2_000;
+const BLOCK_NOTICE_MS = 20_000;
 const SUMMARY_HOUR = 18;
 
 function once(key: string) {
@@ -40,6 +45,8 @@ function once(key: string) {
 export function useLifeHelpers({
   focusRunning,
   focusGuard,
+  deepFocus,
+  blocklist,
   habitTips,
   dailySummary,
   buddyMode,
@@ -50,6 +57,8 @@ export function useLifeHelpers({
 }: {
   focusRunning: boolean;
   focusGuard: boolean;
+  deepFocus: boolean;
+  blocklist: string[];
   habitTips: boolean;
   dailySummary: boolean;
   buddyMode: BuddyMode;
@@ -62,6 +71,10 @@ export function useLifeHelpers({
   const [queue, setQueue] = useState<LifeNotice[]>([]);
   const notice = queue[0] ?? null;
   const lastWarnRef = useRef(0);
+  const blocklistRef = useRef(blocklist);
+  blocklistRef.current = blocklist;
+  const allowancesRef = useRef<Record<string, number>>({});
+  const lastBlockRef = useRef<Record<string, number>>({});
   const copyRef = useRef(copy);
   copyRef.current = copy;
   const todayRef = useRef(today);
@@ -79,13 +92,36 @@ export function useLifeHelpers({
   const dismiss = useCallback(() => setQueue((current) => current.slice(1)), []);
 
   useEffect(() => {
-    if (!isTauri() || (!habitTips && !(focusRunning && focusGuard))) return;
+    const guarding = focusRunning && (focusGuard || deepFocus);
+    if (!isTauri() || (!habitTips && !guarding)) return;
     const sample = () =>
       void invoke<Foreground | null>("foreground_window")
         .then((window_) => {
           if (!window_) return;
           const now = new Date();
-          if (focusRunning && focusGuard) {
+          if (guarding && deepFocus) {
+            const name = blockedName(window_.title, window_.app, blocklistRef.current);
+            if (name && !allowed(allowancesRef.current, name, Date.now())) {
+              void invoke<boolean>("focus_minimize_foreground", { app: window_.app }).catch(() => false);
+              if (Date.now() - (lastBlockRef.current[name] ?? 0) > BLOCK_NOTICE_MS) {
+                lastBlockRef.current[name] = Date.now();
+                try {
+                  window.localStorage.setItem(FOCUS_LOG_KEY, JSON.stringify(recordAttempt(parseFocusLog(window.localStorage.getItem(FOCUS_LOG_KEY)), name, Date.now())));
+                } catch {
+                  return;
+                }
+                const text = copyRef.current.blocked(name);
+                if (buddyMode !== "off") sendBuddy({ kind: "say", text, page: "focus" });
+                push({
+                  text,
+                  actions: [
+                    { label: copyRef.current.ok, primary: true },
+                    { label: copyRef.current.allow5, run: () => void (allowancesRef.current = { ...allowancesRef.current, [name]: Date.now() + ALLOW_MS }) },
+                  ],
+                });
+              }
+            }
+          } else if (guarding && focusGuard) {
             const name = distractionOf(window_.title, window_.app);
             if (name && Date.now() - lastWarnRef.current > WARN_EVERY_MS) {
               lastWarnRef.current = Date.now();
@@ -116,9 +152,9 @@ export function useLifeHelpers({
         })
         .catch(() => {});
     sample();
-    const interval = window.setInterval(sample, focusRunning && focusGuard ? FOCUS_POLL_MS : IDLE_POLL_MS);
+    const interval = window.setInterval(sample, guarding ? (deepFocus ? BLOCK_POLL_MS : FOCUS_POLL_MS) : IDLE_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [focusRunning, focusGuard, habitTips, buddyMode, localeTag, push]);
+  }, [focusRunning, focusGuard, deepFocus, habitTips, buddyMode, localeTag, push]);
 
   useEffect(() => {
     if (!dailySummary) return;
