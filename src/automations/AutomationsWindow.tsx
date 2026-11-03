@@ -316,9 +316,9 @@ export default function AutomationsWindow() {
 
             {rules.length > 0 && (
               <div className="na-toolbar">
-                <div className="na-seg" role="tablist">
+                <div className="na-seg">
                   {(["all", "on", "off"] as Filter[]).map((item) => (
-                    <button key={item} type="button" role="tab" aria-selected={filter === item} className={filter === item ? "is-on" : ""} onClick={() => setFilter(item)}>
+                    <button key={item} type="button" aria-pressed={filter === item} className={filter === item ? "is-on" : ""} onClick={() => setFilter(item)}>
                       {item === "all" ? copy.filterAll : item === "on" ? copy.filterOn : copy.filterOff}
                     </button>
                   ))}
