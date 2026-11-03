@@ -28,35 +28,50 @@ import {
 } from "lucide-react";
 import type { ActionKind, TriggerKind } from "./catalog";
 
-export const TRIGGER_ICONS: Record<TriggerKind, LucideIcon> = {
-  time: Clock,
-  focusStart: Target,
-  focusEnd: CircleCheckBig,
-  meetingStart: Video,
-  claudeDone: Bot,
-  headphones: Headphones,
-  battery: BatteryLow,
-  charging: PlugZap,
-  wifi: Wifi,
-  app: AppWindow,
-  idle: Coffee,
-  startup: Rocket,
+export type Glyph = { icon: LucideIcon; tone: readonly [string, string] };
+
+const TONES = {
+  orange: ["#ffb03a", "#f58a07"],
+  red: ["#ff6b5f", "#e5443a"],
+  green: ["#4fd67b", "#28b052"],
+  pink: ["#ff6f8e", "#e3446c"],
+  purple: ["#b28dff", "#8a5cf0"],
+  teal: ["#5cc9f5", "#2a9ed8"],
+  yellow: ["#ffd23f", "#f2ae00"],
+  blue: ["#5b9dff", "#3570ec"],
+  indigo: ["#7f7cff", "#5653d8"],
+  gray: ["#a3a3ab", "#77777f"],
+  graphite: ["#55565d", "#3a3b40"],
+} as const;
+
+export const TRIGGER_GLYPHS: Record<TriggerKind, Glyph> = {
+  time: { icon: Clock, tone: TONES.orange },
+  focusStart: { icon: Target, tone: TONES.red },
+  focusEnd: { icon: CircleCheckBig, tone: TONES.green },
+  meetingStart: { icon: Video, tone: TONES.pink },
+  claudeDone: { icon: Bot, tone: TONES.purple },
+  headphones: { icon: Headphones, tone: TONES.teal },
+  battery: { icon: BatteryLow, tone: TONES.yellow },
+  charging: { icon: PlugZap, tone: TONES.green },
+  wifi: { icon: Wifi, tone: TONES.blue },
+  app: { icon: AppWindow, tone: TONES.blue },
+  idle: { icon: Coffee, tone: TONES.gray },
+  startup: { icon: Rocket, tone: TONES.indigo },
 };
 
-export const ACTION_ICONS: Record<ActionKind, LucideIcon> = {
-  notify: Bell,
-  say: MessageCircle,
-  music: Music,
-  pause: Pause,
-  volume: Volume2,
-  focus: Timer,
-  open: AppWindow,
-  url: Globe,
-  claude: Sparkles,
-  lock: Lock,
-  dark: Moon,
-  ac: AirVent,
-  macro: Keyboard,
-  routine: Sunrise,
+export const ACTION_GLYPHS: Record<ActionKind, Glyph> = {
+  notify: { icon: Bell, tone: TONES.yellow },
+  say: { icon: MessageCircle, tone: TONES.graphite },
+  music: { icon: Music, tone: TONES.pink },
+  pause: { icon: Pause, tone: TONES.orange },
+  volume: { icon: Volume2, tone: TONES.teal },
+  focus: { icon: Timer, tone: TONES.red },
+  open: { icon: AppWindow, tone: TONES.blue },
+  url: { icon: Globe, tone: TONES.blue },
+  claude: { icon: Sparkles, tone: TONES.purple },
+  lock: { icon: Lock, tone: TONES.gray },
+  dark: { icon: Moon, tone: TONES.indigo },
+  ac: { icon: AirVent, tone: TONES.teal },
+  macro: { icon: Keyboard, tone: TONES.green },
+  routine: { icon: Sunrise, tone: TONES.orange },
 };
-

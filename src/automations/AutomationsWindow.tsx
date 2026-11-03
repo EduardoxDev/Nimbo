@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowRight, Check, Copy, History, Pencil, Play, Plus, Search, Sparkles, Trash2, Wand2, X, Zap } from "lucide-react";
+import { ArrowUp, Check, Copy, History, Pencil, Play, Plus, Search, Sparkles, Trash2, Wand2, X, Zap } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { actionsOf, parseRule, parseRules, parseRunLog, RULES_KEY, RULES_LOG_KEY, type Action, type Rule, type RuleRun, type Trigger } from "../rules/rules";
 import { ACTION_KINDS, actionReady, defaultAction, defaultTrigger, RECIPES, ruleFromParts, TRIGGER_KINDS, triggerReady, type Recipe } from "./catalog";
 import { Mascot } from "../mascot/Mascot";
-import { ACTION_ICONS, TRIGGER_ICONS } from "./kindIcons";
+import { ACTION_GLYPHS, TRIGGER_GLYPHS, type Glyph } from "./kindIcons";
 import "./Automations.css";
 
 type Section = "mine" | "recipes" | "history";
@@ -205,7 +205,6 @@ export default function AutomationsWindow() {
   const today = startOfDay(Date.now());
   const ranToday = log.filter((run) => run.at >= today).length;
   const activeCount = rules.filter((rule) => rule.enabled).length;
-  const failedToday = log.filter((run) => run.at >= today && !run.ok).length;
 
   const visible = rules.filter((rule) => {
     if (filter === "on" && !rule.enabled) return false;
@@ -276,7 +275,7 @@ export default function AutomationsWindow() {
         </nav>
         <button type="button" className="na-side__new" onClick={() => openNew()}>
           <Plus size={15} strokeWidth={2} />
-          {copy.newOne}
+          <span>{copy.newOne}</span>
         </button>
         <div className="na-pulse">
           <span className={`na-pulse__dot${activeCount > 0 ? " is-live" : ""}`} />
@@ -295,24 +294,10 @@ export default function AutomationsWindow() {
                 <h1>{copy.mine}</h1>
                 <p>{copy.mineHint}</p>
               </div>
-            </div>
-
-            <div className="na-stats">
-              <div className="na-stat">
-                <span>{copy.statActive}</span>
-                <strong>{activeCount}</strong>
-                <small>{copy.ofTotal(rules.length)}</small>
-              </div>
-              <div className="na-stat">
-                <span>{copy.statToday}</span>
-                <strong>{ranToday}</strong>
-                <small>{failedToday > 0 ? copy.failedCount(failedToday) : copy.allGood}</small>
-              </div>
-              <div className="na-stat">
-                <span>{copy.statLast}</span>
-                <strong>{log[0] ? clock(log[0].at) : "—"}</strong>
-                <small>{log[0] ? log[0].name : copy.noneYet}</small>
-              </div>
+              <button type="button" className="na-btn na-btn--primary" onClick={() => openNew()}>
+                <Plus size={15} strokeWidth={2.4} />
+                {copy.newOne}
+              </button>
             </div>
 
             <form
@@ -322,13 +307,10 @@ export default function AutomationsWindow() {
                 addSentence();
               }}
             >
-              <span className="na-magic__icon">
-                <Wand2 size={15} strokeWidth={2} />
-              </span>
+              <Wand2 size={16} strokeWidth={2} className="na-magic__icon" />
               <input value={sentence} placeholder={copy.sentencePlaceholder} aria-label={copy.sentencePlaceholder} onChange={(event) => setSentence(event.currentTarget.value)} />
-              <button type="submit" className="na-btn na-btn--soft" disabled={!sentence.trim()}>
-                {copy.sentenceAdd}
-                <ArrowRight size={14} strokeWidth={2} />
+              <button type="submit" className="na-magic__go" disabled={!sentence.trim()} aria-label={copy.sentenceAdd} title={copy.sentenceAdd}>
+                <ArrowUp size={15} strokeWidth={2.4} />
               </button>
             </form>
 
@@ -350,119 +332,90 @@ export default function AutomationsWindow() {
 
             {rules.length === 0 ? (
               <div className="na-empty">
-                <Logo size={84} mood="sleeping" />
+                <Logo size={80} mood="sleeping" />
                 <strong>{copy.empty}</strong>
                 <span>{copy.emptyHint}</span>
                 <div className="na-empty__actions">
                   <button type="button" className="na-btn na-btn--primary" onClick={() => openNew()}>
-                    <Plus size={15} strokeWidth={2} />
+                    <Plus size={15} strokeWidth={2.4} />
                     {copy.newOne}
                   </button>
                   <button type="button" className="na-btn" onClick={() => setSection("recipes")}>
-                    <Sparkles size={14} strokeWidth={2} />
                     {copy.seeRecipes}
                   </button>
                 </div>
               </div>
             ) : visible.length === 0 ? (
               <div className="na-empty na-empty--small">
-                <Search size={22} strokeWidth={2} />
                 <span>{copy.noMatch}</span>
               </div>
             ) : (
-              <ul className="na-rules">
+              <ul className="na-list">
                 {visible.map((rule) => {
                   const run = lastRun.get(rule.id);
-                  const TriggerIcon = TRIGGER_ICONS[rule.trigger.kind];
-                  const detail = triggerDetail(rule.trigger);
+                  const actions = actionsOf(rule);
+                  const title = rule.name || describeTrigger(rule.trigger);
+                  const then = actions.map(describeAction).join(", ");
                   return (
-                    <li key={rule.id} className={`na-rule${rule.enabled ? "" : " is-off"}`}>
-                      <div className="na-rule__flow">
-                        <div className="na-when">
-                          <span className="na-when__icon">
-                            <TriggerIcon size={17} strokeWidth={2} />
+                    <li key={rule.id} className={`na-row${rule.enabled ? "" : " is-off"}`}>
+                      <GlyphTile glyph={TRIGGER_GLYPHS[rule.trigger.kind]} size={38} />
+                      <div className="na-row__text">
+                        <strong>{title}</strong>
+                        <span className="na-row__then">
+                          <span className="na-row__minis" aria-hidden="true">
+                            {actions.map((action, index) => (
+                              <GlyphTile key={index} glyph={ACTION_GLYPHS[action.kind]} size={18} />
+                            ))}
                           </span>
-                          <span className="na-when__text">
-                            <small>{copy.when}</small>
-                            <strong>{copy.triggers[rule.trigger.kind]}</strong>
-                            {detail && <em>{detail}</em>}
-                          </span>
-                        </div>
-                        <span className="na-rule__link" aria-hidden="true">
-                          <ArrowRight size={14} strokeWidth={2} />
+                          <span className="na-row__sentence">{rule.name ? `${describeTrigger(rule.trigger)} → ${then}` : then}</span>
                         </span>
-                        <div className="na-then">
-                          {actionsOf(rule).map((action, index) => {
-                            const Icon = ACTION_ICONS[action.kind];
-                            const extra = actionDetail(action);
-                            return (
-                              <span key={index} className="na-pill" title={describeAction(action)}>
-                                <Icon size={13} strokeWidth={2} />
-                                <b>{copy.actions[action.kind]}</b>
-                                {extra && <i>{extra}</i>}
-                              </span>
-                            );
-                          })}
-                        </div>
                       </div>
-                      <div className="na-rule__foot">
-                        <span className="na-rule__meta">
-                          {rule.name && <b>{rule.name}</b>}
-                          {run ? (
-                            <span className={run.ok ? "is-ok" : "is-bad"}>
-                              {run.ok ? <Check size={12} strokeWidth={2.4} /> : <X size={12} strokeWidth={2.4} />}
-                              {run.ok ? copy.ran : copy.failed} {relative(run.at)}
-                            </span>
-                          ) : (
-                            <span>{copy.never}</span>
-                          )}
-                        </span>
-                        <div className="na-rule__tools">
-                          <button type="button" className="na-tool" title={copy.test} aria-label={copy.test} onClick={() => test(rule)}>
-                            <Play size={13} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            className="na-tool"
-                            title={copy.edit}
-                            aria-label={copy.edit}
-                            onClick={() => {
-                              setPicking(false);
-                              setDraft({ id: rule.id, name: rule.name ?? "", trigger: rule.trigger, actions: actionsOf(rule) });
-                            }}
-                          >
-                            <Pencil size={13} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            className="na-tool"
-                            title={copy.duplicate}
-                            aria-label={copy.duplicate}
-                            onClick={() => {
-                              save([{ ...rule, id: newId(), enabled: false }, ...rules]);
-                              notify(copy.duplicated);
-                            }}
-                          >
-                            <Copy size={13} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            className="na-tool na-tool--danger"
-                            title={copy.remove}
-                            aria-label={copy.remove}
-                            onClick={() => {
-                              save(rules.filter((item) => item.id !== rule.id));
-                              notify(copy.removed);
-                            }}
-                          >
-                            <Trash2 size={13} strokeWidth={2} />
-                          </button>
-                        </div>
-                        <label className="na-switch" title={copy.enabled}>
-                          <input type="checkbox" checked={rule.enabled} aria-label={copy.enabled} onChange={() => save(rules.map((item) => (item.id === rule.id ? { ...item, enabled: !item.enabled } : item)))} />
-                          <span />
-                        </label>
+                      <span className={`na-row__last${run && !run.ok ? " is-bad" : ""}`}>{run ? `${run.ok ? copy.ran : copy.failed} ${relative(run.at)}` : copy.never}</span>
+                      <div className="na-row__tools">
+                        <button type="button" className="na-tool" title={copy.test} aria-label={copy.test} onClick={() => test(rule)}>
+                          <Play size={14} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="na-tool"
+                          title={copy.edit}
+                          aria-label={copy.edit}
+                          onClick={() => {
+                            setPicking(false);
+                            setDraft({ id: rule.id, name: rule.name ?? "", trigger: rule.trigger, actions });
+                          }}
+                        >
+                          <Pencil size={14} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="na-tool"
+                          title={copy.duplicate}
+                          aria-label={copy.duplicate}
+                          onClick={() => {
+                            save([{ ...rule, id: newId(), enabled: false }, ...rules]);
+                            notify(copy.duplicated);
+                          }}
+                        >
+                          <Copy size={14} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="na-tool na-tool--danger"
+                          title={copy.remove}
+                          aria-label={copy.remove}
+                          onClick={() => {
+                            save(rules.filter((item) => item.id !== rule.id));
+                            notify(copy.removed);
+                          }}
+                        >
+                          <Trash2 size={14} strokeWidth={2} />
+                        </button>
                       </div>
+                      <label className="na-switch" title={copy.enabled}>
+                        <input type="checkbox" checked={rule.enabled} aria-label={copy.enabled} onChange={() => save(rules.map((item) => (item.id === rule.id ? { ...item, enabled: !item.enabled } : item)))} />
+                        <span />
+                      </label>
                     </li>
                   );
                 })}
@@ -479,46 +432,37 @@ export default function AutomationsWindow() {
                 <p>{copy.recipesHint}</p>
               </div>
             </div>
-            <ul className="na-recipes">
+            <ul className="na-gallery">
               {RECIPES.map((recipe) => {
                 const local = localRecipe(recipe);
-                const TriggerIcon = TRIGGER_ICONS[recipe.trigger.kind];
+                const glyph = TRIGGER_GLYPHS[recipe.trigger.kind];
                 const added = rules.some((rule) => sameFlow(rule, recipe.trigger, recipe.actions));
                 return (
-                  <li key={recipe.id} className="na-recipe">
-                    <div className="na-recipe__icons">
-                      <span className="na-recipe__trigger">
-                        <TriggerIcon size={18} strokeWidth={2} />
+                  <li key={recipe.id} className="na-shortcut" style={{ background: `linear-gradient(160deg, ${glyph.tone[0]}, ${glyph.tone[1]})` }}>
+                    <button type="button" className="na-shortcut__open" aria-label={`${copy.customize}: ${copy.recipeTitles[recipe.id]}`} onClick={() => openNew(local.trigger, local.actions)} />
+                    <div className="na-shortcut__top">
+                      <glyph.icon size={22} strokeWidth={2.2} />
+                      <span className="na-shortcut__minis">
+                        {local.actions.map((action, index) => {
+                          const Icon = ACTION_GLYPHS[action.kind].icon;
+                          return <Icon key={index} size={14} strokeWidth={2.2} />;
+                        })}
                       </span>
-                      <ArrowRight size={13} strokeWidth={2} className="na-recipe__arrow" />
-                      {local.actions.map((action, index) => {
-                        const Icon = ACTION_ICONS[action.kind];
-                        return (
-                          <span key={index} className="na-recipe__action">
-                            <Icon size={14} strokeWidth={2} />
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <strong>{copy.recipeTitles[recipe.id]}</strong>
-                    <p>
-                      <span>{describeTrigger(local.trigger)}</span> → {local.actions.map(describeAction).join(" + ")}
-                    </p>
-                    <div className="na-recipe__foot">
                       {added ? (
-                        <span className="na-recipe__added">
-                          <Check size={13} strokeWidth={2.4} />
-                          {copy.alreadyAdded}
+                        <span className="na-shortcut__add is-added" title={copy.alreadyAdded} aria-label={copy.alreadyAdded}>
+                          <Check size={15} strokeWidth={2.6} />
                         </span>
                       ) : (
-                        <button type="button" className="na-btn na-btn--soft" onClick={() => addRecipe(recipe)}>
-                          <Plus size={14} strokeWidth={2} />
-                          {copy.use}
+                        <button type="button" className="na-shortcut__add" title={copy.use} aria-label={`${copy.use}: ${copy.recipeTitles[recipe.id]}`} onClick={() => addRecipe(recipe)}>
+                          <Plus size={16} strokeWidth={2.6} />
                         </button>
                       )}
-                      <button type="button" className="na-link" onClick={() => openNew(local.trigger, local.actions)}>
-                        {copy.customize}
-                      </button>
+                    </div>
+                    <div className="na-shortcut__text">
+                      <strong>{copy.recipeTitles[recipe.id]}</strong>
+                      <span>
+                        {describeTrigger(local.trigger)} → {local.actions.map(describeAction).join(", ")}
+                      </span>
                     </div>
                   </li>
                 );
@@ -537,7 +481,7 @@ export default function AutomationsWindow() {
             </div>
             {log.length === 0 ? (
               <div className="na-empty">
-                <Logo size={80} mood="sleeping" />
+                <Logo size={76} mood="sleeping" />
                 <strong>{copy.historyEmpty}</strong>
                 <span>{copy.historyEmptyHint}</span>
               </div>
@@ -545,19 +489,18 @@ export default function AutomationsWindow() {
               groups.map((group) => (
                 <section key={group.label} className="na-day-group">
                   <h2>{group.label}</h2>
-                  <ul className="na-runs">
+                  <ul className="na-list">
                     {group.runs.map((run) => {
                       const rule = ruleOf(run.ruleId);
-                      const Icon = rule ? TRIGGER_ICONS[rule.trigger.kind] : Zap;
                       return (
-                        <li key={run.id} className="na-run">
-                          <span className="na-run__icon">
-                            <Icon size={14} strokeWidth={2} />
-                          </span>
-                          <span className="na-run__name">{run.name}</span>
-                          <span className={`na-badge ${run.ok ? "is-ok" : "is-bad"}`}>{run.ok ? copy.ran : copy.failed}</span>
-                          <span className="na-run__time">{clock(run.at)}</span>
-                          {run.error && <span className="na-run__error">{run.error}</span>}
+                        <li key={run.id} className="na-row na-row--run">
+                          {rule ? <GlyphTile glyph={TRIGGER_GLYPHS[rule.trigger.kind]} size={30} /> : <span className="na-glyph na-glyph--empty" />}
+                          <div className="na-row__text">
+                            <strong>{run.name}</strong>
+                            {run.error && <span className="na-row__error">{run.error}</span>}
+                          </div>
+                          <span className={`na-status${run.ok ? "" : " is-bad"}`}>{run.ok ? copy.ran : copy.failed}</span>
+                          <span className="na-row__time">{clock(run.at)}</span>
                         </li>
                       );
                     })}
@@ -574,7 +517,6 @@ export default function AutomationsWindow() {
           <button type="button" className="na-drawer__scrim" aria-label={copy.cancel} tabIndex={-1} onClick={() => setDraft(null)} />
           <div className="na-drawer__panel">
             <div className="na-drawer__head">
-              <Logo size={28} mood="working" />
               <h2>{draft.id ? copy.edit : copy.newOne}</h2>
               <button type="button" className="na-tool" aria-label={copy.cancel} onClick={() => setDraft(null)}>
                 <X size={15} strokeWidth={2} />
@@ -583,101 +525,72 @@ export default function AutomationsWindow() {
 
             <div className="na-drawer__body">
               <section className="na-step">
-                <h3>
-                  <span>1</span>
-                  {copy.pickTrigger}
-                </h3>
+                <h3>{copy.pickTrigger}</h3>
                 <div className="na-tiles">
-                  {TRIGGER_KINDS.map((kind) => {
-                    const Icon = TRIGGER_ICONS[kind];
-                    return (
-                      <button
-                        key={kind}
-                        type="button"
-                        className={`na-tile${draft.trigger.kind === kind ? " is-on" : ""}`}
-                       
-                        aria-pressed={draft.trigger.kind === kind}
-                        onClick={() => setDraft({ ...draft, trigger: draft.trigger.kind === kind ? draft.trigger : defaultTrigger(kind) })}
-                      >
-                        <span className="na-tile__icon">
-                          <Icon size={17} strokeWidth={2} />
-                        </span>
-                        {copy.triggers[kind]}
-                      </button>
-                    );
-                  })}
+                  {TRIGGER_KINDS.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      className={`na-tile${draft.trigger.kind === kind ? " is-on" : ""}`}
+                      aria-pressed={draft.trigger.kind === kind}
+                      onClick={() => setDraft({ ...draft, trigger: draft.trigger.kind === kind ? draft.trigger : defaultTrigger(kind) })}
+                    >
+                      <GlyphTile glyph={TRIGGER_GLYPHS[kind]} size={30} />
+                      <span>{copy.triggers[kind]}</span>
+                    </button>
+                  ))}
                 </div>
                 <TriggerFields trigger={draft.trigger} onChange={(trigger) => setDraft({ ...draft, trigger })} />
               </section>
 
               <section className="na-step">
-                <h3>
-                  <span>2</span>
-                  {copy.pickActions}
-                </h3>
+                <h3>{copy.pickActions}</h3>
                 {draft.actions.length > 0 && (
-                  <ol className="na-steps">
-                    {draft.actions.map((action, index) => {
-                      const Icon = ACTION_ICONS[action.kind];
-                      return (
-                        <li key={index} className="na-action">
-                          <span className="na-action__icon">
-                            <Icon size={15} strokeWidth={2} />
-                          </span>
-                          <div className="na-action__body">
-                            <strong>{copy.actions[action.kind]}</strong>
-                            <ActionFields action={action} onChange={(next) => setDraft({ ...draft, actions: draft.actions.map((item, position) => (position === index ? next : item)) })} />
-                          </div>
-                          <button type="button" className="na-tool na-tool--danger" aria-label={copy.remove} onClick={() => setDraft({ ...draft, actions: draft.actions.filter((_, position) => position !== index) })}>
-                            <Trash2 size={13} strokeWidth={2} />
-                          </button>
-                        </li>
-                      );
-                    })}
+                  <ol className="na-list na-steps">
+                    {draft.actions.map((action, index) => (
+                      <li key={index} className="na-action">
+                        <GlyphTile glyph={ACTION_GLYPHS[action.kind]} size={30} />
+                        <div className="na-action__body">
+                          <strong>{copy.actions[action.kind]}</strong>
+                          <ActionFields action={action} onChange={(next) => setDraft({ ...draft, actions: draft.actions.map((item, position) => (position === index ? next : item)) })} />
+                        </div>
+                        <button type="button" className="na-tool na-tool--danger" aria-label={copy.remove} onClick={() => setDraft({ ...draft, actions: draft.actions.filter((_, position) => position !== index) })}>
+                          <Trash2 size={14} strokeWidth={2} />
+                        </button>
+                      </li>
+                    ))}
                   </ol>
                 )}
                 {draft.actions.length < 5 &&
                   (picking ? (
                     <div className="na-picker">
-                      {ACTION_KINDS.map((kind) => {
-                        const Icon = ACTION_ICONS[kind];
-                        return (
-                          <button
-                            key={kind}
-                            type="button"
-                            className="na-picker__item"
-                           
-                            onClick={() => {
-                              setDraft({ ...draft, actions: [...draft.actions, defaultAction(kind)] });
-                              setPicking(false);
-                            }}
-                          >
-                            <span>
-                              <Icon size={15} strokeWidth={2} />
-                            </span>
-                            {copy.actions[kind]}
-                          </button>
-                        );
-                      })}
+                      {ACTION_KINDS.map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          className="na-picker__item"
+                          onClick={() => {
+                            setDraft({ ...draft, actions: [...draft.actions, defaultAction(kind)] });
+                            setPicking(false);
+                          }}
+                        >
+                          <GlyphTile glyph={ACTION_GLYPHS[kind]} size={26} />
+                          {copy.actions[kind]}
+                        </button>
+                      ))}
                     </div>
                   ) : (
                     <button type="button" className="na-add" onClick={() => setPicking(true)}>
-                      <Plus size={15} strokeWidth={2} />
+                      <Plus size={15} strokeWidth={2.4} />
                       {copy.addAction}
                     </button>
                   ))}
               </section>
 
               <section className="na-step">
-                <h3>
-                  <span>3</span>
-                  {copy.finish}
-                </h3>
+                <h3>{copy.finish}</h3>
                 <input className="na-input" value={draft.name} placeholder={copy.namePlaceholder} aria-label={copy.name} onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} />
-                <div className="na-preview">
-                  <span className="na-preview__label">{copy.preview}</span>
-                  <p>{draft.actions.length > 0 ? sentenceOf(draft.trigger, draft.actions) : `${copy.when} ${describeTrigger(draft.trigger)} → …`}</p>
-                </div>
+                <p className="na-preview">{draft.actions.length > 0 ? sentenceOf(draft.trigger, draft.actions) : `${copy.when} ${describeTrigger(draft.trigger)} → …`}</p>
               </section>
             </div>
 
@@ -686,7 +599,6 @@ export default function AutomationsWindow() {
                 {copy.cancel}
               </button>
               <button type="button" className="na-btn na-btn--primary" disabled={!draftReady} onClick={commitDraft}>
-                <Check size={15} strokeWidth={2.4} />
                 {copy.save}
               </button>
             </div>
@@ -696,11 +608,20 @@ export default function AutomationsWindow() {
 
       {toast && (
         <div key={toast.id} className={`na-toast${toast.bad ? " is-bad" : ""}`} role="status">
-          <Logo size={22} mood={toast.bad ? "error" : "done"} />
+          <Logo size={20} mood={toast.bad ? "error" : "done"} />
           {toast.text}
         </div>
       )}
     </div>
+  );
+}
+
+function GlyphTile({ glyph, size }: { glyph: Glyph; size: number }) {
+  const Icon = glyph.icon;
+  return (
+    <span className="na-glyph" style={{ width: size, height: size, background: `linear-gradient(180deg, ${glyph.tone[0]}, ${glyph.tone[1]})` }} aria-hidden="true">
+      <Icon size={Math.round(size * 0.54)} strokeWidth={2.2} />
+    </span>
   );
 }
 
