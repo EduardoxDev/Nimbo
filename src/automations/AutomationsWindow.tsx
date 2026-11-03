@@ -2,17 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowUp, Check, ClockCounterClockwise, Copy, Lightning, MagicWand, MagnifyingGlass, PencilSimple, Play, Plus, Stack, Trash, X } from "@phosphor-icons/react";
+import { ArrowRight, ArrowUp, Check, ClockCounterClockwise, Copy, Lightbulb, Lightning, LockSimple, MagicWand, MagnifyingGlass, PencilSimple, Play, Plus, Stack, Trash, X } from "@phosphor-icons/react";
 import { useTranslation } from "../i18n";
 import { actionsOf, parseRule, parseRules, parseRunLog, RULES_KEY, RULES_LOG_KEY, type Action, type Rule, type RuleRun, type Trigger } from "../rules/rules";
 import { ACTION_KINDS, actionReady, defaultAction, defaultTrigger, RECIPES, ruleFromParts, TRIGGER_KINDS, triggerReady, type Recipe } from "./catalog";
 import { Mascot } from "../mascot/Mascot";
 import { ACTION_GLYPHS, TRIGGER_GLYPHS, type Glyph } from "./kindIcons";
+import { appName, pending, titleOf, type LearnState, type Suggestion } from "./learn";
+import { activityOff, LEARN_OPEN_KEY, loadSuggestions, readLearnState, writeLearnState } from "./learnClient";
 import "./Automations.css";
 
-type Section = "mine" | "recipes" | "history";
+type Section = "ideas" | "mine" | "recipes" | "history";
 type Filter = "all" | "on" | "off";
-type Draft = { id: string | null; name: string; trigger: Trigger; actions: Action[] };
+type Draft = { id: string | null; name: string; trigger: Trigger; actions: Action[]; suggestion?: string };
 
 const DAY_MS = 86_400_000;
 
@@ -72,8 +74,39 @@ export default function AutomationsWindow() {
   const [sentence, setSentence] = useState("");
   const [toast, setToast] = useState<{ id: number; text: string; bad?: boolean } | null>(null);
   const [picking, setPicking] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [learnState, setLearnState] = useState<LearnState>(readLearnState);
   const toastTimer = useRef(0);
   const win = isTauri() ? getCurrentWindow() : null;
+  const learnCopy = t.learn;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSuggestions(learnCopy)
+      .then((found) => !cancelled && setSuggestions(found))
+      .catch(() => !cancelled && setSuggestions([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [learnCopy]);
+
+  useEffect(() => {
+    const openIdeas = () => {
+      try {
+        if (window.localStorage.getItem(LEARN_OPEN_KEY) !== "1") return;
+        window.localStorage.removeItem(LEARN_OPEN_KEY);
+      } catch {
+        return;
+      }
+      setSection("ideas");
+    };
+    openIdeas();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === LEARN_OPEN_KEY) openIdeas();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.add("automations-root");
@@ -169,9 +202,48 @@ export default function AutomationsWindow() {
     const parts = ruleFromParts(draft.trigger, draft.actions, sentenceOf(draft.trigger, draft.actions), draft.name.trim() || undefined);
     const next = draft.id ? rules.map((rule) => (rule.id === draft.id ? { ...rule, ...parts } : rule)) : [{ ...parts, id: newId(), enabled: true }, ...rules];
     save(next);
+    if (draft.suggestion) markIdea(draft.suggestion, "accepted");
     notify(draft.id ? copy.saved : copy.added);
     setDraft(null);
     setSection("mine");
+  };
+
+  const markIdea = (id: string, value: "accepted" | "dismissed") => {
+    const next = { ...learnState, [id]: value };
+    setLearnState(next);
+    writeLearnState(next);
+  };
+
+  const ideaTitle = (idea: Suggestion) => titleOf(idea, learnCopy.titles);
+
+  const ideaReason = (idea: Suggestion) => {
+    const names = learnCopy.list(idea.apps.map(appName));
+    switch (idea.kind) {
+      case "morning":
+        return learnCopy.reasons.morning(names, idea.hits, idea.total);
+      case "followup":
+        return learnCopy.reasons.followup(appName(idea.apps[0]), appName(idea.apps[1]), idea.hits, idea.total);
+      case "endOfDay": {
+        const [hours, minutes] = idea.trigger.kind === "time" ? idea.trigger.time.split(":").map(Number) : [18, 0];
+        const total = hours * 60 + minutes + 10;
+        return learnCopy.reasons.endOfDay(`${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`, idea.hits, idea.total);
+      }
+      case "night":
+        return learnCopy.reasons.night(idea.hits, idea.total);
+      case "meeting":
+        return learnCopy.reasons.meeting(names, idea.hits);
+    }
+  };
+
+  const acceptIdea = (idea: Suggestion) => {
+    save([{ ...ruleFromParts(idea.trigger, idea.actions, sentenceOf(idea.trigger, idea.actions), ideaTitle(idea)), id: newId(), enabled: true }, ...rules]);
+    markIdea(idea.id, "accepted");
+    notify(copy.added);
+  };
+
+  const dismissIdea = (idea: Suggestion) => {
+    markIdea(idea.id, "dismissed");
+    notify(learnCopy.dismissed);
   };
 
   const addSentence = () => {
@@ -231,10 +303,12 @@ export default function AutomationsWindow() {
   const clock = (at: number) => new Date(at).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" });
   const relative = (at: number) => (startOfDay(at) === today ? `${copy.today.toLowerCase()} ${clock(at)}` : new Date(at).toLocaleString(t.localeTag, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }));
 
-  const nav: { id: Section; icon: typeof Lightning; count?: number }[] = [
-    { id: "mine", icon: Lightning, count: rules.length },
-    { id: "recipes", icon: Stack, count: RECIPES.length },
-    { id: "history", icon: ClockCounterClockwise, count: log.length },
+  const ideas = suggestions ? pending(suggestions, rules, learnState) : [];
+  const nav: { id: Section; icon: typeof Lightning; label: string; count?: number; fresh?: boolean }[] = [
+    { id: "ideas", icon: Lightbulb, label: learnCopy.section, count: ideas.length, fresh: ideas.length > 0 },
+    { id: "mine", icon: Lightning, label: copy.mine, count: rules.length },
+    { id: "recipes", icon: Stack, label: copy.recipes, count: RECIPES.length },
+    { id: "history", icon: ClockCounterClockwise, label: copy.history, count: log.length },
   ];
 
   const openNew = (trigger: Trigger = defaultTrigger("focusStart"), actions: Action[] = []) => {
@@ -268,8 +342,8 @@ export default function AutomationsWindow() {
               <span className="na-nav__icon">
                 <item.icon size={15} />
               </span>
-              <span className="na-nav__label">{copy[item.id]}</span>
-              {!!item.count && <span className="na-nav__count">{item.count}</span>}
+              <span className="na-nav__label">{item.label}</span>
+              {!!item.count && <span className={`na-nav__count${item.fresh ? " is-fresh" : ""}`}>{item.count}</span>}
             </button>
           ))}
         </nav>
@@ -287,6 +361,89 @@ export default function AutomationsWindow() {
       </aside>
 
       <main className="na-main">
+        {section === "ideas" && (
+          <div className="na-page" key="ideas">
+            <div className="na-hero">
+              <div>
+                <h1>{learnCopy.section}</h1>
+                <p>{learnCopy.hint}</p>
+              </div>
+            </div>
+            {activityOff() ? (
+              <div className="na-empty">
+                <Logo size={76} mood="sleeping" />
+                <strong>{learnCopy.off}</strong>
+                <span>{learnCopy.offHint}</span>
+              </div>
+            ) : suggestions !== null && ideas.length === 0 ? (
+              <div className="na-empty">
+                <Logo size={76} mood="sleeping" />
+                <strong>{learnCopy.empty}</strong>
+                <span>{learnCopy.emptyHint}</span>
+              </div>
+            ) : (
+              <ul className="na-ideas">
+                {ideas.map((idea) => {
+                  const sure = idea.hits / Math.max(1, idea.total);
+                  const level = sure >= 0.85 ? 3 : sure >= 0.65 ? 2 : 1;
+                  return (
+                    <li key={idea.id} className="na-idea">
+                      <div className="na-idea__head">
+                        <GlyphTile glyph={TRIGGER_GLYPHS[idea.trigger.kind]} size={40} />
+                        <div className="na-idea__text">
+                          <strong>{ideaTitle(idea)}</strong>
+                          <p>{ideaReason(idea)}</p>
+                        </div>
+                        <span className="na-idea__sure" title={`${learnCopy.sure}: ${Math.round(sure * 100)}%`}>
+                          {[1, 2, 3].map((dot) => (
+                            <i key={dot} className={dot <= level ? "is-on" : ""} />
+                          ))}
+                        </span>
+                      </div>
+                      <div className="na-idea__flow">
+                        <span className="na-idea__step">
+                          <GlyphTile glyph={TRIGGER_GLYPHS[idea.trigger.kind]} size={22} />
+                          {describeTrigger(idea.trigger)}
+                        </span>
+                        <ArrowRight size={14} className="na-idea__arrow" />
+                        {idea.actions.map((action, index) => (
+                          <span key={index} className="na-idea__step">
+                            <GlyphTile glyph={ACTION_GLYPHS[action.kind]} size={22} />
+                            {describeAction(action)}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="na-idea__actions">
+                        <button type="button" className="na-btn na-btn--primary" onClick={() => acceptIdea(idea)}>
+                          <Check size={15} weight="bold" />
+                          {learnCopy.activate}
+                        </button>
+                        <button
+                          type="button"
+                          className="na-btn"
+                          onClick={() => {
+                            setPicking(false);
+                            setDraft({ id: null, name: ideaTitle(idea), trigger: idea.trigger, actions: idea.actions, suggestion: idea.id });
+                          }}
+                        >
+                          {learnCopy.adjust}
+                        </button>
+                        <button type="button" className="na-link" onClick={() => dismissIdea(idea)}>
+                          {learnCopy.later}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <p className="na-privacy">
+              <LockSimple size={13} />
+              {learnCopy.privacy}
+            </p>
+          </div>
+        )}
+
         {section === "mine" && (
           <div className="na-page" key="mine">
             <div className="na-hero">
@@ -299,6 +456,17 @@ export default function AutomationsWindow() {
                 {copy.newOne}
               </button>
             </div>
+
+            {ideas.length > 0 && (
+              <button type="button" className="na-banner" onClick={() => setSection("ideas")}>
+                <Lightbulb size={18} weight="duotone" />
+                <span>{learnCopy.banner(ideas.length)}</span>
+                <em>
+                  {learnCopy.see}
+                  <ArrowRight size={13} />
+                </em>
+              </button>
+            )}
 
             <form
               className="na-magic"

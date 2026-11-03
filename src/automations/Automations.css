@@ -1296,3 +1296,152 @@ html.automations-root #root {
     animation: na-toast 2800ms linear forwards !important;
   }
 }
+
+.na-nav__count.is-fresh {
+  color: var(--bg);
+  background: var(--text);
+}
+
+.na-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  margin-bottom: 12px;
+  padding: 0 16px !important;
+  border-radius: 14px;
+  background: var(--card) !important;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  transition: background 180ms var(--ease);
+}
+
+.na-banner:hover {
+  background: var(--card-hover) !important;
+}
+
+.na-banner span {
+  flex: 1;
+}
+
+.na-banner em {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-style: normal;
+}
+
+.na-ideas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.na-idea {
+  padding: 16px 16px 14px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  animation: na-in 260ms var(--ease) both;
+}
+
+.na-idea__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.na-idea__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.na-idea__text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.na-idea__text p {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.na-idea__sure {
+  display: flex;
+  gap: 3px;
+  padding-top: 6px;
+}
+
+.na-idea__sure i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pill-2);
+}
+
+.na-idea__sure i.is-on {
+  background: var(--text);
+}
+
+.na-idea__flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0 54px;
+}
+
+.na-idea__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px 0 4px;
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.na-idea__step .na-glyph {
+  border-radius: 999px;
+}
+
+.na-idea__arrow {
+  color: var(--text-3);
+}
+
+.na-idea__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0 54px;
+}
+
+.na-idea__actions .na-link {
+  margin-left: 6px;
+}
+
+.na-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 22px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+}

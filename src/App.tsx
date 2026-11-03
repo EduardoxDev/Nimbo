@@ -147,6 +147,8 @@ import { useBattery } from "./system/useBattery";
 import { useRules } from "./rules/useRules";
 import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
 import { sendBuddy } from "./buddy/channel";
+import { LEARN_NOTIFIED_KEY, nextToAnnounce, titleOf } from "./automations/learn";
+import { activityOff, LEARN_OPEN_KEY, pendingSuggestions } from "./automations/learnClient";
 import { searchApps, type LauncherApp } from "./launcher/launcher";
 import { liveCallOf, minutesSince, newDeviceUsers, type DevicesInUse } from "./life/presence";
 import { speak } from "./voice/voice";
@@ -7342,6 +7344,57 @@ function IslandApp({
   const rulesFireRef = useRef(rules.fire);
   rulesFireRef.current = rules.fire;
   const rulesTestRef = useRef(rules.test);
+  const learnCopyRef = useRef(t.learn);
+  learnCopyRef.current = t.learn;
+  useEffect(() => {
+    if (!isTauri() || !settings.habitTips) return;
+    let cancelled = false;
+    const check = async () => {
+      if (activityOff()) return;
+      const found = await pendingSuggestions(learnCopyRef.current).catch(() => []);
+      if (cancelled) return;
+      let announced: string[] = [];
+      try {
+        const parsed: unknown = JSON.parse(window.localStorage.getItem(LEARN_NOTIFIED_KEY) ?? "[]");
+        announced = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+      } catch {
+        announced = [];
+      }
+      const next = nextToAnnounce(found, announced);
+      if (!next) return;
+      try {
+        window.localStorage.setItem(LEARN_NOTIFIED_KEY, JSON.stringify([...announced, next.id].slice(-50)));
+      } catch {
+        return;
+      }
+      const copy = learnCopyRef.current;
+      lifePushRef.current({
+        text: copy.noticed(titleOf(next, copy.titles)),
+        actions: [
+          {
+            label: copy.see,
+            primary: true,
+            run: () => {
+              try {
+                window.localStorage.setItem(LEARN_OPEN_KEY, "1");
+              } catch {
+                return;
+              }
+              void invoke("automations_open").catch(() => {});
+            },
+          },
+          { label: copy.later },
+        ],
+      });
+    };
+    const first = window.setTimeout(() => void check(), 2 * 60_000);
+    const every = window.setInterval(() => void check(), 6 * 60 * 60_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, [settings.habitTips]);
   rulesTestRef.current = rules.test;
   const focusWasRunningRef = useRef(false);
   useEffect(() => {

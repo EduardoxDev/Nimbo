@@ -830,6 +830,39 @@ export type Translations = {
     relayScanHint: string;
     relayPrivacy: string;
   };
+  learn: {
+    section: string;
+    hint: string;
+    privacy: string;
+    empty: string;
+    emptyHint: string;
+    off: string;
+    offHint: string;
+    activate: string;
+    adjust: string;
+    later: string;
+    dismissed: string;
+    banner: (count: number) => string;
+    see: string;
+    noticed: (title: string) => string;
+    endOfDaySay: string;
+    sure: string;
+    list: (items: string[]) => string;
+    titles: {
+      morning: string;
+      followup: (from: string, to: string) => string;
+      endOfDay: string;
+      night: string;
+      meeting: string;
+    };
+    reasons: {
+      morning: (apps: string, hits: number, total: number) => string;
+      followup: (from: string, to: string, hits: number, total: number) => string;
+      endOfDay: (time: string, hits: number, total: number) => string;
+      night: (hits: number, total: number) => string;
+      meeting: (apps: string, days: number) => string;
+    };
+  };
   automations: {
     titleShort: string;
     subtitle: string;
