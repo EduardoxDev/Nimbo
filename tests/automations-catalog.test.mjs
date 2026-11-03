@@ -43,5 +43,6 @@ test("every locale names every trigger, action and weekday", () => {
     for (const kind of ACTION_KINDS) assert.ok(copy.actions[kind], kind);
     assert.equal(copy.weekdays.length, 7);
     assert.match(copy.testing("x"), /x/);
+    for (const recipe of RECIPES) assert.ok(copy.recipeTitles[recipe.id], recipe.id);
   }
 });
