@@ -354,6 +354,7 @@ export type Translations = {
       lock_pc: string;
       run_macro: string;
       run_routine: string;
+      search_memory: string;
     };
     agent: {
       plan: string;
@@ -890,6 +891,33 @@ export type Translations = {
       night: (hits: number, total: number) => string;
       meeting: (apps: string, days: number) => string;
     };
+  };
+  memory: {
+    titleShort: string;
+    headline: string;
+    placeholder: string;
+    close: string;
+    clear: string;
+    loading: string;
+    nothingYet: string;
+    nothingYetHint: string;
+    empty: string;
+    emptyHint: string;
+    count: (count: number) => string;
+    today: string;
+    yesterday: string;
+    minutes: (count: number) => string;
+    open: string;
+    copy: string;
+    copied: string;
+    searchWeb: string;
+    openFailed: string;
+    privacy: string;
+    openWindow: string;
+    openWindowHint: string;
+    kinds: { window: string; file: string; copy: string };
+    chips: { today: string; yesterday: string; links: string; files: string; copies: string };
+    chipQueries: { today: string; yesterday: string; links: string; files: string; copies: string };
   };
   automations: {
     titleShort: string;

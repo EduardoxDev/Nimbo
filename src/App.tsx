@@ -148,6 +148,8 @@ import { useRules } from "./rules/useRules";
 import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
 import { sendBuddy } from "./buddy/channel";
 import { safeUrl } from "./assistant/agent";
+import { parseQuery, search } from "./memory/memory";
+import { loadMemory } from "./memory/memoryClient";
 import { LEARN_NOTIFIED_KEY, nextToAnnounce, titleOf } from "./automations/learn";
 import { activityOff, LEARN_OPEN_KEY, pendingSuggestions } from "./automations/learnClient";
 import { searchApps, type LauncherApp } from "./launcher/launcher";
@@ -7211,6 +7213,20 @@ function IslandApp({
         return invoke<string>("agent_move_files", { files: Array.isArray(input.files) ? input.files.map(String) : [], to: String(input.to ?? "") });
       case "run_in_terminal":
         return invoke<string>("agent_run_in_terminal", { command: String(input.command ?? ""), cwd: String(input.folder ?? "") });
+      case "search_memory": {
+        const found = search(await loadMemory(), parseQuery(String(input.query ?? ""), new Date()), 8);
+        if (found.length === 0) return "Nothing in the last two weeks matches.";
+        return JSON.stringify(
+          found.map((item) => ({
+            kind: item.kind,
+            title: item.title,
+            where: item.subtitle,
+            at: new Date(item.at).toLocaleString(current.locale),
+            ...(item.path ? { path: item.path } : {}),
+            ...(item.url ? { url: item.url } : {}),
+          })),
+        );
+      }
       case "wait": {
         const seconds = Math.min(30, Math.max(1, Math.round(Number(input.seconds) || 3)));
         await new Promise((resolve) => window.setTimeout(resolve, seconds * 1000));

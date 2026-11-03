@@ -10,6 +10,7 @@ import LensWindow from "./lens/LensWindow";
 import DayWindow from "./day/DayWindow";
 import MusicWindow from "./music/MusicWindow";
 import AutomationsWindow from "./automations/AutomationsWindow";
+import MemoryWindow from "./memory/MemoryWindow";
 import MascotGallery from "./demo/MascotGallery";
 import "./design/tokens.css";
 import { I18nProvider } from "./i18n";
@@ -58,6 +59,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <MusicWindow />
       ) : windowKind === "automations" ? (
         <AutomationsWindow />
+      ) : windowKind === "memory" ? (
+        <MemoryWindow />
       ) : windowKind === "mascots" && import.meta.env.DEV ? (
         <MascotGallery />
       ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Brain, Trash2 } from "lucide-react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useTranslation } from "../i18n";
 import type { IslandSettings } from "../App";
 import { Row, Section, Stepper, Toggle } from "../settings/controls";
@@ -74,6 +75,14 @@ export function ToolsSettings({ settings, update }: { settings: IslandSettings; 
 
   return (
     <>
+      <Section title={t.memory.openWindow}>
+        <Row title={t.memory.openWindow} hint={t.memory.openWindowHint}>
+          <button type="button" className="prefs-button" onClick={() => isTauri() && void invoke("memory_open").catch(() => {})}>
+            <Brain size={14} strokeWidth={2.4} />
+            {t.memory.openWindow}
+          </button>
+        </Row>
+      </Section>
       <Section title={copy.snippetsTitle}>
         <p className="prefs-auto__hint">{copy.snippetsHint}</p>
         {snippets.map((snippet) => (

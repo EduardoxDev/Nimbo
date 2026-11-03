@@ -7,6 +7,7 @@ mod calendar;
 mod dock;
 mod automations;
 mod agent_tools;
+mod memory;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -1791,8 +1792,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
         MenuItem::with_id(app, "settings", "Configurações…", true, None::<&str>)?;
     let music_item = MenuItem::with_id(app, "music", "Nimbo Music", true, None::<&str>)?;
     let day_item = MenuItem::with_id(app, "day", "Meu dia", true, None::<&str>)?;
+    let memory_item = MenuItem::with_id(app, "memory", "Nimbo Memória", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &music_item, &day_item, &settings_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &music_item, &day_item, &memory_item, &settings_item, &quit_item])?;
 
     let mut tray = TrayIconBuilder::new()
         .tooltip("Nimbo")
@@ -1815,6 +1817,9 @@ fn build_tray(app: &App) -> tauri::Result<()> {
             }
             "music" => {
                 let _ = music_catalog::show_music_window(app);
+            }
+            "memory" => {
+                let _ = memory::show_memory_window(app);
             }
             "quit" => app.exit(0),
             _ => {}
@@ -2004,6 +2009,9 @@ pub fn run() {
             agent_tools::agent_create_folder,
             agent_tools::agent_move_files,
             agent_tools::agent_run_in_terminal,
+            memory::memory_recent_files,
+            memory::memory_open_file,
+            memory::memory_open,
             dock::dock_icon,
             dock::dock_focus,
             dock::dock_close,

@@ -12,7 +12,8 @@
     "day",
     "music",
     "dock",
-    "automations"
+    "automations",
+    "memory"
   ],
   "permissions": [
     "core:default",

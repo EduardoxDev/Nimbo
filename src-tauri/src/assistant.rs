@@ -178,7 +178,13 @@ fn tools() -> Value {
             }),
             json!(["command", "folder"])
         ),
-        strict("wait", "Wait a few seconds, for example for a dev server to start before opening it.", json!({ "seconds": { "type": "integer", "minimum": 1, "maximum": 30 } }), json!(["seconds"]))
+        strict("wait", "Wait a few seconds, for example for a dev server to start before opening it.", json!({ "seconds": { "type": "integer", "minimum": 1, "maximum": 30 } }), json!(["seconds"])),
+        strict(
+            "search_memory",
+            "Search what the user saw and did on this PC in the last two weeks: window and page titles, files they opened and text they copied. Write the query the way the user said it, including time words such as 'ontem', 'terça de tarde' or 'às 15h'. Results include file paths and links that open_path and open_url can reopen.",
+            json!({ "query": { "type": "string" } }),
+            json!(["query"])
+        )
     ])
 }
 
