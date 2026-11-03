@@ -12,7 +12,7 @@ Plano e próximos passos: [PLANO.md](PLANO.md).
 
 - React 19, TypeScript, Vite 7
 - Tauri 2, Rust, crate `windows`
-- Ícones: lucide-react
+- Ícones: lucide-react; telas novas (como o Nimbo Automações) usam Phosphor (`@phosphor-icons/react`, peso duotone)
 - Pacotes: pnpm (`pnpm-lock.yaml`). O CI e o build de release usam pnpm; não crie `package-lock.json`.
 
 ## Comandos
