@@ -48,6 +48,14 @@ export function AutomationSettings() {
   };
 
   useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === RULES_KEY) setRules(loadRules());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
     if (!isTauri()) return;
     void invoke<{ ssid: string | null }>("context_now").then((context) => setSsid(context.ssid)).catch(() => {});
     refreshMacros();
