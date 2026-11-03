@@ -19,6 +19,7 @@ export type IslandStatus = {
   clipboard?: { text: string; copiedAt: number } | null;
   /** What is in front on the PC, when the user shares it. */
   now?: { app: string; title: string; url?: string | null } | null;
+  /** What the user was doing when they left the PC, to continue on the phone. */
   handoff?: { kind: "page" | "music"; title: string; subtitle: string; url: string; at: number } | null;
   /** Links saved to read later, unread only. */
   readLater?: { id: string; url: string }[];
