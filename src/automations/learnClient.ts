@@ -3,7 +3,7 @@ import type { Segment } from "../day/activity";
 import { demoLogs } from "../demo/learnDemo";
 import { searchApps, type LauncherApp } from "../launcher/launcher";
 import { parseRules, RULES_KEY } from "../rules/rules";
-import { launchNames, learn, LEARN_KEY, parseLearnState, pending, recentDays, type LearnState, type Suggestion } from "./learn";
+import { activeDays, launchNames, learn, LEARN_KEY, parseLearnState, pending, recentDays, type LearnState, type Suggestion } from "./learn";
 
 export const LEARN_OPEN_KEY = "nimbo-learn-open";
 
@@ -48,8 +48,12 @@ function resolveApps(suggestions: Suggestion[], apps: LauncherApp[]) {
   });
 }
 
-export async function loadSuggestions(copy: { endOfDaySay: string }): Promise<Suggestion[]> {
-  if (!isTauri()) return import.meta.env.DEV ? learn(demoLogs(), copy) : [];
+export async function loadSuggestions(copy: { endOfDaySay: string }, onDays?: (days: number) => void): Promise<Suggestion[]> {
+  if (!isTauri()) {
+    const logs = import.meta.env.DEV ? demoLogs() : [];
+    onDays?.(activeDays(logs));
+    return learn(logs, copy);
+  }
   const logs = await Promise.all(
     recentDays(new Date()).map((day) =>
       invoke<Segment[]>("activity_day", { day })
@@ -57,6 +61,7 @@ export async function loadSuggestions(copy: { endOfDaySay: string }): Promise<Su
         .catch(() => ({ day, segments: [] as Segment[] })),
     ),
   );
+  onDays?.(activeDays(logs));
   const found = learn(logs, copy);
   if (found.length === 0) return [];
   const apps = await invoke<LauncherApp[]>("launcher_apps").catch(() => [] as LauncherApp[]);

@@ -1445,3 +1445,20 @@ html.automations-root #root {
   color: var(--text-3);
   font-size: 12px;
 }
+
+.na-progress {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.na-progress i {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pill-2);
+}
+
+.na-progress i.is-on {
+  background: var(--text);
+}

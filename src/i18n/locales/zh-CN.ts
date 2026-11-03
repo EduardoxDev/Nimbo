@@ -867,6 +867,7 @@ const zhCN: Translations = {
     privacy: "所有分析都在你的电脑上完成，不会上传。",
     empty: "还在学习你的习惯",
     emptyHint: "照常使用电脑几天，推荐就会出现在这里。",
+    progress: (days) => (days === 0 ? "照常使用电脑，我会开始学习你的日常。" : `已经观察了 ${days} 天的使用。通常 5 天后会出现第一批推荐。`),
     off: "使用记录已关闭",
     offHint: "在“我的一天”中开启，Nimbo 才能从你的日常中学习。",
     activate: "开启",

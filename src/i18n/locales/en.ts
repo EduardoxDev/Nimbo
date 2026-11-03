@@ -864,6 +864,7 @@ const en: Translations = {
     privacy: "Everything is analyzed on your PC. Nothing leaves it.",
     empty: "Still learning your habits",
     emptyHint: "Use your PC as usual for a few days and suggestions will show up here.",
+    progress: (days) => (days === 0 ? "Use your PC as usual and I'll start learning your routine." : `I've watched ${days} ${days === 1 ? "day" : "days"} of use so far. First suggestions usually show up after 5.`),
     off: "Usage history is off",
     offHint: "Turn it on in My day so Nimbo can learn from your routine.",
     activate: "Turn on",

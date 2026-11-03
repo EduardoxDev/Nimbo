@@ -864,6 +864,7 @@ const ptBR: Translations = {
     privacy: "Tudo é analisado aqui no seu PC. Nada sai daqui.",
     empty: "Ainda estou aprendendo seus hábitos",
     emptyHint: "Use o PC normalmente por alguns dias e as sugestões aparecem aqui.",
+    progress: (days) => (days === 0 ? "Use o PC normalmente e eu começo a aprender sua rotina." : `Já observei ${days} ${days === 1 ? "dia" : "dias"} de uso. As primeiras sugestões costumam aparecer com 5.`),
     off: "O histórico de uso está desligado",
     offHint: "Ligue em Meu dia para o Nimbo poder aprender com a sua rotina.",
     activate: "Ativar",

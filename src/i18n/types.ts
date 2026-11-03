@@ -836,6 +836,7 @@ export type Translations = {
     privacy: string;
     empty: string;
     emptyHint: string;
+    progress: (days: number) => string;
     off: string;
     offHint: string;
     activate: string;

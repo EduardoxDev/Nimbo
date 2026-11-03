@@ -75,6 +75,7 @@ export default function AutomationsWindow() {
   const [toast, setToast] = useState<{ id: number; text: string; bad?: boolean } | null>(null);
   const [picking, setPicking] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [learnedDays, setLearnedDays] = useState(0);
   const [learnState, setLearnState] = useState<LearnState>(readLearnState);
   const toastTimer = useRef(0);
   const win = isTauri() ? getCurrentWindow() : null;
@@ -82,7 +83,7 @@ export default function AutomationsWindow() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadSuggestions(learnCopy)
+    void loadSuggestions(learnCopy, (days) => !cancelled && setLearnedDays(days))
       .then((found) => !cancelled && setSuggestions(found))
       .catch(() => !cancelled && setSuggestions([]));
     return () => {
@@ -379,7 +380,12 @@ export default function AutomationsWindow() {
               <div className="na-empty">
                 <Logo size={76} mood="sleeping" />
                 <strong>{learnCopy.empty}</strong>
-                <span>{learnCopy.emptyHint}</span>
+                <span>{learnCopy.progress(learnedDays)}</span>
+                <div className="na-progress" aria-hidden="true">
+                  {[0, 1, 2, 3, 4].map((step) => (
+                    <i key={step} className={step < learnedDays ? "is-on" : ""} />
+                  ))}
+                </div>
               </div>
             ) : (
               <ul className="na-ideas">

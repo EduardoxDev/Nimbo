@@ -264,6 +264,10 @@ function meeting(logs: DayLog[]): Suggestion | null {
   };
 }
 
+export function activeDays(logs: DayLog[]) {
+  return activeLogs(logs).length;
+}
+
 export function learn(logs: DayLog[], copy: { endOfDaySay: string }): Suggestion[] {
   const active = activeLogs(logs);
   if (active.length < 3) return [];
