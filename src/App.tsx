@@ -145,7 +145,8 @@ import { aiErrorText } from "./assistant/aiErrors";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useBattery } from "./system/useBattery";
 import { useRules } from "./rules/useRules";
-import type { Rule } from "./rules/rules";
+import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
+import { sendBuddy } from "./buddy/channel";
 import { searchApps, type LauncherApp } from "./launcher/launcher";
 import { liveCallOf, minutesSince, newDeviceUsers, type DevicesInUse } from "./life/presence";
 import { speak } from "./voice/voice";
@@ -4642,6 +4643,7 @@ function IslandApp({
     sound: settings.focusSound,
     onPhaseEnd: (ended) => {
       if (ended === "focus") {
+        rulesFireRef.current("focusEnd");
         recordStat("focus");
         focusDoneRef.current();
       }
@@ -7258,7 +7260,14 @@ function IslandApp({
   const battery = useBattery();
   const runRule = useCallback(
     async (rule: Rule) => {
-      const action = rule.action;
+      for (const action of actionsOf(rule)) await runRuleAction(rule, action);
+    },
+    [],
+  );
+  const runRuleActionRef = useRef<(rule: Rule, action: RuleAction) => Promise<void>>(async () => {});
+  const runRuleAction = (rule: Rule, action: RuleAction) => runRuleActionRef.current(rule, action);
+  runRuleActionRef.current = async (rule: Rule, action: RuleAction) => {
+    {
       const playing = assistantStateRef.current.mediaState.playbackStatus === "playing";
       switch (action.kind) {
         case "music":
@@ -7293,15 +7302,63 @@ function IslandApp({
           break;
         case "notify":
           break;
+        case "volume":
+          await invoke("set_system_volume", { level: Math.min(100, Math.max(0, action.level)) / 100, muted: false });
+          return;
+        case "say":
+          if (settings.buddyMode !== "off") sendBuddy({ kind: "say", text: action.text });
+          else lifePushRef.current({ text: action.text, actions: [{ label: t.life.ok, primary: true }] });
+          return;
+        case "url":
+          await openUrl(/^https?:\/\//i.test(action.url) ? action.url : `https://${action.url}`);
+          return;
+        case "lock":
+          await invoke("pc_tool", { name: "lock_pc", minutes: null, confirm: null });
+          return;
+        case "claude":
+          await claudeTask.start(action.prompt);
+          return;
       }
+      if (action.kind === "focus") return;
       lifePushRef.current({
-        text: action.kind === "notify" ? action.text : t.automation.ruleFired(rule.text),
+        text: action.kind === "notify" ? action.text : t.automation.ruleFired(rule.name || rule.text),
         actions: [{ label: t.life.ok, primary: true }],
       });
-    },
-    [runAssistantTool, runMediaCommand, t],
-  );
+    }
+  };
   const rules = useRules(battery, runRule);
+  const rulesFireRef = useRef(rules.fire);
+  rulesFireRef.current = rules.fire;
+  const rulesTestRef = useRef(rules.test);
+  rulesTestRef.current = rules.test;
+  const focusWasRunningRef = useRef(false);
+  useEffect(() => {
+    const running = focusTimer.state.status === "running" && focusTimer.state.phase === "focus";
+    if (running && !focusWasRunningRef.current) rulesFireRef.current("focusStart");
+    focusWasRunningRef.current = running;
+  }, [focusTimer.state.status, focusTimer.state.phase]);
+  const meetingRuleRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = meeting?.id ?? null;
+    if (id && id !== meetingRuleRef.current) rulesFireRef.current("meetingStart");
+    meetingRuleRef.current = id;
+  }, [meeting?.id]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => rulesFireRef.current("startup"), 5_000);
+    if (!isTauri()) return () => window.clearTimeout(timer);
+    const stops: (() => void)[] = [];
+    let cancelled = false;
+    const keep = (stop: () => void) => (cancelled ? stop() : stops.push(stop));
+    void listen<{ failed?: boolean }>("claude-task-finished", ({ payload }) => {
+      if (!payload?.failed) rulesFireRef.current("claudeDone");
+    }).then(keep);
+    void listen<string>("rules-test", ({ payload }) => rulesTestRef.current(payload)).then(keep);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      stops.forEach((stop) => stop());
+    };
+  }, []);
 
   // A recording started from the launcher saves itself under the name given there.
   const recordingNameRef = useRef<string | null>(null);
