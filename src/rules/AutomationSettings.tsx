@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Circle, FolderOpen, Play, Plus, Trash2, Undo2 } from "lucide-react";
+import { Circle, FolderOpen, Play, Plus, Trash2, Undo2, Zap } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { Row, Section, Toggle } from "../settings/controls";
 import { parseRule, parseRules, RULES_KEY, type Rule } from "./rules";
@@ -80,6 +80,14 @@ export function AutomationSettings() {
 
   return (
     <>
+      <Section title={t.automations.title}>
+        <Row title={t.automations.open} hint={t.automations.openHint}>
+          <button type="button" className="prefs-button" onClick={() => void invoke("automations_open").catch((error) => setMessage(String(error)))}>
+            <Zap size={14} strokeWidth={2.4} />
+            {t.automations.open}
+          </button>
+        </Row>
+      </Section>
       <Section title={copy.rulesTitle}>
         <div className="prefs-auto__new">
           <input
