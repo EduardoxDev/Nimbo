@@ -9,6 +9,7 @@ mod automations;
 mod agent_tools;
 mod memory;
 mod focus_block;
+mod handoff;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -2014,6 +2015,7 @@ pub fn run() {
             memory::memory_open_file,
             memory::memory_open,
             focus_block::focus_minimize_foreground,
+            handoff::browser_url,
             dock::dock_icon,
             dock::dock_focus,
             dock::dock_close,

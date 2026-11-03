@@ -242,11 +242,26 @@ function PageView({
             </Pressable>
           ))}
         </View>
+        {status?.handoff && /^https?:\/\//.test(status.handoff.url) ? (
+          <Card style={{ marginTop: 10 }}>
+            <Text style={styles.label}>{t.continueHere}</Text>
+            <Text numberOfLines={2} style={{ color: colors.text, fontWeight: "700", marginBottom: 2 }}>{status.handoff.title}</Text>
+            {status.handoff.subtitle ? <Text style={[styles.muted, { marginBottom: 10 }]}>{status.handoff.subtitle}</Text> : null}
+            <View style={styles.row}>
+              <Button label={t.openLink} accent={colors.blue} onPress={() => void Linking.openURL(status.handoff!.url)} />
+            </View>
+          </Card>
+        ) : null}
         {status?.now ? (
           <Card style={{ marginTop: 10 }}>
             <Text style={styles.label}>{t.onPcNow}</Text>
             <Text style={{ color: colors.text, fontWeight: "700" }}>{status.now.app}</Text>
             {status.now.title ? <Text numberOfLines={2} style={styles.muted}>{status.now.title}</Text> : null}
+            {status.now.url && /^https?:\/\//.test(status.now.url) ? (
+              <View style={[styles.row, { marginTop: 10 }]}>
+                <Button label={t.openLink} accent={colors.blue} onPress={() => void Linking.openURL(status.now!.url!)} />
+              </View>
+            ) : null}
           </Card>
         ) : null}
         {status?.clipboard ? (

@@ -148,6 +148,7 @@ import { useRules } from "./rules/useRules";
 import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
 import { sendBuddy } from "./buddy/channel";
 import { safeUrl } from "./assistant/agent";
+import { BROWSER_APPS, freshHandoff, handoffOf, wentAway, type Handoff } from "./phone/handoff";
 import { cleanBlocklist, DEFAULT_BLOCKLIST, FOCUS_LOG_KEY, lastWeek, parseFocusLog, weekKey, weekReport } from "./focus/deepFocus";
 import { parseQuery, search } from "./memory/memory";
 import { loadMemory } from "./memory/memoryClient";
@@ -7543,7 +7544,9 @@ function IslandApp({
   }, [settings.phoneIsland]);
   const phoneStatusRef = useRef<() => unknown>(() => null);
   // What is in front on the PC, for "continue on the phone" (only when the user turns it on).
-  const phoneNowRef = useRef<{ app: string; title: string } | null>(null);
+  const phoneNowRef = useRef<{ app: string; title: string; url?: string | null } | null>(null);
+  const browserUrlRef = useRef<{ title: string; url: string | null }>({ title: "", url: null });
+  const handoffRef = useRef<Handoff | null>(null);
   useEffect(() => {
     if (!settings.phoneIsland || !settings.phoneShareActivity || !isTauri()) {
       phoneNowRef.current = null;
@@ -7552,12 +7555,46 @@ function IslandApp({
     const sample = () =>
       void invoke<{ app: string; title: string } | null>("foreground_window")
         .then((front) => {
-          phoneNowRef.current = front ? activityOfWindow(front.app, front.title) : null;
+          const activity = front ? activityOfWindow(front.app, front.title) : null;
+          if (!front || !activity || !BROWSER_APPS.test(front.app)) {
+            phoneNowRef.current = activity;
+            return;
+          }
+          if (browserUrlRef.current.title === front.title) {
+            phoneNowRef.current = { ...activity, url: browserUrlRef.current.url };
+            return;
+          }
+          void invoke<string | null>("browser_url")
+            .then((url) => {
+              browserUrlRef.current = { title: front.title, url };
+              phoneNowRef.current = { ...activity, url };
+            })
+            .catch(() => {
+              phoneNowRef.current = activity;
+            });
         })
         .catch(() => {});
     sample();
     const interval = window.setInterval(sample, 5_000);
-    return () => window.clearInterval(interval);
+    let idle = 0;
+    const away = window.setInterval(
+      () =>
+        void invoke<number>("idle_seconds")
+          .then((seconds) => {
+            if (wentAway(idle, seconds)) {
+              const media = assistantStateRef.current.mediaState;
+              handoffRef.current =
+                handoffOf(phoneNowRef.current, media.title ? { title: media.title, artist: media.artist, playing: media.playbackStatus === "playing" } : null, Date.now()) ?? handoffRef.current;
+            }
+            idle = seconds;
+          })
+          .catch(() => {}),
+      30_000,
+    );
+    return () => {
+      window.clearInterval(interval);
+      window.clearInterval(away);
+    };
   }, [settings.phoneIsland, settings.phoneShareActivity]);
   const phoneTodoRef = useRef<{ toggle: (id: string) => void; add: (title: string) => void }>({ toggle: () => {}, add: () => {} });
   phoneTodoRef.current = {
@@ -7593,6 +7630,7 @@ function IslandApp({
       approval: approval ? { id: approval.id, agent: approval.agent, question: approval.question } : null,
       clipboard: settings.phoneShareClipboard ? latestCopiedText(clipboardHistory.items) : null,
       now: settings.phoneShareActivity ? phoneNowRef.current : null,
+      handoff: settings.phoneShareActivity ? freshHandoff(handoffRef.current, Date.now()) : null,
       readLater: unread(readLater).slice(0, 15).map((item) => ({ id: item.id, url: item.url })),
       agenda: agendaOfToday(calendar.events, Date.now(), (time) => new Date(time).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" })),
       alexaPinHash: settings.alexaPinHash || null,
