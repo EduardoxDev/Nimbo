@@ -229,3 +229,178 @@
   line-height: 1.35;
   text-align: left;
 }
+
+.agent-plan {
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.agent-plan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.agent-plan__head strong {
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.agent-plan__head span {
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-plan ol {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-plan__step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(235, 238, 245, 0.62);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.agent-plan__step i {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.22);
+}
+
+.agent-plan__step--doing {
+  color: #f5f5f7;
+}
+
+.agent-plan__step--doing i {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.18);
+  border: 1.5px solid transparent;
+  border-top-color: #f5f5f7;
+  animation: agent-spin 0.9s linear infinite;
+}
+
+.agent-plan__step--done {
+  color: rgba(235, 238, 245, 0.45);
+}
+
+.agent-plan__step--done span {
+  text-decoration: line-through;
+  text-decoration-color: rgba(235, 238, 245, 0.25);
+}
+
+.agent-plan__step--done i {
+  color: #08080a;
+  background: #f5f5f7;
+  box-shadow: none;
+}
+
+.agent-plan__step--failed {
+  color: #ff8a80;
+}
+
+.agent-plan__step--failed i {
+  color: #08080a;
+  background: #ff6961;
+  box-shadow: none;
+}
+
+@keyframes agent-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agent-approval {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  color: #f5f5f7;
+  animation: agent-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agent-approval > svg {
+  flex: none;
+  color: rgba(235, 238, 245, 0.7);
+}
+
+.agent-approval__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-approval__text small {
+  color: rgba(235, 238, 245, 0.5);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.agent-approval__text strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-approval button {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.agent-approval__no {
+  color: #f5f5f7;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.agent-approval__yes {
+  color: #08080a;
+  background: #f5f5f7;
+}
+
+@keyframes agent-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-plan__step--doing i {
+    animation: none;
+  }
+}

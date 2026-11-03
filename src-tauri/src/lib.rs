@@ -6,6 +6,7 @@ mod buddy;
 mod calendar;
 mod dock;
 mod automations;
+mod agent_tools;
 mod capture;
 mod claude_task;
 mod clipboard_history;
@@ -1997,6 +1998,12 @@ pub fn run() {
             dock::dock_apps,
             activity::idle_seconds,
             automations::automations_open,
+            agent_tools::agent_find_folders,
+            agent_tools::agent_list_files,
+            agent_tools::agent_open_path,
+            agent_tools::agent_create_folder,
+            agent_tools::agent_move_files,
+            agent_tools::agent_run_in_terminal,
             dock::dock_icon,
             dock::dock_focus,
             dock::dock_close,

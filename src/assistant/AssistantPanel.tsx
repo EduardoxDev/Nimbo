@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowUp, Check, RotateCcw, ShieldCheck, Sparkles, X } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useLocale, useTranslation } from "../i18n";
 import { MicButton } from "../voice/MicButton";
@@ -8,6 +8,7 @@ import { speak } from "../voice/voice";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import { ASSISTANT_DEMO, type ChatEntry } from "./useAssistant";
+import { folderName, planProgress, type ApprovalRequest, type PlanStep } from "./agent";
 
 const ASSISTANT_COLOR = "#ffb86b";
 
@@ -21,11 +22,17 @@ export function AssistantPanel<Page extends string>({
   currentPage,
   showPageIcons,
   onPageChange,
+  plan = null,
+  approval = null,
+  onApprove = () => {},
 }: {
   entries: ChatEntry[];
   busy: boolean;
   onSend: (text: string) => void;
   onReset: () => void;
+  plan?: PlanStep[] | null;
+  approval?: ApprovalRequest | null;
+  onApprove?: (approved: boolean) => void;
   voiceToken: number;
   pages: IslandTab<Page>[];
   currentPage: Page;
@@ -59,7 +66,7 @@ export function AssistantPanel<Page extends string>({
   useEffect(() => {
     const list = listRef.current;
     if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
-  }, [entries, busy]);
+  }, [entries, busy, plan, approval]);
 
   useEffect(() => {
     if (hasKey) inputRef.current?.focus();
@@ -82,6 +89,22 @@ export function AssistantPanel<Page extends string>({
   };
 
   const actionLabel = (name: string) => copy.actions[name as keyof typeof copy.actions] ?? name;
+  const approvalText = (request: ApprovalRequest) => {
+    const input = request.input;
+    switch (request.tool) {
+      case "move_files":
+        return copy.agent.move(Array.isArray(input.files) ? input.files.length : 0, folderName(input.to));
+      case "run_in_terminal":
+        return copy.agent.run(String(input.command ?? ""), folderName(input.folder));
+      case "free_space":
+        return copy.agent.free;
+      case "shutdown_timer":
+        return copy.agent.shutdown(Number(input.minutes) || 0);
+      default:
+        return copy.agent.other(actionLabel(request.tool));
+    }
+  };
+  const progress = plan ? planProgress(plan) : null;
   const suggestions = [copy.suggestion1, copy.suggestion2, copy.suggestion3, copy.suggestion4];
 
   return (
@@ -140,7 +163,38 @@ export function AssistantPanel<Page extends string>({
                 </div>
               ))
             )}
-            {busy && (
+            {plan && plan.length > 0 && progress && (
+              <div className="agent-plan" role="group" aria-label={copy.agent.plan}>
+                <div className="agent-plan__head">
+                  <strong>{copy.agent.plan}</strong>
+                  <span>{copy.agent.progress(progress.done, progress.total)}</span>
+                </div>
+                <ol>
+                  {plan.map((step, index) => (
+                    <li key={index} className={`agent-plan__step agent-plan__step--${step.status}`}>
+                      <i aria-hidden="true">{step.status === "done" ? <Check size={10} strokeWidth={3.4} /> : step.status === "failed" ? <X size={10} strokeWidth={3.4} /> : null}</i>
+                      <span>{step.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {approval && (
+              <div className="agent-approval" role="alertdialog" aria-label={copy.agent.needsOk}>
+                <ShieldCheck size={16} strokeWidth={2.2} />
+                <div className="agent-approval__text">
+                  <small>{copy.agent.needsOk}</small>
+                  <strong>{approvalText(approval)}</strong>
+                </div>
+                <button type="button" className="agent-approval__no" onClick={() => onApprove(false)}>
+                  {copy.agent.decline}
+                </button>
+                <button type="button" className="agent-approval__yes" onClick={() => onApprove(true)}>
+                  {copy.agent.approve}
+                </button>
+              </div>
+            )}
+            {busy && !approval && (
               <div className="assistant-bubble assistant-bubble--assistant assistant-bubble--typing" aria-label={copy.thinking}>
                 <i />
                 <i />

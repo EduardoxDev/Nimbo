@@ -339,6 +339,33 @@ export type Translations = {
       air_conditioner: string;
       play_song: string;
       toggle_device: string;
+      open_app: string;
+      open_url: string;
+      find_folders: string;
+      list_files: string;
+      open_path: string;
+      create_folder: string;
+      move_files: string;
+      run_in_terminal: string;
+      wait: string;
+      pc_status: string;
+      free_space: string;
+      shutdown_timer: string;
+      lock_pc: string;
+      run_macro: string;
+      run_routine: string;
+    };
+    agent: {
+      plan: string;
+      progress: (done: number, total: number) => string;
+      approve: string;
+      decline: string;
+      needsOk: string;
+      move: (count: number, folder: string) => string;
+      run: (command: string, folder: string) => string;
+      free: string;
+      shutdown: (minutes: number) => string;
+      other: (tool: string) => string;
     };
   };
   life: {

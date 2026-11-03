@@ -147,6 +147,7 @@ import { useBattery } from "./system/useBattery";
 import { useRules } from "./rules/useRules";
 import { actionsOf, type Action as RuleAction, type Rule } from "./rules/rules";
 import { sendBuddy } from "./buddy/channel";
+import { safeUrl } from "./assistant/agent";
 import { LEARN_NOTIFIED_KEY, nextToAnnounce, titleOf } from "./automations/learn";
 import { activityOff, LEARN_OPEN_KEY, pendingSuggestions } from "./automations/learnClient";
 import { searchApps, type LauncherApp } from "./launcher/launcher";
@@ -7183,6 +7184,38 @@ function IslandApp({
         const kind = input.routine === "end" ? "end" : "start";
         return runRoutineRef.current(kind);
       }
+      case "open_app": {
+        const apps = await invoke<LauncherApp[]>("launcher_apps");
+        const app = searchApps(apps, String(input.name ?? ""))[0];
+        if (!app) throw new Error(`No installed app is called "${input.name}".`);
+        await invoke("launcher_open", { id: app.id });
+        return `Opened ${app.name}.`;
+      }
+      case "open_url": {
+        const url = safeUrl(input.url);
+        if (!url) throw new Error("That is not a web address.");
+        await openUrl(url);
+        return `Opened ${url}.`;
+      }
+      case "find_folders": {
+        const found = await invoke<string[]>("agent_find_folders", { query: String(input.query ?? "") });
+        return found.length > 0 ? JSON.stringify(found) : `No folder in the user's folder matches "${input.query}".`;
+      }
+      case "list_files":
+        return invoke<string>("agent_list_files", { path: String(input.path ?? ""), pattern: input.pattern ? String(input.pattern) : null });
+      case "open_path":
+        return invoke<string>("agent_open_path", { path: String(input.path ?? ""), with: input.with === "vscode" ? "vscode" : "explorer" });
+      case "create_folder":
+        return invoke<string>("agent_create_folder", { path: String(input.path ?? "") });
+      case "move_files":
+        return invoke<string>("agent_move_files", { files: Array.isArray(input.files) ? input.files.map(String) : [], to: String(input.to ?? "") });
+      case "run_in_terminal":
+        return invoke<string>("agent_run_in_terminal", { command: String(input.command ?? ""), cwd: String(input.folder ?? "") });
+      case "wait": {
+        const seconds = Math.min(30, Math.max(1, Math.round(Number(input.seconds) || 3)));
+        await new Promise((resolve) => window.setTimeout(resolve, seconds * 1000));
+        return `Waited ${seconds} s.`;
+      }
       default:
         throw new Error(`Unknown tool ${name}`);
     }
@@ -7955,6 +7988,9 @@ function IslandApp({
             }}
             voiceToken={voiceToken}
             onReset={assistant.reset}
+            plan={assistant.plan}
+            approval={assistant.approval}
+            onApprove={assistant.answer}
             pages={islandPageLinks}
             currentPage={page}
             showPageIcons={settings.showPageIcons}
