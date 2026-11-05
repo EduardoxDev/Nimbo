@@ -204,6 +204,18 @@ pub(crate) async fn agent_list_files(path: String, pattern: Option<String>) -> R
     serde_json::to_string(&serde_json::json!({ "folder": dir.display().to_string(), "total": total, "entries": entries })).map_err(|error| error.to_string())
 }
 
+/// Files that Windows runs instead of showing when they are opened.
+const RUNNABLE: &[&str] = &[
+    "exe", "com", "scr", "pif", "bat", "cmd", "ps1", "psm1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta",
+    "msi", "msp", "msc", "cpl", "lnk", "url", "reg", "jar", "appref-ms", "application", "settingcontent-ms",
+];
+
+fn runs_code(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| RUNNABLE.contains(&extension.to_ascii_lowercase().as_str()))
+}
+
 #[tauri::command]
 pub(crate) async fn agent_open_path(path: String, with: Option<String>) -> Result<String, String> {
     let target = resolve(&path)?;
@@ -211,11 +223,23 @@ pub(crate) async fn agent_open_path(path: String, with: Option<String>) -> Resul
         return Err(format!("{} does not exist.", target.display()));
     }
     if with.as_deref() == Some("vscode") {
-        let status = Command::new("cmd").args(["/c", "code"]).arg(&target).creation_flags(CREATE_NO_WINDOW).status().map_err(|error| error.to_string())?;
+        // `code.cmd` is called directly: through `cmd /c` a name like `x&calc` would run `calc`.
+        // Rust escapes arguments for .cmd files and refuses the ones it cannot make safe.
+        let status = Command::new("code.cmd")
+            .arg(&target)
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map_err(|_| "VS Code's `code` command is not installed, or the path has characters it cannot take.".to_string())?;
         if !status.success() {
             return Err("VS Code's `code` command is not installed.".to_string());
         }
         return Ok(format!("Opened {} in VS Code.", target.display()));
+    }
+    if target.is_file() && runs_code(&target) {
+        return Err(format!(
+            "{} is a program or script. Opening it would run it, so ask the user to open it themselves.",
+            target.display()
+        ));
     }
     Command::new("explorer.exe").arg(&target).spawn().map_err(|error| error.to_string())?;
     Ok(format!("Opened {}.", target.display()))
@@ -285,6 +309,15 @@ pub(crate) async fn agent_run_in_terminal(command: String, cwd: String) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn programs_are_not_opened() {
+        assert!(runs_code(Path::new("C:/Users/u/Downloads/setup.EXE")));
+        assert!(runs_code(Path::new("a/atalho.lnk")));
+        assert!(runs_code(Path::new("a/script.ps1")));
+        assert!(!runs_code(Path::new("a/contrato.pdf")));
+        assert!(!runs_code(Path::new("a/sem-extensao")));
+    }
 
     #[test]
     fn paths_must_stay_in_the_user_folder() {

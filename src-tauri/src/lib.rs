@@ -888,8 +888,8 @@ fn install_codex_status_hooks(
     running_script_path: &Path,
     status_script_path: &Path,
 ) -> Result<(), String> {
-    let content = fs::read_to_string(config_path).unwrap_or_default();
-    let content = remove_managed_codex_hook_block(&content);
+    let content = read_config_text(config_path)?;
+    let content = remove_managed_codex_hook_block(&content)?;
     let block = build_codex_hook_block(running_script_path, status_script_path);
     let mut next_content = content.trim_end().to_string();
     if !next_content.is_empty() {
@@ -897,7 +897,33 @@ fn install_codex_status_hooks(
     }
     next_content.push_str(&block);
 
+    backup_config(config_path)?;
     write_text_file(config_path, &next_content)
+}
+
+/// Reads a config file of another app. Only a missing file counts as empty: any other error
+/// (UTF-16 file, file in use) stops here, so the user's settings are never written over.
+fn read_config_text(path: &Path) -> Result<String, String> {
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(error) => Err(format!(
+            "Failed to read {}: {error}. Nimbo left it untouched.",
+            path.display()
+        )),
+    }
+}
+
+/// Keeps the previous version next to the file (`config.toml.nimbo-bak`) before Nimbo changes it.
+fn backup_config(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".nimbo-bak");
+    fs::copy(path, path.with_file_name(name))
+        .map(|_| ())
+        .map_err(|error| format!("Failed to back up {}: {error}", path.display()))
 }
 
 fn install_claude_code_status_hooks(
@@ -905,10 +931,12 @@ fn install_claude_code_status_hooks(
     running_script_path: &Path,
     status_script_path: &Path,
 ) -> Result<(), String> {
-    let mut config = match fs::read_to_string(config_path) {
-        Ok(content) if !content.trim().is_empty() => serde_json::from_str::<Value>(&content)
-            .map_err(|error| format!("Failed to parse Claude Code settings.json: {error}"))?,
-        _ => json!({}),
+    let content = read_config_text(config_path)?;
+    let mut config = if content.trim().is_empty() {
+        json!({})
+    } else {
+        serde_json::from_str::<Value>(&content)
+            .map_err(|error| format!("Failed to parse Claude Code settings.json: {error}"))?
     };
 
     let Some(root) = config.as_object_mut() else {
@@ -948,6 +976,7 @@ fn install_claude_code_status_hooks(
 
     let json = serde_json::to_string_pretty(&config)
         .map_err(|error| format!("Failed to serialize Claude Code settings.json: {error}"))?;
+    backup_config(config_path)?;
     write_text_file(config_path, &json)
 }
 
@@ -1078,7 +1107,7 @@ statusMessage = "Updating Nimbo agent status"
     )
 }
 
-fn remove_managed_codex_hook_block(content: &str) -> String {
+fn remove_managed_codex_hook_block(content: &str) -> Result<String, String> {
     let mut remaining = content;
     let mut next_content = String::new();
 
@@ -1086,8 +1115,11 @@ fn remove_managed_codex_hook_block(content: &str) -> String {
         next_content.push_str(&remaining[..start]);
         let after_begin = &remaining[start..];
         let Some(end) = after_begin.find(NIMBO_AGENT_HOOK_BLOCK_END) else {
-            remaining = "";
-            break;
+            // Without the end mark there is no telling where Nimbo's block stops.
+            return Err(
+                "The Nimbo block in the Codex config.toml has no end mark. Fix it by hand; Nimbo left the file untouched."
+                    .to_string(),
+            );
         };
 
         remaining = &after_begin[end + NIMBO_AGENT_HOOK_BLOCK_END.len()..];
@@ -1099,7 +1131,7 @@ fn remove_managed_codex_hook_block(content: &str) -> String {
     }
 
     next_content.push_str(remaining);
-    remove_legacy_codex_nimbo_hooks(&next_content)
+    Ok(remove_legacy_codex_nimbo_hooks(&next_content))
 }
 
 fn remove_legacy_codex_nimbo_hooks(content: &str) -> String {
@@ -1600,6 +1632,32 @@ fn point_in_notch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hook_install_never_writes_over_unreadable_configs() {
+        let dir = std::env::temp_dir().join(format!("nimbo-hooks-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let config = dir.join("config.toml");
+        // UTF-16, as PowerShell 5.1 writes with `>`.
+        fs::write(&config, [0xFF, 0xFE, b'a', 0, b'=', 0, b'1', 0]).unwrap();
+        let script = dir.join("s.ps1");
+        assert!(install_codex_status_hooks(&config, &script, &script).is_err());
+        assert_eq!(fs::read(&config).unwrap(), [0xFF, 0xFE, b'a', 0, b'=', 0, b'1', 0]);
+
+        fs::write(&config, "model = \"x\"\n").unwrap();
+        install_codex_status_hooks(&config, &script, &script).unwrap();
+        assert!(fs::read_to_string(&config).unwrap().contains("model = \"x\""));
+        assert_eq!(fs::read_to_string(dir.join("config.toml.nimbo-bak")).unwrap(), "model = \"x\"\n");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn codex_block_without_end_mark_is_left_alone() {
+        let content = format!("a = 1\n{NIMBO_AGENT_HOOK_BLOCK_BEGIN}\nb = 2\n");
+        assert!(remove_managed_codex_hook_block(&content).is_err());
+        let content = format!("a = 1\n{NIMBO_AGENT_HOOK_BLOCK_BEGIN}\nx\n{NIMBO_AGENT_HOOK_BLOCK_END}\nb = 2\n");
+        assert_eq!(remove_managed_codex_hook_block(&content).unwrap().trim_end(), "a = 1\nb = 2");
+    }
 
     fn state(mode: IslandMode, scale: f64, expanded_height: f64) -> IslandWindowState {
         IslandWindowState {

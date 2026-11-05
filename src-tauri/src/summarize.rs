@@ -29,7 +29,8 @@ fn decode_entities(text: &str) -> String {
 
 /// Removes everything between `open` and `close` (scripts, styles).
 fn drop_blocks(html: &str, open: &str, close: &str) -> String {
-    let lower = html.to_lowercase();
+    // ASCII only, so `lower` keeps the byte offsets of `html` (`to_lowercase` changes lengths, as in `İ`).
+    let lower = html.to_ascii_lowercase();
     let mut out = String::with_capacity(html.len());
     let mut at = 0;
     while let Some(start) = lower[at..].find(open).map(|index| index + at) {
@@ -194,6 +195,12 @@ pub(crate) async fn summarize_source(source: String, language: String) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn letters_that_change_size_in_lowercase_do_not_panic() {
+        assert_eq!(drop_blocks("İ<script>x</script>é", "<script", "</script>"), "İé");
+        assert_eq!(drop_blocks("KKK<SCRIPT>x</SCRIPT>ok", "<script", "</script>"), "KKKok");
+    }
 
     #[test]
     fn pages_become_plain_text() {
