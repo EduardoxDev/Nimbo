@@ -6,7 +6,7 @@
  * from phones to the PC, status from the PC to phones, keeps the latest status
  * for the widgets, and pushes it to the iPhone's island (Live Activity).
  *
- *   GET /v1/rooms/:room/ws?role=pc|phone&key=…   WebSocket
+ *   GET /v1/rooms/:room/ws?role=pc|phone&key=…   WebSocket (the PC also sends &pc=…, a code only it knows)
  *   GET /v1/rooms/:room/status?key=…             latest status (widgets)
  *   GET /v1/rooms/:room/cover?key=…              album art of what is playing
  *   POST /v1/rooms/:room/command?key=…           one command (widget and island buttons)
@@ -20,7 +20,7 @@
  *   everything else                              the Nimbo web app (mobile/, built for the web)
  */
 
-import { activityOf, hashKey, MAX_MESSAGE, shouldPush, validKey, validRoom, type ActivityState, type IslandStatus } from "./protocol";
+import { activityOf, hashKey, MAX_MESSAGE, pcAccess, SAVE_STATUS_EVERY, settledStatus, shouldPush, validKey, validRoom, type ActivityState, type IslandStatus } from "./protocol";
 import { pushActivity, type ApnsEnv } from "./apns";
 import { sendWebPush, validSubscription, type PushSubscription, type WebPushEnv } from "./webpush";
 import { Squad, validSquadCode } from "./squad";
@@ -85,6 +85,8 @@ export default {
 
 type Stored = {
   keyHash?: string;
+  /** The PC's own code, hashed: phones and the Alexa skill never get it. */
+  pcKeyHash?: string;
   status?: IslandStatus;
   cover?: string | null;
   inbox?: { id: number; text: string }[];
@@ -99,6 +101,10 @@ type Stored = {
 export { Squad, Pairings };
 
 export class Room implements DurableObject {
+  /** The latest status, kept in memory; storage only gets it when it settles (see settledStatus). */
+  private latest: IslandStatus | null = null;
+  private saved = { key: "", at: 0 };
+
   constructor(
     private ctx: DurableObjectState,
     private env: Env,
@@ -136,8 +142,17 @@ export class Room implements DurableObject {
       return json({ error: "bad_key" }, 403);
     }
 
+    const pcKey = url.searchParams.get("pc");
+    const pcHash = pcKey && validKey(pcKey) ? await hashKey(`pc:${pcKey}`) : null;
+    const actsAsPc = role === "pc" || (url.pathname.includes("/files") && request.method === "POST" && url.searchParams.get("from") === "pc");
+    if (actsAsPc) {
+      const access = pcAccess(await this.get("pcKeyHash"), pcHash);
+      if (access === "denied") return json({ error: "not_the_pc" }, 403);
+      if (access === "claim" && pcHash) await this.ctx.storage.put("pcKeyHash", pcHash);
+    }
+
     if (url.pathname.endsWith("/status")) {
-      return json({ status: (await this.get("status")) ?? null, pcOnline: this.sockets("pc").length > 0 });
+      return json({ status: this.latest ?? (await this.get("status")) ?? null, pcOnline: this.sockets("pc").length > 0 });
     }
     if (url.pathname.endsWith("/cover")) {
       return json({ cover: (await this.get("cover")) ?? null });
@@ -170,7 +185,7 @@ export class Room implements DurableObject {
       server.send(
         JSON.stringify({
           type: "hello",
-          status: (await this.get("status")) ?? null,
+          status: this.latest ?? (await this.get("status")) ?? null,
           pcOnline: this.sockets("pc").length > 0,
           inbox: (await this.get("inbox")) ?? [],
           files: ((await this.get("files")) ?? []).filter((file) => file.from === "pc"),
@@ -196,7 +211,14 @@ export class Room implements DurableObject {
   private async fromPc(message: Record<string, unknown>) {
     if (message.type === "status" && message.status && typeof message.status === "object") {
       const status = message.status as IslandStatus;
-      await this.ctx.storage.put("status", status);
+      this.latest = status;
+      // The PC sends every 2 s; writing each one would be tens of thousands of writes a day.
+      const key = settledStatus(status);
+      const now = Date.now();
+      if (key !== this.saved.key || now - this.saved.at >= SAVE_STATUS_EVERY) {
+        this.saved = { key, at: now };
+        await this.ctx.storage.put("status", status);
+      }
       this.broadcast("phone", { type: "status", status });
       await this.pushIsland(status);
       await this.notifyWeb(status);

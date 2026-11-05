@@ -44,3 +44,22 @@ test("the iPhone app uses the same island rules as the relay", async () => {
   const app = readFileSync(new URL("../mobile/src/shared/protocol.ts", import.meta.url), "utf8");
   assert.equal(app.slice(app.indexOf("\n") + 1), relay);
 });
+
+test("only the PC's own code lets a connection in as the PC", async () => {
+  const { pcAccess } = await import("../relay/src/protocol.ts");
+  assert.equal(pcAccess(undefined, null), "legacy");
+  assert.equal(pcAccess(undefined, "h"), "claim");
+  assert.equal(pcAccess("h", "h"), "ok");
+  assert.equal(pcAccess("h", null), "denied");
+  assert.equal(pcAccess("h", "other"), "denied");
+});
+
+test("the saved status ignores the ticking of songs and timers", async () => {
+  const { settledStatus } = await import("../relay/src/protocol.ts");
+  const music = { title: "A", artist: "x", playing: true, positionMs: 1_000, durationMs: 9_000 };
+  const focus = { status: "running", phase: "focus", remainingMs: 600_000, totalMs: 1_500_000 };
+  const a = settledStatus({ music, focus, mascot: "<svg/>" });
+  assert.equal(settledStatus({ music: { ...music, positionMs: 5_000 }, focus: { ...focus, remainingMs: 598_000 }, mascot: "<svg>2</svg>" }), a);
+  assert.notEqual(settledStatus({ music: { ...music, playing: false }, focus }), a);
+  assert.notEqual(settledStatus({ music, focus: { ...focus, remainingMs: 480_000 } }), a);
+});

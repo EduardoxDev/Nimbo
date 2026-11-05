@@ -267,8 +267,8 @@ fn sessions() -> Result<Vec<(u32, ISimpleAudioVolume)>, String> {
 }
 
 #[tauri::command]
-pub(crate) fn system_app_volumes() -> Result<Vec<AppVolume>, String> {
-    crate::media_control::run_on_media_thread(|| {
+pub(crate) async fn system_app_volumes() -> Result<Vec<AppVolume>, String> {
+    crate::media_control::media_task(|| {
         let mut apps: Vec<AppVolume> = Vec::new();
         for (pid, volume) in sessions()? {
             let Some(name) = process_name(pid) else { continue };
@@ -283,12 +283,13 @@ pub(crate) fn system_app_volumes() -> Result<Vec<AppVolume>, String> {
         apps.truncate(MAX_APP_SESSIONS);
         Ok(apps)
     })
+    .await
 }
 
 #[tauri::command]
-pub(crate) fn system_set_app_volume(pid: u32, volume: f32, muted: bool) -> Result<(), String> {
+pub(crate) async fn system_set_app_volume(pid: u32, volume: f32, muted: bool) -> Result<(), String> {
     let volume = volume.clamp(0.0, 1.0);
-    crate::media_control::run_on_media_thread(move || {
+    crate::media_control::media_task(move || {
         let targets: Vec<ISimpleAudioVolume> = sessions()?
             .into_iter()
             .filter(|(session_pid, _)| *session_pid == pid)
@@ -305,6 +306,7 @@ pub(crate) fn system_set_app_volume(pid: u32, volume: f32, muted: bool) -> Resul
         }
         Ok(())
     })
+    .await
 }
 
 #[cfg(test)]

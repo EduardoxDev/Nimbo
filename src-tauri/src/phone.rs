@@ -8,10 +8,10 @@ use serde::Serialize;
 use std::{
     fs,
     io::Read,
-    net::UdpSocket,
+    net::{IpAddr, UdpSocket},
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Mutex, OnceLock,
     },
     thread,
@@ -27,7 +27,8 @@ const PAGE: &str = include_str!("phone_page.html");
 const DENIED: &str = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;padding:32px 22px;background:#08080a;color:#f5f5f7;font:16px/1.5 system-ui,-apple-system,sans-serif'><h2 style='margin:0 0 12px'>Nimbo</h2><p>Este link é de um código antigo. No PC, abra Configurações → Celular e escaneie o QR code de novo.</p><p style='color:#98989d'>This link uses an old code. On the PC, open Settings → Phone and scan the QR code again.</p></body>";
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
-static STOP: AtomicBool = AtomicBool::new(false);
+/// Bumped by every start and stop: a server thread only runs while it holds the latest one.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
 static PORT: Mutex<Option<u16>> = Mutex::new(None);
 static TOKEN: Mutex<Option<String>> = Mutex::new(None);
 static STATUS: Mutex<String> = Mutex::new(String::new());
@@ -142,7 +143,19 @@ pub(crate) fn uploads_dir() -> Option<PathBuf> {
     Some(dir)
 }
 
+/// Phones on the same network only: private, link-local or this PC.
+fn local_peer(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ip) => ip.is_private() || ip.is_link_local() || ip.is_loopback(),
+        IpAddr::V6(ip) => ip.to_ipv4_mapped().is_some_and(|ip| ip.is_private() || ip.is_link_local() || ip.is_loopback()) || ip.is_loopback(),
+    }
+}
+
 fn handle(app: &AppHandle, mut request: tiny_http::Request) {
+    if !request.remote_addr().is_some_and(|addr| local_peer(addr.ip())) {
+        respond(request, 403, "text/plain; charset=utf-8", b"Forbidden".to_vec());
+        return;
+    }
     let url = request.url().to_string();
     let path = url.split('?').next().unwrap_or("/").to_string();
     let given = query_param(&url, "k")
@@ -206,6 +219,12 @@ fn handle(app: &AppHandle, mut request: tiny_http::Request) {
             let parsed = serde_json::from_str::<serde_json::Value>(&body).unwrap_or(serde_json::Value::Null);
             let action = parsed["action"].as_str().unwrap_or_default();
             let value = parsed["value"].as_str().unwrap_or_default();
+            // This page is plain HTTP: anyone on the same Wi-Fi who sees the code could answer an
+            // agent. Approvals go through the PC or the app over the relay (HTTPS).
+            if matches!(action, "approve" | "deny") {
+                json(request, serde_json::json!({ "ok": false }));
+                return;
+            }
             json(request, serde_json::json!({ "ok": run_command(app, action, value).is_ok() }));
         }
         _ => respond(request, 404, "text/plain; charset=utf-8", b"Not found".to_vec()),
@@ -289,25 +308,28 @@ pub(crate) fn phone_start(app: AppHandle) -> Result<PhoneInfo, String> {
         .find_map(|port| tiny_http::Server::http(("0.0.0.0", port)).ok().map(|server| (server, port)))
         .ok_or("Não consegui abrir a porta para o celular.")?;
     *PORT.lock().map_err(|error| error.to_string())? = Some(port);
-    STOP.store(false, Ordering::SeqCst);
+    let mine = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     RUNNING.store(true, Ordering::SeqCst);
     let handle_app = app.clone();
     thread::spawn(move || {
-        while !STOP.load(Ordering::SeqCst) {
+        while GENERATION.load(Ordering::SeqCst) == mine {
             match server.recv_timeout(Duration::from_millis(800)) {
                 Ok(Some(request)) => handle(&handle_app, request),
                 Ok(None) => {}
                 Err(_) => break,
             }
         }
-        RUNNING.store(false, Ordering::SeqCst);
+        // A newer server may already be running: only the latest one says it stopped.
+        if GENERATION.load(Ordering::SeqCst) == mine {
+            RUNNING.store(false, Ordering::SeqCst);
+        }
     });
     Ok(info(&app))
 }
 
 #[tauri::command]
 pub(crate) fn phone_stop() {
-    STOP.store(true, Ordering::SeqCst);
+    GENERATION.fetch_add(1, Ordering::SeqCst);
     RUNNING.store(false, Ordering::SeqCst);
 }
 
@@ -366,5 +388,14 @@ mod tests {
         assert_eq!(safe_name(".."), "arquivo-do-celular");
         assert_eq!(urlencoding_decode("Minha%20foto+1.jpg"), "Minha foto 1.jpg");
         assert_eq!(query_param("/api/status?k=abc&inbox=5", "inbox").as_deref(), Some("5"));
+    }
+
+    #[test]
+    fn only_phones_on_the_same_network() {
+        assert!(local_peer("192.168.0.20".parse().unwrap()));
+        assert!(local_peer("10.1.2.3".parse().unwrap()));
+        assert!(local_peer("127.0.0.1".parse().unwrap()));
+        assert!(!local_peer("8.8.8.8".parse().unwrap()));
+        assert!(!local_peer("100.64.0.1".parse().unwrap()));
     }
 }

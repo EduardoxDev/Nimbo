@@ -187,7 +187,23 @@ fn steps_of(titles: &[String], done: bool) -> Vec<ExternalStep> {
 fn watch(app: AppHandle, child: Child, goal: String, generation: u64) {
     let mut child = child;
     let stdout = child.stdout.take();
-    let mut stderr = child.stderr.take();
+    // stderr is read on its own thread: if it filled the pipe while we wait for stdout,
+    // Claude Code would block writing and the task would hang as "working" forever.
+    let stderr = child.stderr.take().map(|stderr| {
+        std::thread::spawn(move || {
+            let mut kept = Vec::new();
+            let mut chunk = [0u8; 4096];
+            let mut stderr = stderr;
+            while let Ok(read) = stderr.read(&mut chunk) {
+                if read == 0 {
+                    break;
+                }
+                let room = 4_000usize.saturating_sub(kept.len());
+                kept.extend_from_slice(&chunk[..read.min(room)]);
+            }
+            String::from_utf8_lossy(&kept).into_owned()
+        })
+    });
     if let Ok(mut slot) = CHILD.lock() {
         *slot = Some(child);
     }
@@ -235,10 +251,7 @@ fn watch(app: AppHandle, child: Child, goal: String, generation: u64) {
         }
     }
 
-    let mut errors = String::new();
-    if let Some(stderr) = stderr.as_mut() {
-        let _ = stderr.take(4_000).read_to_string(&mut errors);
-    }
+    let errors = stderr.and_then(|reader| reader.join().ok()).unwrap_or_default();
     if GENERATION.load(std::sync::atomic::Ordering::SeqCst) != generation {
         return;
     }

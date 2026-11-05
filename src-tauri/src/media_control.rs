@@ -223,6 +223,17 @@ where
     on_media_thread(operation)
 }
 
+/// The same, for Tauri commands: waits off the main thread, so a stuck player never freezes the windows.
+pub(crate) async fn media_task<T, F>(operation: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || on_media_thread(operation))
+        .await
+        .map_err(|error| format!("The media task stopped: {error}"))?
+}
+
 fn on_media_thread<T, F>(operation: F) -> Result<T, String>
 where
     T: Send + 'static,

@@ -29,6 +29,9 @@ struct Config {
     url: String,
     room: String,
     key: String,
+    /// Only this PC knows it (never in the QR code): the relay lets in as "pc" only who has it.
+    #[serde(default)]
+    pc_key: String,
     enabled: bool,
 }
 
@@ -66,6 +69,11 @@ fn load(app: &AppHandle) -> Config {
     if config.room.len() != 32 || config.key.len() != 48 {
         config.room = random_hex(16);
         config.key = random_hex(24);
+        config.pc_key = random_hex(24);
+        save(app, &config);
+    }
+    if config.pc_key.len() != 48 {
+        config.pc_key = random_hex(24);
         save(app, &config);
     }
     config
@@ -87,7 +95,7 @@ pub(crate) fn clean_url(url: &str) -> Option<String> {
 
 fn socket_url(config: &Config) -> String {
     let base = config.url.replacen("https://", "wss://", 1).replacen("http://", "ws://", 1);
-    format!("{base}/v1/rooms/{}/ws?role=pc&key={}", config.room, config.key)
+    format!("{base}/v1/rooms/{}/ws?role=pc&key={}&pc={}", config.room, config.key, config.pc_key)
 }
 
 pub(crate) fn pair_link(config_url: &str, room: &str, key: &str, lan: Option<&str>) -> String {
@@ -233,8 +241,8 @@ pub(crate) fn init(app: &AppHandle) {
 fn files_url(config: &Config, id: Option<&str>) -> String {
     let base = config.url.trim_end_matches('/');
     match id {
-        Some(id) => format!("{base}/v1/rooms/{}/files/{id}?key={}", config.room, config.key),
-        None => format!("{base}/v1/rooms/{}/files?key={}", config.room, config.key),
+        Some(id) => format!("{base}/v1/rooms/{}/files/{id}?key={}&pc={}", config.room, config.key, config.pc_key),
+        None => format!("{base}/v1/rooms/{}/files?key={}&pc={}", config.room, config.key, config.pc_key),
     }
 }
 
@@ -377,6 +385,7 @@ pub(crate) fn relay_new_room(app: AppHandle) -> RelayInfo {
     let mut config = CONFIG.lock().ok().and_then(|config| config.clone()).unwrap_or_else(|| load(&app));
     config.room = random_hex(16);
     config.key = random_hex(24);
+    config.pc_key = random_hex(24);
     save(&app, &config);
     if let Ok(mut slot) = CONFIG.lock() {
         *slot = Some(config);
@@ -401,7 +410,7 @@ mod tests {
     fn the_pair_link_carries_everything_the_app_needs() {
         let link = pair_link("https://r.workers.dev", "ab", "cd", Some("http://192.168.0.2:43900/?k=x"));
         assert_eq!(link, "https://r.workers.dev/pair#relay=https%3A%2F%2Fr.workers.dev&room=ab&key=cd&lan=http%3A%2F%2F192.168.0.2%3A43900%2F%3Fk%3Dx");
-        let config = Config { url: "https://r.workers.dev".into(), room: "ab".into(), key: "cd".into(), enabled: true };
-        assert_eq!(socket_url(&config), "wss://r.workers.dev/v1/rooms/ab/ws?role=pc&key=cd");
+        let config = Config { url: "https://r.workers.dev".into(), room: "ab".into(), key: "cd".into(), pc_key: "ef".into(), enabled: true };
+        assert_eq!(socket_url(&config), "wss://r.workers.dev/v1/rooms/ab/ws?role=pc&key=cd&pc=ef");
     }
 }

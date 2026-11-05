@@ -34,8 +34,8 @@ fn default_microphone() -> Result<IMMDevice, String> {
 }
 
 #[tauri::command]
-pub(crate) fn mic_state() -> Result<MicState, String> {
-    crate::media_control::run_on_media_thread(|| unsafe {
+pub(crate) async fn mic_state() -> Result<MicState, String> {
+    crate::media_control::media_task(|| unsafe {
         let device = default_microphone()?;
         let volume: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None).map_err(|error| error.to_string())?;
         let meter: Option<IAudioMeterInformation> = device.Activate(CLSCTX_ALL, None).ok();
@@ -45,12 +45,13 @@ pub(crate) fn mic_state() -> Result<MicState, String> {
             peak: meter.and_then(|meter| meter.GetPeakValue().ok()).unwrap_or(0.0),
         })
     })
+    .await
 }
 
 /// Turns the microphone back on (and up, if it was all the way down).
 #[tauri::command]
-pub(crate) fn mic_unmute() -> Result<(), String> {
-    crate::media_control::run_on_media_thread(|| unsafe {
+pub(crate) async fn mic_unmute() -> Result<(), String> {
+    crate::media_control::media_task(|| unsafe {
         let device = default_microphone()?;
         let volume: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None).map_err(|error| error.to_string())?;
         volume.SetMute(false, std::ptr::null()).map_err(|error| error.to_string())?;
@@ -59,6 +60,7 @@ pub(crate) fn mic_unmute() -> Result<(), String> {
         }
         Ok(())
     })
+    .await
 }
 
 #[cfg(test)]
@@ -67,7 +69,7 @@ mod tests {
     #[test]
     #[ignore]
     fn reads_the_real_microphone() {
-        let state = super::mic_state().expect("microphone");
+        let state = tauri::async_runtime::block_on(super::mic_state()).expect("microphone");
         println!("muted={} volume={} peak={}", state.muted, state.volume, state.peak);
         assert!((0.0..=1.0).contains(&state.volume));
     }

@@ -86,3 +86,26 @@ export function shouldPush(previous: ActivityState | null, next: ActivityState, 
   const endsMoved = Math.abs(previous.endsAt - next.endsAt) > 5_000;
   return previous.kind !== next.kind || previous.title !== next.title || previous.subtitle !== next.subtitle || previous.color !== next.color || endsMoved;
 }
+
+/**
+ * Who may connect as the PC. Phones and the Alexa skill know the room code, so the PC also
+ * sends a code of its own that is never shared. Rooms made before it are claimed by the
+ * first PC that shows one; after that, a connection as "pc" without it is turned away.
+ */
+export function pcAccess(storedHash: string | undefined, givenHash: string | null): "ok" | "claim" | "legacy" | "denied" {
+  if (!givenHash) return storedHash ? "denied" : "legacy";
+  if (!storedHash) return "claim";
+  return storedHash === givenHash ? "ok" : "denied";
+}
+
+/** The saved status is rewritten when this changes, or once a minute: not for every second of a song. */
+export const SAVE_STATUS_EVERY = 60_000;
+
+export function settledStatus(status: IslandStatus & { mascot?: unknown }) {
+  const { mascot: _drawing, ...rest } = status;
+  return JSON.stringify({
+    ...rest,
+    music: rest.music ? { ...rest.music, positionMs: null } : rest.music,
+    focus: rest.focus ? { ...rest.focus, remainingMs: Math.round(rest.focus.remainingMs / 60_000) } : rest.focus,
+  });
+}
