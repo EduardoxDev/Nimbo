@@ -18,6 +18,12 @@ test("members are trimmed to what the island shows", () => {
   assert.equal(cleanMember({ id: id(2) }, 5).name, "Nimbo");
 });
 
+test("the song a friend shares is cut to size", () => {
+  const music = { title: "  Flores\u0007 ", artist: "Titãs", positionMs: -5, durationMs: 1e12, cover: "data:…" };
+  assert.deepEqual(cleanMember({ id: id(3), music }, 5).music, { title: "Flores", artist: "Titãs", positionMs: 0, durationMs: 3 * 3_600_000 });
+  assert.equal("music" in cleanMember({ id: id(3), music: { title: "" } }, 5), false);
+});
+
 test("quiet members leave, the group has a size limit", () => {
   const now = 10 * MEMBER_TTL_MS;
   const old = { ...cleanMember({ id: id(1), name: "Velho" }, now - MEMBER_TTL_MS - 1) };

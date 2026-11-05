@@ -4,6 +4,7 @@ import { useTranslation } from "../i18n";
 import { Row, Section } from "../settings/controls";
 import { InfraredSettings } from "./InfraredSettings";
 import { AutomationsSettings } from "./AutomationsSettings";
+import { ReachSettings } from "../reach/ReachSettings";
 import {
   homeApi,
   loadHomeFavorites,
@@ -180,6 +181,8 @@ export function HomeSettingsPage() {
       )}
 
       <AutomationsSettings />
+
+      {status?.configured && <ReachSettings />}
 
       <p className="prefs-note">
         <Lock size={13} strokeWidth={2.2} aria-hidden="true" />

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, ScrollText, Wrench, Image as ImageIcon, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
+import { AlarmClock, AppWindow, CalendarRange, Circle, Clapperboard, ClipboardList, File as FileIcon, FileText, BookmarkPlus, History, ScrollText, Wrench, Image as ImageIcon, FolderDown, FolderOpen, FolderTree, ListChecks, Moon, Play, Rocket, Search, Smartphone, Sunrise, X, Zap, type LucideIcon } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { timeRequestOf } from "../timemachine/timemachine";
 import { readLaterRequestOf, shortLink } from "../readLater/readLater";
 import { isPrompterRequest } from "../prompter/prompter";
 import { toolCommandOf, type ToolCommand } from "../tools/tools";
@@ -101,6 +103,7 @@ export function LauncherPanel<Page extends string>({
   }, []);
   const trimmed = query.trim();
   const toPhone = /^(?:manda|mandar|envia|enviar|send)\s+(?:pro|para o|pra|ao|to(?: my| the)?)\s+(?:celular|telefone|phone)(?:\s*:?\s+(.+))?$|^发到手机\s*(.*)$/i.exec(trimmed);
+  const travelTo = timeRequestOf(trimmed, Date.now());
   const tidyDownloads = /^(arrumar|arruma|organizar|organiza|limpar|limpa)\s+(os\s+|a\s+pasta\s+)?downloads$|^(tidy|organi[sz]e|clean)( up)?( my)? downloads$|^整理下载$/i.test(trimmed);
   const recordName = /^(?:gravar|grava|grave|ensinar|ensina)\s+(?:uma\s+|a\s+)?a[cç][aã]o\s+(.+)$|^(?:record|teach)\s+(?:an?\s+)?action\s+(.+)$/i.exec(trimmed);
   const macroWanted = /^(?:faz|fazer|roda|rodar|rode|executa|run|do)\s+(?:o\s+|a\s+|the\s+)?(.+)$/i.exec(trimmed)?.[1]?.toLowerCase() ?? null;
@@ -119,7 +122,13 @@ export function LauncherPanel<Page extends string>({
   const results = summarySource || dayTab || routine || project || forApp || reminder || clip ? [] : searchApps(apps, query);
   const projectToOpen = project?.kind === "open" ? findWorkspace(workspaces, project.name) : project?.kind === "last" ? (workspaces[0] ?? null) : null;
   // A typed command wins over app names, so "bom dia" never opens an app called "Bom".
-  const command = toPhone
+  const command = travelTo !== null
+    ? {
+        icon: History,
+        text: copy.timeRow(new Date(travelTo).toLocaleString(t.localeTag, { weekday: "short", hour: "2-digit", minute: "2-digit" })),
+        run: () => travelNow(travelTo),
+      }
+    : toPhone
     ? { icon: Smartphone, text: toPhone[1] || toPhone[2] ? copy.phoneRow(toPhone[1] ?? toPhone[2]) : copy.phoneClipRow, run: () => sendToPhone(toPhone[1] ?? toPhone[2] ?? null) }
     : tidyDownloads
     ? { icon: FolderTree, text: copy.tidyRow, run: () => tidyNow() }
@@ -263,6 +272,21 @@ export function LauncherPanel<Page extends string>({
     setQuery("");
     if (text) onSendToPhone(text);
     else if (isTauri()) void invoke<string | null>("read_translation_clipboard").then((clip) => clip && onSendToPhone(clip));
+    onDone();
+  };
+
+  // The time machine: reopens what was missing and puts each window back (src-tauri/src/desk.rs).
+  const travelNow = (at: number) => {
+    setQuery("");
+    if (isTauri()) {
+      void invoke<{ at: number; launched: number; moved: number; files: number; urls: string[] }>("desk_restore", { at })
+        .then((result) => {
+          result.urls.forEach((url) => void openUrl(url).catch(() => {}));
+          const when = new Date(result.at).toLocaleString(t.localeTag, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+          onNotice(copy.timeDone(when, result.launched + result.files + result.urls.length, result.moved));
+        })
+        .catch((failure) => onNotice(String(failure)));
+    }
     onDone();
   };
 

@@ -33,6 +33,8 @@ mod relay;
 mod devices_in_use;
 mod workspace;
 mod activity;
+mod desk;
+mod cards;
 mod home_assistant;
 mod hud;
 mod ir_climate;
@@ -1960,6 +1962,7 @@ pub fn run() {
             hud::init(app.handle());
             fullscreen::init(app.handle());
             activity::init(app.handle());
+            desk::init(app.handle());
             relay::init(app.handle());
             shortcuts::init(app.handle());
             launcher::init();
@@ -2042,6 +2045,9 @@ pub fn run() {
             home_assistant::disconnect_home_assistant,
             home_assistant::home_assistant_entities,
             home_assistant::home_assistant_call,
+            home_assistant::home_assistant_reach_targets,
+            home_assistant::home_assistant_announce,
+            home_assistant::home_assistant_flash,
             ir_climate::ir_status,
             ir_climate::ir_discover,
             ir_climate::ir_select_device,
@@ -2143,6 +2149,9 @@ pub fn run() {
             devices_in_use::devices_in_use,
             workspace::workspace_snapshot,
             workspace::workspace_open,
+            desk::desk_restore,
+            cards::card_create,
+            cards::card_value,
             secrets::clear_sensitive_clipboard,
             activity::activity_day,
             activity::activity_set_enabled,

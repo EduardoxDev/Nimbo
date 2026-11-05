@@ -201,7 +201,7 @@ fn top_windows() -> Vec<Rect> {
 }
 
 unsafe extern "system" fn collect_open(window: HWND, data: LPARAM) -> BOOL {
-    let list = unsafe { &mut *(data.0 as *mut Vec<ForegroundWindow>) };
+    let list = unsafe { &mut *(data.0 as *mut Vec<(HWND, ForegroundWindow)>) };
     let usable = unsafe { IsWindowVisible(window).as_bool() && GetWindowTextLengthW(window) > 0 }
         && unsafe { GetWindowLongPtrW(window, GWL_EXSTYLE) } as u32 & WS_EX_TOOLWINDOW.0 == 0
         && process_of(window) != std::process::id()
@@ -210,7 +210,7 @@ unsafe extern "system" fn collect_open(window: HWND, data: LPARAM) -> BOOL {
     if usable {
         if let Some(path) = process_path(process_of(window)) {
             let app = path.rsplit('\\').next().unwrap_or("").to_lowercase();
-            list.push(ForegroundWindow { app, path, title: window_title(window) });
+            list.push((window, ForegroundWindow { app, path, title: window_title(window) }));
         }
     }
     BOOL(1)
@@ -218,9 +218,14 @@ unsafe extern "system" fn collect_open(window: HWND, data: LPARAM) -> BOOL {
 
 /// Every window on the taskbar, front to back (minimised ones too).
 pub(crate) fn open_windows() -> Vec<ForegroundWindow> {
-    let mut list: Vec<ForegroundWindow> = Vec::new();
+    open_window_handles().into_iter().map(|(_, window)| window).collect()
+}
+
+/// The same, with each window's handle (to read or restore where it sits).
+pub(crate) fn open_window_handles() -> Vec<(HWND, ForegroundWindow)> {
+    let mut list: Vec<(HWND, ForegroundWindow)> = Vec::new();
     unsafe {
-        let _ = EnumWindows(Some(collect_open), LPARAM(&mut list as *mut Vec<ForegroundWindow> as isize));
+        let _ = EnumWindows(Some(collect_open), LPARAM(&mut list as *mut Vec<(HWND, ForegroundWindow)> as isize));
     }
     list.truncate(60);
     list

@@ -1,9 +1,9 @@
 /**
  * "Focus together": friends share an 8-letter code and see each other's
- * mascot focusing. Each Nimbo posts its presence every few seconds; whoever
- * stops posting leaves the group by itself. Nothing else is stored.
+ * mascot focusing, and what they are listening to ("listen together"). Each Nimbo posts its
+ * presence every few seconds; whoever stops posting leaves the group by itself. Nothing else is stored.
  *
- *   POST /v1/squads/:code/presence   { id, name, mood, focus, distracted } → { members, pokes }
+ *   POST /v1/squads/:code/presence   { id, name, mood, focus, distracted, music? } → { members, pokes }
  *   POST /v1/squads/:code/poke       { from, to, kind }
  */
 
@@ -13,8 +13,25 @@ export type SquadMember = {
   mood: string;
   focus: { status: "idle" | "running" | "paused"; remainingMs: number };
   distracted: boolean;
+  /** The song playing right now, when the friend shares it. */
+  music?: SquadMusic;
   at: number;
 };
+
+export type SquadMusic = { title: string; artist: string; positionMs: number; durationMs: number };
+
+function text(value: unknown, size: number) {
+  return typeof value === "string" ? [...value].filter((char) => char >= " ").join("").trim().slice(0, size) : "";
+}
+
+function cleanMusic(input: unknown): SquadMusic | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Record<string, unknown>;
+  const title = text(value.title, 120);
+  if (!title) return null;
+  const clamp = (number: unknown) => (Number.isFinite(Number(number)) ? Math.max(0, Math.min(Number(number), 3 * 3_600_000)) : 0);
+  return { title, artist: text(value.artist, 80), positionMs: clamp(value.positionMs), durationMs: clamp(value.durationMs) };
+}
 
 export type SquadPoke = { from: string; fromName: string; to: string; kind: "wave" | "focus"; at: number };
 
@@ -40,12 +57,14 @@ export function cleanMember(input: unknown, now: number): SquadMember | null {
   const name = typeof value.name === "string" ? [...value.name].filter((char) => char >= " ").join("").trim().slice(0, 24) : "";
   const status = value.focus?.status === "running" || value.focus?.status === "paused" ? value.focus.status : "idle";
   const remaining = Number(value.focus?.remainingMs);
+  const music = cleanMusic(value.music);
   return {
     id: value.id,
     name: name || "Nimbo",
     mood: MOODS.has(value.mood) ? value.mood : "idle",
     focus: { status, remainingMs: Number.isFinite(remaining) ? Math.max(0, Math.min(remaining, 4 * 3_600_000)) : 0 },
     distracted: value.distracted === true,
+    ...(music ? { music } : {}),
     at: now,
   };
 }

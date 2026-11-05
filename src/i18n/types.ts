@@ -577,6 +577,12 @@ export type Translations = {
     focusing: (name: string, minutes: number) => string;
     distracted: (name: string) => string;
     online: (name: string) => string;
+    listening: (name: string, title: string) => string;
+    listeningNotice: (name: string, title: string, artist: string) => string;
+    listenTogether: string;
+    together: (name: string) => string;
+    shareMusic: string;
+    shareMusicHint: string;
     wave: string;
     call: string;
   };
@@ -742,6 +748,56 @@ export type Translations = {
     settingTitle: string;
     settingHint: string;
   };
+  cards: {
+    making: string;
+    created: (text: string) => string;
+    removed: (title: string) => string;
+    notFound: (name: string) => string;
+    full: string;
+    alert: (title: string, above: boolean, limit: string, now: string) => string;
+  };
+  companion: {
+    hello: (hour: number) => string;
+    today: (text: string) => string;
+    howWas: (text: string) => string;
+    yesterday: (focus: number, todos: number) => string;
+    streak: (days: number) => string;
+    agenda: (count: number, firstTime: string) => string;
+    noted: (text: string, day: string) => string;
+    today2: string;
+    tomorrow: string;
+  };
+  autopilot: {
+    title: string;
+    hint: string;
+    join: string;
+    joinNow: string;
+    skip: string;
+    headsUp: (title: string, music: boolean) => string;
+  };
+  reach: {
+    title: string;
+    hint: string;
+    speaker: string;
+    light: string;
+    none: string;
+    noVoice: string;
+    away: string;
+    minutes: (count: number) => string;
+    kinds: Record<"agents" | "meetings" | "deliveries", string>;
+    test: string;
+    testMessage: string;
+    tested: string;
+    approval: (agent: string) => string;
+    agentDone: (agent: string) => string;
+    meeting: (title: string, minutes: number) => string;
+  };
+  deliveries: {
+    stage: Record<"food" | "ride" | "package", Record<"confirmed" | "preparing" | "onTheWay" | "arriving" | "arrived" | "cancelled", string>>;
+    minutes: (count: number) => string;
+    arrived: (name: string, kind: "food" | "ride" | "package") => string;
+    cancelled: (name: string) => string;
+  };
   tips: {
     text: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
     action: Record<"copiedLink" | "focusGuard" | "music" | "phone" | "launcher", string>;
@@ -803,6 +859,8 @@ export type Translations = {
     dayRow: (tab: string) => string;
     tagCopied: string;
     tidyRow: string;
+    timeRow: (when: string) => string;
+    timeDone: (when: string, opened: number, moved: number) => string;
     phoneRow: (text: string) => string;
     phoneClipRow: string;
     readLaterRow: (link: string) => string;

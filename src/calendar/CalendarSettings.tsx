@@ -4,6 +4,7 @@ import type { IslandSettings } from "../App";
 import { useTranslation } from "../i18n";
 import { Row, Section, Stepper, Toggle } from "../settings/controls";
 import { CALENDAR_CHANGED_KEY, type CalendarSource } from "./calendar";
+import { loadAutopilot, saveAutopilot } from "../autopilot/autopilot";
 
 function announceChange() {
   try {
@@ -23,6 +24,8 @@ export function CalendarSettingsPage({
   const t = useTranslation();
   const copy = t.prefs.calendarPrefs;
   const appearance = t.prefs.appearance;
+  const autopilotCopy = t.autopilot;
+  const [autopilot, setAutopilot] = useState(() => loadAutopilot());
   const [sources, setSources] = useState<CalendarSource[]>([]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -79,6 +82,16 @@ export function CalendarSettingsPage({
         </Row>
         <Row title={copy.meetingMode} hint={copy.meetingHint}>
           <Toggle label={copy.meetingMode} checked={settings.meetingMode} onChange={(meetingMode) => update({ meetingMode })} />
+        </Row>
+        <Row title={autopilotCopy.title} hint={autopilotCopy.hint}>
+          <Toggle
+            label={autopilotCopy.title}
+            checked={autopilot.meetings}
+            onChange={(meetings) => {
+              setAutopilot({ meetings });
+              saveAutopilot({ meetings });
+            }}
+          />
         </Row>
         {sources.map((source, index) => (
           <Row key={`${source.name}-${index}`} title={source.name} hint={source.host}>

@@ -2,6 +2,8 @@ export type CalendarEvent = {
   id: string;
   title: string;
   location: string | null;
+  /** The video call link (Meet, Teams, Zoom…), when the event has one. */
+  link?: string | null;
   start: number;
   end: number;
   allDay: boolean;

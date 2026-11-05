@@ -175,3 +175,21 @@ Tamanho: P = um dia ou menos, M = alguns dias, G = uma semana ou mais.
 4. **A6** (organizar o código antes das features grandes).
 5. **C1 Atividades ao vivo** e **C3 Lançador** (os maiores "uau").
 6. Fase D quando for abrir para outras pessoas.
+
+---
+
+## 7. Fase E — Apostas grandes (05/11/2026)
+
+Ideias para alguém instalar o Nimbo só por causa delas. Todas aproveitam peças que já existem.
+
+| # | Aposta | O momento "uau" | Já existe | Tam. |
+|---|---|---|---|---|
+| E1 | ✅ **Cartões vivos sob demanda** | "Nimbo, acompanha o placar do Flamengo": a IA cria na hora um cartão que se atualiza na ilha | IA, voz, atividades ao vivo, relay até o iPhone; falta área isolada (sandbox) para o cartão | G |
+| E2 | ✅ **Entregas e corridas ao vivo** | iFood, Uber, 99, Rappi, Mercado Livre… viram barra na ilha: "🛵 iFood · Chegando · ~12 min" | Notificações do celular pelo Vincular ao Celular (`notifications.rs`); regras em `src/deliveries/` | M |
+| E3 | ✅ **Ouvir junto com os amigos** | A ilha mostra o que os amigos ouvem; um toque e você entra na mesma música, sincronizada | Grupo, presença e cutucada do "Focar junto" (`relay/src/squad.ts`), música via SMTC/Spotify/YouTube | M |
+| E4 | ✅ **Máquina do tempo do PC** | "Volta meu PC para como estava ontem às 15h": apps, abas, arquivos e janelas no lugar | Memória e workspaces; falta guardar posição das janelas | M/G |
+| E5 | ✅ **Piloto automático do dia** | 2 min antes da reunião abre o doc, pausa a música, liga o foco e ajusta o ar, sempre com "desfazer" | Hábitos, agenda, rotinas, casa | M |
+| E6 | ✅ **Nimbo companheiro** | O mascote lembra do seu dia, comemora sequências e conversa por voz de manhã e à noite | Humores, níveis, acessórios, carinho, Nimbo livre | M |
+| E7 | ✅ **O PC te encontra pela casa** | Longe do PC, o aviso chega pelo Echo da sala, por uma lâmpada ou pelo celular | Tempo parado, relay, Alexa, Home Assistant | M |
+
+Também na fila (rodada anterior, foco em quem programa com agentes de IA): medidor de cota e contexto do Claude, `nimbo run` (progresso de qualquer comando até o iPhone), PC acordado enquanto o agente trabalha, detector de agente em loop, ata de reunião pelas Legendas ao Vivo, mascote que vai até a janela do agente, perguntas com opções na ilha.

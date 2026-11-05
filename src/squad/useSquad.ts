@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { distractionOf } from "../life/distraction";
-import { DEFAULT_SQUAD_SERVER, loadSquad, SQUAD_KEY, startedFocusing, type SquadConfig, type SquadFriend, type SquadPoke } from "./squad";
+import { DEFAULT_SQUAD_SERVER, loadSquad, SQUAD_KEY, startedFocusing, startedListening, type SquadConfig, type SquadFriend, type SquadMusic, type SquadPoke } from "./squad";
 
 const EVERY_MS = 15_000;
 
-type Me = { mood: string; focusStatus: "idle" | "running" | "paused"; remainingMs: number };
+type Me = { mood: string; focusStatus: "idle" | "running" | "paused"; remainingMs: number; music: SquadMusic | null };
 
 /**
  * Keeps this Nimbo in its group: posts how it is doing every 15 s and reads
  * the friends back. Off when there is no group (Settings → Pomodoro).
  */
-export function useSquad(me: Me, on: { started: (friend: SquadFriend) => void; poke: (poke: SquadPoke) => void }) {
+export function useSquad(
+  me: Me,
+  on: { started: (friend: SquadFriend) => void; listening: (friend: SquadFriend) => void; poke: (poke: SquadPoke) => void },
+) {
   const [config, setConfig] = useState<SquadConfig | null>(() => loadSquad());
   const [friends, setFriends] = useState<SquadFriend[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +59,14 @@ export function useSquad(me: Me, on: { started: (friend: SquadFriend) => void; p
         const response = await fetch(`${serverRef.current}/v1/squads/${config.code}/presence`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id: config.id, name: config.name, mood: current.mood, focus: { status: current.focusStatus, remainingMs: current.remainingMs }, distracted }),
+          body: JSON.stringify({
+            id: config.id,
+            name: config.name,
+            mood: current.mood,
+            focus: { status: current.focusStatus, remainingMs: current.remainingMs },
+            distracted,
+            music: config.shareMusic === false ? null : current.music,
+          }),
         });
         const body = (await response.json()) as { members?: SquadFriend[]; pokes?: SquadPoke[]; error?: string };
         if (stopped) return;
@@ -67,6 +77,7 @@ export function useSquad(me: Me, on: { started: (friend: SquadFriend) => void; p
         setError(null);
         const next = body.members ?? [];
         startedFocusing(friendsRef.current, next, config.id).forEach((friend) => onRef.current.started(friend));
+        startedListening(friendsRef.current, next, config.id).forEach((friend) => onRef.current.listening(friend));
         (body.pokes ?? []).forEach((poke) => onRef.current.poke(poke));
         friendsRef.current = next;
         setFriends(next);

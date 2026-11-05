@@ -67,7 +67,7 @@ fn idle_ms() -> u32 {
 }
 
 /// Private browser windows and password managers stay unnamed.
-fn private_title(app: &str, title: &str) -> String {
+pub(crate) fn private_title(app: &str, title: &str) -> String {
     let lower = title.to_lowercase();
     let private = lower.contains("inprivate")
         || lower.contains("incognito")
@@ -210,6 +210,10 @@ pub(crate) fn activity_day(day: String) -> Result<Vec<Segment>, String> {
         }
     }
     Ok(load(&day))
+}
+
+pub(crate) fn is_enabled() -> bool {
+    ENABLED.load(Ordering::SeqCst)
 }
 
 #[tauri::command]

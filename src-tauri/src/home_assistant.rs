@@ -203,12 +203,99 @@ pub(crate) async fn home_assistant_call(
         body.insert(key, value);
     }
     body.insert("entity_id".to_string(), Value::String(entity_id));
+    post_service(&require_connection()?, &domain, &service, &body).await
+}
 
+/// Where Nimbo can reach you around the house: speakers that can talk, lights that can blink.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ReachTargets {
+    speakers: Vec<ReachTarget>,
+    lights: Vec<ReachTarget>,
+    /// A text-to-speech entity exists, so the speakers can actually talk.
+    can_speak: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ReachTarget {
+    entity_id: String,
+    name: String,
+}
+
+fn reach_targets_of(states: &Value) -> (Vec<ReachTarget>, Vec<ReachTarget>, Option<String>) {
+    let mut speakers = Vec::new();
+    let mut lights = Vec::new();
+    let mut tts = None;
+    for state in states.as_array().into_iter().flatten() {
+        let Some(entity_id) = state.get("entity_id").and_then(Value::as_str) else { continue };
+        if state.get("state").and_then(Value::as_str) == Some("unavailable") {
+            continue;
+        }
+        let name = state
+            .get("attributes")
+            .and_then(|attributes| attributes.get("friendly_name"))
+            .and_then(Value::as_str)
+            .unwrap_or(entity_id)
+            .to_string();
+        let target = ReachTarget { entity_id: entity_id.to_string(), name };
+        if is_valid_entity_id(entity_id, "media_player") {
+            speakers.push(target);
+        } else if is_valid_entity_id(entity_id, "light") {
+            lights.push(target);
+        } else if tts.is_none() && is_valid_entity_id(entity_id, "tts") {
+            tts = Some(entity_id.to_string());
+        }
+    }
+    speakers.sort_by_key(|target| target.name.to_lowercase());
+    lights.sort_by_key(|target| target.name.to_lowercase());
+    (speakers, lights, tts)
+}
+
+#[tauri::command]
+pub(crate) async fn home_assistant_reach_targets() -> Result<ReachTargets, String> {
     let connection = require_connection()?;
+    let (speakers, lights, tts) = reach_targets_of(&get_json(&connection, "/api/states").await?);
+    Ok(ReachTargets { speakers, lights, can_speak: tts.is_some() })
+}
+
+/// Says a short notice on a speaker, with Home Assistant's own voice (tts.speak).
+#[tauri::command]
+pub(crate) async fn home_assistant_announce(speaker: String, message: String) -> Result<(), String> {
+    if !is_valid_entity_id(&speaker, "media_player") {
+        return Err("Unknown speaker.".to_string());
+    }
+    let message: String = message.chars().filter(|char| !char.is_control()).take(250).collect();
+    if message.trim().is_empty() {
+        return Err("Nothing to say.".to_string());
+    }
+    let connection = require_connection()?;
+    let (_, _, tts) = reach_targets_of(&get_json(&connection, "/api/states").await?);
+    let tts = tts.ok_or("Home Assistant has no voice (text-to-speech) set up. Add one in Settings → Voice assistants.")?;
+    let mut body = Map::new();
+    body.insert("entity_id".to_string(), Value::String(tts));
+    body.insert("media_player_entity_id".to_string(), Value::String(speaker));
+    body.insert("message".to_string(), Value::String(message));
+    post_service(&connection, "tts", "speak", &body).await
+}
+
+/// Blinks a light a few times, to call you from another room.
+#[tauri::command]
+pub(crate) async fn home_assistant_flash(light: String) -> Result<(), String> {
+    if !is_valid_entity_id(&light, "light") {
+        return Err("Unknown light.".to_string());
+    }
+    let mut body = Map::new();
+    body.insert("entity_id".to_string(), Value::String(light));
+    body.insert("flash".to_string(), Value::String("long".to_string()));
+    post_service(&require_connection()?, "light", "turn_on", &body).await
+}
+
+async fn post_service(connection: &Connection, domain: &str, service: &str, body: &Map<String, Value>) -> Result<(), String> {
     let response = client()?
         .post(format!("{}/api/services/{domain}/{service}", connection.url))
         .bearer_auth(&connection.token)
-        .json(&body)
+        .json(body)
         .send()
         .await
         .map_err(describe_failure)?;
@@ -292,6 +379,21 @@ mod tests {
         assert!(normalize_url("homeassistant.local").is_err());
         assert!(normalize_url("http://user:pass@casa:8123").is_err());
         assert!(normalize_url("http://casa:8123/?x=1").is_err());
+    }
+
+    #[test]
+    fn speakers_lights_and_a_voice_are_found() {
+        let states = json!([
+            { "entity_id": "media_player.echo_sala", "state": "idle", "attributes": { "friendly_name": "Echo da sala" } },
+            { "entity_id": "media_player.tv", "state": "unavailable", "attributes": {} },
+            { "entity_id": "light.escritorio", "state": "off", "attributes": { "friendly_name": "Escritório" } },
+            { "entity_id": "tts.google_pt", "state": "unknown", "attributes": {} },
+            { "entity_id": "switch.cafeteira", "state": "off", "attributes": {} }
+        ]);
+        let (speakers, lights, tts) = reach_targets_of(&states);
+        assert_eq!(speakers.iter().map(|target| target.name.as_str()).collect::<Vec<_>>(), ["Echo da sala"]);
+        assert_eq!(lights.iter().map(|target| target.entity_id.as_str()).collect::<Vec<_>>(), ["light.escritorio"]);
+        assert_eq!(tts.as_deref(), Some("tts.google_pt"));
     }
 
     #[test]

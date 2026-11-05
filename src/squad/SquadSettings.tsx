@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "../i18n";
-import { Row, Section } from "../settings/controls";
+import { Row, Section, Toggle } from "../settings/controls";
 import { loadSquad, newMemberId, newSquadCode, normalizeSquadCode, prettyCode, SQUAD_KEY, type SquadConfig } from "./squad";
 
 function save(config: SquadConfig | null) {
@@ -25,7 +25,8 @@ export function SquadSettings() {
     setConfig(next);
     setNotice(null);
   };
-  const join = (groupCode: string) => apply({ code: groupCode, name: name.trim().slice(0, 24), id: config?.id ?? newMemberId() });
+  const join = (groupCode: string) =>
+    apply({ code: groupCode, name: name.trim().slice(0, 24), id: config?.id ?? newMemberId(), shareMusic: config?.shareMusic ?? true });
 
   return (
     <Section title={copy.title}>
@@ -58,6 +59,9 @@ export function SquadSettings() {
             >
               {copy.copy}
             </button>
+          </Row>
+          <Row title={copy.shareMusic} hint={copy.shareMusicHint}>
+            <Toggle label={copy.shareMusic} checked={config.shareMusic !== false} onChange={(shareMusic) => apply({ ...config, shareMusic })} />
           </Row>
           <div className="prefs-auto__new">
             <button className="prefs-button prefs-button--quiet" type="button" onClick={() => apply(null)}>

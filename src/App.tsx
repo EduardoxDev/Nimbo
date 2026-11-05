@@ -164,6 +164,7 @@ import { useBuddyDirector } from "./buddy/useBuddyDirector";
 import { agendaOfToday, validPinHash } from "./phone/alexa";
 import { useLifeHelpers } from "./life/useLifeHelpers";
 import { dayKey } from "./water/water";
+import { cardRequestOf, cardStopOf, cardText, crossed, findCard, isDue, loadCards, MAX_CARDS, saveCards, type CardRecipe, type LiveCard } from "./cards/cards";
 import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
 import { evolutionOf } from "./stats/stats";
@@ -171,7 +172,11 @@ import { mascotAccessory } from "./mascot/accessories";
 import { playFindMeChime } from "./phone/findMe";
 import { playUiSound } from "./design/sounds";
 import { EMPTY_LIVE, liveSummary, type LiveState } from "./live/live";
-import { friendMood } from "./squad/squad";
+import { loadReach, shouldReach, spokenText, type ReachKind } from "./reach/reach";
+import { joinDelay, joinLink, loadAutopilot, nextCall, type JoinableEvent } from "./autopilot/autopilot";
+import { addNote, forgetOld, greetingOf, loadCompanion, noteOf as companionNoteOf, saveCompanion, shouldGreet } from "./companion/companion";
+import { deliverySummary, prune as pruneDeliveries, receive as receiveDelivery, type Delivery } from "./deliveries/deliveries";
+import { friendMood, positionNow, sameSong, type SquadFriend } from "./squad/squad";
 import { useSquad } from "./squad/useSquad";
 import { PrompterPanel } from "./prompter/PrompterPanel";
 import { AMBIENT_KINDS, type AmbientKind } from "./tools/ambient";
@@ -4903,8 +4908,33 @@ function IslandApp({
       mood: focusTimer.state.status === "running" ? "working" : new Date().getHours() >= 23 || new Date().getHours() < 6 ? "sleeping" : "idle",
       focusStatus: focusTimer.state.status,
       remainingMs: focusTimer.remainingMs,
+      music:
+        mediaState.playbackStatus === "playing" && mediaState.title
+          ? { title: mediaState.title, artist: mediaState.artist ?? "", positionMs: mediaState.positionMs ?? 0, durationMs: mediaState.durationMs ?? 0 }
+          : null,
     },
     {
+      // Listen together: a friend put a song on.
+      listening: (friend) => {
+        if (!friend.music) return;
+        const copy = tRef.current.squad;
+        if (sameSong(mediaStateRef.current, friend.music)) {
+          lifePushRef.current({ text: copy.together(friend.name), actions: [{ label: tRef.current.life.ok, primary: true }] });
+          return;
+        }
+        // Not while you focus, and once in a while per friend.
+        if (focusTimerRef.current.state.status === "running") return;
+        const last = listenNoticeAtRef.current.get(friend.id) ?? 0;
+        if (Date.now() - last < 30 * 60_000) return;
+        listenNoticeAtRef.current.set(friend.id, Date.now());
+        lifePushRef.current({
+          text: copy.listeningNotice(friend.name, friend.music.title, friend.music.artist),
+          actions: [
+            { label: copy.listenTogether, primary: true, run: () => void listenWithRef.current(friend.id) },
+            { label: tRef.current.life.notNow },
+          ],
+        });
+      },
       started: (friend) => {
         if (focusTimer.state.status === "running") return;
         const copy = tRef.current.squad;
@@ -4930,6 +4960,40 @@ function IslandApp({
   focusTimerRef.current = focusTimer;
   const squadPokeRef = useRef(squad.poke);
   squadPokeRef.current = squad.poke;
+  const mediaStateRef = useRef(mediaState);
+  mediaStateRef.current = mediaState;
+  const listenNoticeAtRef = useRef(new Map<string, number>());
+  const squadFriendsRef = useRef<SquadFriend[]>([]);
+  squadFriendsRef.current = squad.friends;
+  // Plays the friend's song in Nimbo Music, then jumps to where they are in it.
+  const listenWithRef = useRef(async (friendId: string) => {
+    const friend = squadFriendsRef.current.find((item) => item.id === friendId);
+    if (!friend?.music) return;
+    const wanted = friend.music;
+    const found = await playByQuery(`${wanted.title} ${wanted.artist}`.trim(), tRef.current.localeTag).catch(() => null);
+    if (!found || !isTauri()) return;
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 800));
+      const now = await invoke<MediaState>("get_media_state").catch(() => null);
+      if (now?.title && sameSong(now, wanted)) {
+        const latest = squadFriendsRef.current.find((item) => item.id === friendId) ?? friend;
+        if (latest.music && sameSong(latest.music, wanted)) {
+          void invoke("media_seek", { positionMs: Math.round(positionNow(latest, Date.now())) }).catch(() => {});
+        }
+        return;
+      }
+    }
+  });
+  // You put on the song a friend is playing: say so once per song.
+  const togetherSongRef = useRef("");
+  useEffect(() => {
+    if (mediaState.playbackStatus !== "playing" || !mediaState.title) return;
+    const friend = squad.friends.find((item) => sameSong(item.music, mediaState));
+    const key = friend ? `${friend.id}|${mediaState.title}|${mediaState.artist ?? ""}` : "";
+    if (!friend || key === togetherSongRef.current) return;
+    togetherSongRef.current = key;
+    lifePushRef.current({ text: t.squad.together(friend.name), actions: [{ label: t.life.ok, primary: true }] });
+  }, [mediaState.title, mediaState.artist, mediaState.playbackStatus, squad.friends, t]);
   const focusFriends: FocusFriend[] = squad.friends.map((friend) => ({
     id: friend.id,
     name: friend.name,
@@ -4939,8 +5003,21 @@ function IslandApp({
         ? friend.distracted
           ? t.squad.distracted(friend.name)
           : t.squad.focusing(friend.name, Math.max(1, Math.round(friend.focus.remainingMs / 60_000)))
-        : t.squad.online(friend.name),
+        : friend.music
+          ? t.squad.listening(friend.name, friend.music.title)
+          : t.squad.online(friend.name),
   }));
+
+  // Deliveries and rides from the phone's notifications (iFood, Uber, 99…), live on the island.
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const deliveriesRef = useRef<Delivery[]>([]);
+  deliveriesRef.current = deliveries;
+  useEffect(() => {
+    if (deliveries.length === 0) return;
+    // Once a minute: the "~12 min" counts down and finished ones leave.
+    const interval = window.setInterval(() => setDeliveries((list) => pruneDeliveries(list, Date.now())), 60_000);
+    return () => window.clearInterval(interval);
+  }, [deliveries.length]);
 
   // Live activities: downloads and copies running right now, and a notice when a download ends.
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
@@ -5364,7 +5441,169 @@ function IslandApp({
           ? { progress: agentProgressOf(activeAgent), color: "#bf8cff" }
           : { progress: water.progress, color: "#5ac8fa" };
   const activeAgentStep = activeAgent ? currentStepOf(activeAgent) : null;
+  // Away from the PC: the speaker and the light in the house call you (Settings → Home).
+  const lastReachAtRef = useRef(0);
+  const reachOutRef = useRef(async (kind: ReachKind, text: string) => {
+    if (!isTauri()) return;
+    const config = loadReach();
+    if (!config.speaker && !config.light) return;
+    const idle = await invoke<number>("idle_seconds").catch(() => 0);
+    if (!shouldReach(config, kind, idle, lastReachAtRef.current, Date.now())) return;
+    lastReachAtRef.current = Date.now();
+    if (config.light) void invoke("home_assistant_flash", { light: config.light }).catch((error) => console.error("Reach light", error));
+    if (config.speaker) {
+      void invoke("home_assistant_announce", { speaker: config.speaker, message: spokenText(text) }).catch((error) => console.error("Reach speaker", error));
+    }
+  });
+  const reachedApprovalRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!approval || reachedApprovalRef.current === approval.id) return;
+    reachedApprovalRef.current = approval.id;
+    void reachOutRef.current("agents", t.reach.approval(approval.agent));
+  }, [approval, t]);
+  const doneAgentsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const done = islandAgents.filter((agent) => agent.mood === "done");
+    // The ones already done when Nimbo opened are old news.
+    if (doneAgentsRef.current === null) {
+      doneAgentsRef.current = new Set(done.map((agent) => agent.id));
+      return;
+    }
+    const seen = doneAgentsRef.current;
+    const fresh = done.find((agent) => !seen.has(agent.id));
+    doneAgentsRef.current = new Set(done.map((agent) => agent.id));
+    if (fresh) void reachOutRef.current("agents", t.reach.agentDone(fresh.name));
+  }, [islandAgents, t]);
+  const reachedMeetingRef = useRef<string | null>(null);
+  useEffect(() => {
+    const reminder = calendar.reminder;
+    if (!reminder || reachedMeetingRef.current === reminder.id) return;
+    reachedMeetingRef.current = reminder.id;
+    void reachOutRef.current("meetings", t.reach.meeting(reminder.title, Math.max(1, minutesUntil(reminder, Date.now()))));
+  }, [calendar.reminder, t]);
+
+  // Meeting autopilot: a minute before a call with a link, say it, then join (Settings → Calendar).
+  const calendarEventsRef = useRef(calendar.events);
+  calendarEventsRef.current = calendar.events;
+  const joinCallRef = useRef((event: JoinableEvent) => {
+    const link = joinLink(event);
+    if (!link) return;
+    if (mediaStateRef.current.playbackStatus === "playing") void runMediaCommandRef.current("media_play_pause");
+    void openUrl(link).catch((error) => console.error("Failed to open the call", error));
+  });
+  useEffect(() => {
+    if (!isTauri()) return;
+    const handled = new Set<string>();
+    const timers: number[] = [];
+    const check = () => {
+      if (!loadAutopilot().meetings) return;
+      const call = nextCall(calendarEventsRef.current, Date.now(), handled);
+      if (!call) return;
+      handled.add(call.id);
+      let decided = false;
+      const copy = tRef.current.autopilot;
+      lifePushRef.current({
+        text: copy.headsUp(call.title, mediaStateRef.current.playbackStatus === "playing"),
+        actions: [
+          {
+            label: copy.joinNow,
+            primary: true,
+            run: () => {
+              decided = true;
+              joinCallRef.current(call);
+            },
+          },
+          { label: copy.skip, run: () => (decided = true) },
+        ],
+      });
+      timers.push(
+        window.setTimeout(() => {
+          if (!decided) joinCallRef.current(call);
+        }, joinDelay(call, Date.now())),
+      );
+    };
+    check();
+    const interval = window.setInterval(check, 15_000);
+    return () => {
+      window.clearInterval(interval);
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, []);
+
+  // The companion's good morning: once a day, the first time you are at the PC after 5h.
+  const companionInputRef = useRef({ history: statsHistory, events: calendar.events });
+  companionInputRef.current = { history: statsHistory, events: calendar.events };
+  useEffect(() => {
+    if (!isTauri()) return;
+    const check = async () => {
+      const state = loadCompanion();
+      const now = Date.now();
+      if (!shouldGreet(state, now) || focusTimerRef.current.state.status === "running") return;
+      // Only when you are actually here.
+      const idle = await invoke<number>("idle_seconds").catch(() => 9_999);
+      if (idle > 90) return;
+      const copy = tRef.current;
+      const text = greetingOf(
+        {
+          now,
+          history: companionInputRef.current.history,
+          notes: state.notes,
+          events: companionInputRef.current.events,
+          formatTime: (time) => new Date(time).toLocaleTimeString(copy.localeTag, { hour: "2-digit", minute: "2-digit" }),
+        },
+        copy.companion,
+      );
+      saveCompanion(forgetOld({ ...state, lastGreetDay: dayKey(now) }, now));
+      lifePushRef.current({ text, actions: [{ label: copy.life.ok, primary: true }] });
+    };
+    const first = window.setTimeout(() => void check(), 20_000);
+    const interval = window.setInterval(() => void check(), 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  // Live cards made on request ("acompanha o dólar"): kept fresh, and an alert when one crosses its line.
+  const [cards, setCards] = useState<LiveCard[]>(() => loadCards());
+  const cardsRef = useRef(cards);
+  cardsRef.current = cards;
+  const updateCards = useCallback((next: LiveCard[]) => {
+    cardsRef.current = next;
+    setCards(next);
+    saveCards(next);
+  }, []);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const refresh = async () => {
+      for (const card of cardsRef.current.filter((item) => isDue(item, Date.now()))) {
+        const value = await invoke<string>("card_value", { url: card.url, path: card.path }).catch(() => null);
+        if (value === null) continue;
+        const alert = crossed(card, value);
+        updateCards(cardsRef.current.map((item) => (item.id === card.id ? { ...item, previous: item.value, value, updatedAt: Date.now(), alerted: alert.alerted } : item)));
+        if (alert.fire && card.alert) {
+          const copy = tRef.current;
+          const now = cardText({ ...card, value, previous: null, title: "" }, copy.localeTag).replace(/^ · /, "");
+          const limit = `${card.prefix}${card.alert.value.toLocaleString(copy.localeTag)}${card.unit}`;
+          lifePushRef.current({ text: copy.cards.alert(card.title, card.alert.op === "above", limit, now), actions: [{ label: copy.life.ok, primary: true }] });
+        }
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 60_000);
+    return () => window.clearInterval(interval);
+  }, [updateCards]);
+  // With more than one card, the island shows them in turn.
+  const [cardTurn, setCardTurn] = useState(0);
+  useEffect(() => {
+    if (cards.length < 2) return;
+    const interval = window.setInterval(() => setCardTurn((turn) => turn + 1), 8_000);
+    return () => window.clearInterval(interval);
+  }, [cards.length]);
+  const cardNow = cards.length > 0 ? cardText(cards[cardTurn % cards.length], t.localeTag) : null;
+
   const liveNow = liveSummary(live, t.live, t.localeTag);
+  const deliveryNow = deliverySummary(deliveries, t.deliveries, Date.now());
   const collapsedStatus: CollapsedStatus = {
     hud: islandHud.hud,
     agents: islandAgents,
@@ -5374,10 +5613,16 @@ function IslandApp({
       ? meeting.end === null
         ? t.calendar.inCall(meeting.title, minutesSince(meeting.start, Date.now()))
         : t.calendar.inMeeting(meeting.title, new Date(meeting.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      : deliveryNow
+      ? deliveryNow.text
       : liveNow
       ? liveNow.text
-      : null,
-    ring: liveNow?.progress != null ? { progress: liveNow.progress, color: "#0a84ff" } : statusRing,
+      : cardNow,
+    ring: deliveryNow
+      ? { progress: deliveryNow.progress, color: deliveryNow.color }
+      : liveNow?.progress != null
+        ? { progress: liveNow.progress, color: "#0a84ff" }
+        : statusRing,
     notice: tools.topNotice
       ? { text: tools.topNotice.text, color: tools.topNotice.color, page, actions: tools.topNotice.actions }
       : micAlert
@@ -5457,7 +5702,21 @@ function IslandApp({
           text: t.calendar.startsIn(calendar.reminder.title, minutesUntil(calendar.reminder, calendar.now)),
           color: "#ff6961",
           page: "calendar",
-          actions: [{ label: t.calendar.ok, primary: true, onClick: () => calendar.dismiss(calendar.reminder!.id) }],
+          actions: [
+            ...(joinLink(calendar.reminder)
+              ? [
+                  {
+                    label: t.autopilot.join,
+                    primary: true,
+                    onClick: () => {
+                      joinCallRef.current(calendar.reminder!);
+                      calendar.dismiss(calendar.reminder!.id);
+                    },
+                  },
+                ]
+              : []),
+            { label: t.calendar.ok, primary: !joinLink(calendar.reminder), onClick: () => calendar.dismiss(calendar.reminder!.id) },
+          ],
         }
       : updater.showNotice
       ? {
@@ -7684,6 +7943,20 @@ function IslandApp({
       }
     }).then(keep);
     void listen<{ app: string; title: string; body: string }>("windows-notification", ({ payload }) => {
+      const now = Date.now();
+      const delivery = receiveDelivery(pruneDeliveries(deliveriesRef.current, now), payload, now);
+      if (delivery.handled) {
+        deliveriesRef.current = delivery.list;
+        setDeliveries(delivery.list);
+        const landed = delivery.landed;
+        if (landed) {
+          const copy = tRef.current.deliveries;
+          const text = landed.stage === "cancelled" ? copy.cancelled(landed.name) : copy.arrived(landed.name, landed.kind);
+          lifePushRef.current({ text, actions: [{ label: tRef.current.life.ok, primary: true }] });
+          if (landed.stage === "arrived") void reachOutRef.current("deliveries", text);
+        }
+        return;
+      }
       lifePushRef.current({
         text: tRef.current.phone.notification(payload.app, [payload.title, payload.body].filter(Boolean).join(": ")),
         actions: [{ label: tRef.current.life.ok, primary: true }],
@@ -8060,6 +8333,46 @@ function IslandApp({
               const routine = routineOf(text.replace(/^(?:ei|hey)\s+nimbo[,!]?\s*/i, ""));
               if (routine) {
                 void assistant.handleLocally(text, async () => ({ text: await runRoutine(routine), action: "run_routine" }));
+                return;
+              }
+              // Live cards: "acompanha o dólar" builds one, "para de acompanhar o dólar" removes it.
+              const stopCard = cardStopOf(text);
+              if (stopCard) {
+                const card = findCard(cardsRef.current, stopCard);
+                if (card) updateCards(cardsRef.current.filter((item) => item.id !== card.id));
+                void assistant.handleLocally(text, async () => ({ text: card ? t.cards.removed(card.title) : t.cards.notFound(stopCard), action: "card_remove" }));
+                return;
+              }
+              const cardWanted = cardRequestOf(text);
+              if (cardWanted) {
+                void assistant.handleLocally(text, async () => {
+                  if (cardsRef.current.length >= MAX_CARDS) return { text: t.cards.full, action: "card_create" };
+                  const made = await invoke<{ recipe: CardRecipe; value: string }>("card_create", { request: text });
+                  const card: LiveCard = {
+                    ...made.recipe,
+                    alert: made.recipe.alert ?? null,
+                    id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+                    value: made.value,
+                    previous: null,
+                    updatedAt: Date.now(),
+                    alerted: crossed({ alert: made.recipe.alert ?? null, alerted: false }, made.value).alerted,
+                  };
+                  updateCards([card, ...cardsRef.current.filter((item) => item.title !== card.title)]);
+                  return { text: t.cards.created(cardText(card, t.localeTag)), action: "card_create" };
+                });
+                return;
+              }
+              // "Lembra que amanhã tenho entrevista": kept on this PC, wished on the day, asked about after.
+              const note = companionNoteOf(text, Date.now());
+              if (note) {
+                saveCompanion(addNote(loadCompanion(), note, Date.now()));
+                const day =
+                  note.on === dayKey(Date.now())
+                    ? t.companion.today2
+                    : note.on === dayKey(Date.now() + 86_400_000)
+                      ? t.companion.tomorrow
+                      : new Date(`${note.on}T12:00:00`).toLocaleDateString(t.localeTag, { weekday: "long", day: "numeric" });
+                void assistant.handleLocally(text, async () => ({ text: t.companion.noted(note.text, day), action: "remember" }));
                 return;
               }
               const query = playRequestOf(text);

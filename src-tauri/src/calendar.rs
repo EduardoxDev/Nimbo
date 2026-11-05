@@ -41,6 +41,8 @@ pub(crate) struct CalendarEvent {
     id: String,
     title: String,
     location: Option<String>,
+    /// The video call link (Meet, Teams, Zoom…) found in the event, if any.
+    link: Option<String>,
     start: i64,
     end: i64,
     all_day: bool,
@@ -59,6 +61,9 @@ struct RawEvent {
     uid: String,
     summary: String,
     location: Option<String>,
+    /// From the conference fields first, then the location, then the description.
+    link: Option<String>,
+    description_link: Option<String>,
     start: Option<(String, Option<String>)>,
     end: Option<(String, Option<String>)>,
     duration: Option<String>,
@@ -229,6 +234,21 @@ fn unescape(value: &str) -> String {
     output.trim().to_string()
 }
 
+/// Hosts of video calls the island can join.
+const MEETING_HOSTS: [&str; 8] = ["meet.google.com", "teams.microsoft.com", "teams.live.com", "zoom.us", "whereby.com", "webex.com", "meet.jit.si", "around.co"];
+
+/// The first video call link in a text: https only, on a known host (or a subdomain of one).
+fn meeting_link(text: &str) -> Option<String> {
+    text.match_indices("https://").find_map(|(start, _)| {
+        let rest = &text[start..];
+        let end = rest.find(|char: char| char.is_whitespace() || matches!(char, '"' | '<' | '>' | '\\')).unwrap_or(rest.len());
+        let url = rest[..end].trim_end_matches(['.', ',', ';', ')', ']']);
+        let host = url["https://".len()..].split(['/', '?', '#']).next()?.to_ascii_lowercase();
+        let known = MEETING_HOSTS.iter().any(|known| host == *known || host.ends_with(&format!(".{known}")));
+        (known && url.len() <= MAX_URL_LENGTH).then(|| url.to_string())
+    })
+}
+
 fn split_property(line: &str) -> Option<(String, Option<String>, bool, String)> {
     let (head, value) = line.split_once(':')?;
     let mut parts = head.split(';');
@@ -267,7 +287,18 @@ fn read_events(ics: &str) -> Vec<RawEvent> {
         match name.as_str() {
             "UID" => event.uid = value,
             "SUMMARY" => event.summary = unescape(&value),
-            "LOCATION" => event.location = Some(unescape(&value)).filter(|location| !location.is_empty()),
+            "LOCATION" => {
+                event.location = Some(unescape(&value)).filter(|location| !location.is_empty());
+                if event.link.is_none() {
+                    event.link = meeting_link(&unescape(&value));
+                }
+            }
+            "X-GOOGLE-CONFERENCE" | "X-MICROSOFT-SKYPETEAMSMEETINGURL" | "URL" => {
+                if let Some(link) = meeting_link(&value) {
+                    event.link = Some(link);
+                }
+            }
+            "DESCRIPTION" => event.description_link = meeting_link(&unescape(&value)),
             "DTSTART" => event.start = Some((value, marker)),
             "DTEND" => event.end = Some((value, marker)),
             "DURATION" => event.duration = Some(value),
@@ -395,6 +426,7 @@ fn parse_calendar(ics: &str, window_start: DateTime<Utc>, window_end: DateTime<U
                 id: format!("{}-{begin}", event.uid),
                 title: if event.summary.is_empty() { "(sem título)".to_string() } else { event.summary.clone() },
                 location: event.location.clone(),
+                link: event.link.clone().or_else(|| event.description_link.clone()),
                 start: begin * 1000,
                 end: finish.timestamp() * 1000,
                 all_day,
@@ -471,6 +503,23 @@ END:VCALENDAR\r\n";
         assert_eq!(dentist.location.as_deref(), Some("Rua A, 10"));
         assert_eq!(dentist.end - dentist.start, 3_600_000);
         assert!(events.iter().all(|event| event.title != "Cancelado"));
+    }
+
+    #[test]
+    fn video_call_links_are_found() {
+        assert_eq!(meeting_link("Entrar: https://meet.google.com/abc-defg-hij.").as_deref(), Some("https://meet.google.com/abc-defg-hij"));
+        assert_eq!(
+            meeting_link("Join <https://teams.microsoft.com/l/meetup-join/19%3a123> now").as_deref(),
+            Some("https://teams.microsoft.com/l/meetup-join/19%3a123")
+        );
+        assert_eq!(meeting_link("https://empresa.zoom.us/j/123?pwd=x").as_deref(), Some("https://empresa.zoom.us/j/123?pwd=x"));
+        assert_eq!(meeting_link("Site: https://example.com/meet.google.com"), None);
+        assert_eq!(meeting_link("http://meet.google.com/abc"), None);
+        assert_eq!(meeting_link("https://notzoom.us/j/1"), None);
+
+        let ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:call\r\nSUMMARY:Daily\r\nDTSTART:20261105T120000Z\r\nDTEND:20261105T121500Z\r\nDESCRIPTION:Pauta\\nhttps://meet.google.com/xyz-abcd-efg\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        let events = parse_calendar(ics, at("2026-11-05T00:00:00Z"), at("2026-11-06T00:00:00Z"));
+        assert_eq!(events[0].link.as_deref(), Some("https://meet.google.com/xyz-abcd-efg"));
     }
 
     #[test]

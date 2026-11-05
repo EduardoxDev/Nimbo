@@ -23,8 +23,8 @@ const SKIPPED: [&str; 8] = [
 
 #[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct WorkspaceItem {
-    name: String,
-    path: String,
+    pub(crate) name: String,
+    pub(crate) path: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -33,7 +33,7 @@ pub(crate) struct WorkspaceSnapshot {
     files: Vec<WorkspaceItem>,
 }
 
-fn recent_dir() -> Option<PathBuf> {
+pub(crate) fn recent_dir() -> Option<PathBuf> {
     std::env::var_os("APPDATA").map(|dir| PathBuf::from(dir).join(r"Microsoft\Windows\Recent"))
 }
 
@@ -42,7 +42,7 @@ fn stem(path: &str) -> String {
 }
 
 /// Shortcuts Windows made for files and folders opened since `since`, newest first.
-fn recent_files(since: SystemTime) -> Vec<WorkspaceItem> {
+pub(crate) fn recent_files(since: SystemTime) -> Vec<WorkspaceItem> {
     let Some(dir) = recent_dir() else { return Vec::new() };
     let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
     let mut found: Vec<(SystemTime, WorkspaceItem)> = entries
