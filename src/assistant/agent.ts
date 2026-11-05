@@ -37,6 +37,21 @@ export function folderName(path: unknown) {
   return text.split(/[\\/]/).pop() || text;
 }
 
+/**
+ * The full detail under an approval: the one-line summary is cut with "…", and what gets
+ * approved must be visible whole (every file name and the real destination, the whole command).
+ */
+export function approvalDetail(tool: string, input: Record<string, unknown>) {
+  if (tool === "move_files") {
+    const files = Array.isArray(input.files) ? input.files.map(folderName) : [];
+    const shown = files.slice(0, 6).join(", ");
+    const more = files.length > 6 ? ` +${files.length - 6}` : "";
+    return `${shown}${more} → ${String(input.to ?? "")}`;
+  }
+  if (tool === "run_in_terminal") return `${String(input.command ?? "")}\n${String(input.folder ?? "")}`;
+  return null;
+}
+
 export function planProgress(plan: PlanStep[]) {
   const done = plan.filter((step) => step.status === "done").length;
   return { done, total: plan.length };

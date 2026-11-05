@@ -114,6 +114,7 @@ struct Runtime {
 
 struct ServerHandle {
     server: Arc<tiny_http::Server>,
+    worker: thread::JoinHandle<()>,
 }
 
 static RUNTIME: OnceLock<Mutex<Runtime>> = OnceLock::new();
@@ -734,10 +735,13 @@ fn serve(app: AppHandle, server: Arc<tiny_http::Server>, token: String, port: u1
 }
 
 fn stop_server() {
-    if let Ok(mut guard) = SERVER.lock() {
-        if let Some(handle) = guard.take() {
-            handle.server.unblock();
-        }
+    // Taken out first: the worker may need SERVER (server info) to finish its request.
+    let handle = SERVER.lock().ok().and_then(|mut guard| guard.take());
+    if let Some(handle) = handle {
+        handle.server.unblock();
+        // The port is only free once the worker lets go of the server.
+        drop(handle.server);
+        let _ = handle.worker.join();
     }
 }
 
@@ -746,13 +750,22 @@ fn start_server(app: &AppHandle, config: &AgentsConfig) {
     if !config.enabled {
         return;
     }
-    match tiny_http::Server::http(("127.0.0.1", config.port)) {
+    // Right after a stop, Windows may take a moment to free the port.
+    let mut bound = tiny_http::Server::http(("127.0.0.1", config.port));
+    for _ in 0..10 {
+        if bound.is_ok() {
+            break;
+        }
+        thread::sleep(std::time::Duration::from_millis(100));
+        bound = tiny_http::Server::http(("127.0.0.1", config.port));
+    }
+    match bound {
         Ok(server) => {
             let server = Arc::new(server);
-            let (app, token, port, worker) = (app.clone(), config.token.clone(), config.port, server.clone());
-            thread::spawn(move || serve(app, worker, token, port));
+            let (app, token, port, shared) = (app.clone(), config.token.clone(), config.port, server.clone());
+            let worker = thread::spawn(move || serve(app, shared, token, port));
             if let Ok(mut guard) = SERVER.lock() {
-                *guard = Some(ServerHandle { server });
+                *guard = Some(ServerHandle { server, worker });
             }
             if let Ok(mut error) = LAST_ERROR.lock() {
                 *error = None;

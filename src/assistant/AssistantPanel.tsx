@@ -8,7 +8,7 @@ import { speak } from "../voice/voice";
 import type { IslandTab } from "../IslandTabs";
 import { PageChrome } from "../island/PageChrome";
 import { ASSISTANT_DEMO, type ChatEntry } from "./useAssistant";
-import { folderName, planProgress, type ApprovalRequest, type PlanStep } from "./agent";
+import { approvalDetail, folderName, planProgress, type ApprovalRequest, type PlanStep } from "./agent";
 
 const ASSISTANT_COLOR = "#ffb86b";
 
@@ -185,6 +185,9 @@ export function AssistantPanel<Page extends string>({
                 <div className="agent-approval__text">
                   <small>{copy.agent.needsOk}</small>
                   <strong>{approvalText(approval)}</strong>
+                  {approvalDetail(approval.tool, approval.input) && (
+                    <span className="agent-approval__detail">{approvalDetail(approval.tool, approval.input)}</span>
+                  )}
                 </div>
                 <button type="button" className="agent-approval__no" onClick={() => onApprove(false)}>
                   {copy.agent.decline}

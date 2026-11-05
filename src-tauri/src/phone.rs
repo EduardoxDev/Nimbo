@@ -174,7 +174,11 @@ fn handle(app: &AppHandle, mut request: tiny_http::Request) {
                 .lock()
                 .map(|items| items.iter().filter(|(id, _)| *id > since).map(|(id, text)| serde_json::json!({ "id": id, "text": text })).collect())
                 .unwrap_or_default();
-            let status: serde_json::Value = serde_json::from_str(&status).unwrap_or(serde_json::Value::Null);
+            let mut status: serde_json::Value = serde_json::from_str(&status).unwrap_or(serde_json::Value::Null);
+            // Only the Alexa skill (through the relay) checks the PIN: the page on the Wi-Fi never needs it.
+            if let Some(status) = status.as_object_mut() {
+                status.remove("alexaPinHash");
+            }
             json(request, serde_json::json!({ "status": status, "inbox": inbox }));
         }
         (tiny_http::Method::Get, "/api/cover") => {

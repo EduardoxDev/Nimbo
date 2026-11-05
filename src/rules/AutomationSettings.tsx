@@ -65,6 +65,7 @@ export function AutomationSettings() {
   // The recording ends with Esc three times; then it gets the name typed here.
   useEffect(() => {
     if (!recording || !isTauri()) return;
+    let cancelled = false;
     let stop: (() => void) | null = null;
     void listen<number>("macro-recorded", () => {
       setRecording(false);
@@ -75,8 +76,11 @@ export function AutomationSettings() {
           refreshMacros();
         })
         .catch((error) => setMessage(String(error)));
-    }).then((unlisten) => (stop = unlisten));
-    return () => stop?.();
+    }).then((unlisten) => (cancelled ? unlisten() : (stop = unlisten)));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, [recording]);
 
   const startRecording = () => {

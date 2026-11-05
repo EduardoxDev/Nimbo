@@ -107,11 +107,15 @@ export default function DayWindow() {
   useEffect(() => {
     document.documentElement.classList.add("day-root");
     if (!isTauri()) return;
+    let cancelled = false;
     let stop: (() => void) | null = null;
     void listen<DayTab>("day-tab", ({ payload }) => {
       if (TABS.includes(payload)) setTab(payload);
-    }).then((unlisten) => (stop = unlisten));
-    return () => stop?.();
+    }).then((unlisten) => (cancelled ? unlisten() : (stop = unlisten)));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, []);
 
   useEffect(() => {

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Platform, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { loadPairing, parsePairing, savePairing, type Pairing } from "./pairing";
+import { pairingHost, samePc } from "./pairSwitch";
+import { t } from "./i18n";
 import { PairScreen } from "./PairScreen";
 import { IslandScreen } from "./IslandScreen";
 import { colors } from "./ui";
@@ -23,8 +25,23 @@ export default function App() {
     const href = Platform.OS === "web" && typeof window !== "undefined" ? window.location.href : url;
     const linked = href ? parsePairing(href) : null;
     if (linked) {
-      setPairing(linked);
-      void savePairing(linked);
+      const apply = () => {
+        setPairing(linked);
+        void savePairing(linked);
+      };
+      // Any page or QR code can open nimbo://pair: switching to another PC needs a yes.
+      void loadPairing().then((stored) => {
+        if (!stored || samePc(stored, linked)) return apply();
+        const body = t.switchBody(pairingHost(linked));
+        if (Platform.OS === "web") {
+          if (window.confirm(`${t.switchTitle}\n\n${body}`)) apply();
+          return;
+        }
+        Alert.alert(t.switchTitle, body, [
+          { text: t.switchCancel, style: "cancel" },
+          { text: t.switchConfirm, onPress: apply },
+        ]);
+      });
       // Keep the code out of the address bar and the home-screen shortcut.
       if (Platform.OS === "web") window.history.replaceState(null, "", "/");
     }

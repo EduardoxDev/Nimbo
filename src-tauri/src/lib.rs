@@ -78,7 +78,7 @@ use windows::Win32::{
     Foundation::{POINT, RECT},
     Graphics::Gdi::SetWindowRgn,
     UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON},
-    UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect},
+    UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect, IsWindowVisible},
 };
 
 const WINDOW_LABEL: &str = "main";
@@ -1530,6 +1530,12 @@ fn start_cursor_passthrough_loop(window: WebviewWindow) {
         let mut ignoring_cursor = false;
 
         loop {
+            // Hidden (tray, full screen): nothing to hover, so check rarely and let the CPU idle.
+            let visible = window.hwnd().is_ok_and(|hwnd| unsafe { IsWindowVisible(hwnd) }.as_bool());
+            if !visible {
+                thread::sleep(Duration::from_millis(250));
+                continue;
+            }
             let should_ignore = !cursor_is_inside_island(&window);
 
             if should_ignore != ignoring_cursor {

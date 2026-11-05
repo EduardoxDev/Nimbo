@@ -146,6 +146,8 @@ export function useTools(input: {
   const startQueue = useCallback(() => setCollecting([]), []);
   useEffect(() => {
     if (!isTauri()) return;
+    // The cleanup can run before `listen` resolves (StrictMode): then the late listener stops at once.
+    let cancelled = false;
     let stop: (() => void) | null = null;
     void listen<number>("paste-queue", ({ payload }) => {
       const copy = ref.current.t.tools;
@@ -154,8 +156,11 @@ export function useTools(input: {
         setNotice(null);
         ref.current.push({ text: copy.queueDone, actions: [{ label: ref.current.t.life.ok, primary: true }] });
       }
-    }).then((unlisten) => (stop = unlisten));
-    return () => stop?.();
+    }).then((unlisten) => (cancelled ? unlisten() : (stop = unlisten)));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, []);
 
   // ---------- Eyedropper ----------
@@ -168,8 +173,10 @@ export function useTools(input: {
   useEffect(() => {
     if (!isTauri()) return;
     const stops: (() => void)[] = [];
-    void listen<{ hex: string }>("color-preview", ({ payload }) => setPicking(payload.hex)).then((stop) => stops.push(stop));
-    void listen("color-pick-cancelled", () => setPicking(null)).then((stop) => stops.push(stop));
+    let cancelled = false;
+    const keep = (stop: () => void) => (cancelled ? stop() : stops.push(stop));
+    void listen<{ hex: string }>("color-preview", ({ payload }) => setPicking(payload.hex)).then(keep);
+    void listen("color-pick-cancelled", () => setPicking(null)).then(keep);
     void listen<{ hex: string }>("color-picked", ({ payload }) => {
       setPicking(null);
       const hex = payload.hex.toLowerCase();
@@ -189,8 +196,11 @@ export function useTools(input: {
           ...(rgb ? [{ label: current.tools.copyRgb, run: () => copyText(rgbText(rgb)) }] : []),
         ],
       });
-    }).then((stop) => stops.push(stop));
-    return () => stops.forEach((stop) => stop());
+    }).then(keep);
+    return () => {
+      cancelled = true;
+      stops.forEach((stop) => stop());
+    };
   }, []);
 
   // ---------- Read aloud ----------

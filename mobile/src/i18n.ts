@@ -84,6 +84,10 @@ const pt = {
   pushDenied: "Permissão negada. Libere em Ajustes → Notificações → Nimbo.",
   pushNeedsRelay: "Os avisos precisam do servidor (fora de casa) ligado no PC.",
   pushNoServerKey: "O servidor ainda não tem a chave de avisos (npm run vapid).",
+  switchTitle: "Trocar de PC?",
+  switchBody: (host: string) => `Este link conecta o app a ${host}. Só continue se foi você que escaneou o QR code do seu Nimbo.`,
+  switchConfirm: "Conectar",
+  switchCancel: "Cancelar",
 };
 
 const en: typeof pt = {
@@ -170,6 +174,10 @@ const en: typeof pt = {
   pushDenied: "Permission denied. Allow it in Settings → Notifications → Nimbo.",
   pushNeedsRelay: "Notices need the server (away from home) turned on on the PC.",
   pushNoServerKey: "The server has no notice key yet (npm run vapid).",
+  switchTitle: "Switch PC?",
+  switchBody: (host: string) => `This link connects the app to ${host}. Only go on if you scanned your own Nimbo's QR code.`,
+  switchConfirm: "Connect",
+  switchCancel: "Cancel",
 };
 
 export const t = getLocales()[0]?.languageCode === "pt" ? pt : en;
