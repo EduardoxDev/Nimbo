@@ -4,7 +4,6 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { Copy, Download, RotateCcw } from "lucide-react";
 import { useTranslation } from "../i18n";
 import type { Translations } from "../i18n/types";
-import { loadSettings } from "../App";
 import { Mascot } from "../mascot/Mascot";
 import type { MascotMood } from "../mascot/engine";
 import { NIMBO_COLOR } from "../mascot/nimboMood";
@@ -24,6 +23,18 @@ function read(key: string) {
   } catch {
     return null;
   }
+}
+
+// Reads only the two settings the retro needs, so the day window doesn't load the whole island.
+function readGoals() {
+  let saved: { focusMinutes?: unknown; waterGoalMl?: unknown } = {};
+  try {
+    saved = JSON.parse(read("nimbo-settings") ?? "{}") ?? {};
+  } catch {
+    // Broken settings fall back to the defaults below.
+  }
+  const number = (value: unknown, fallback: number) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback);
+  return { focusMinutes: number(saved.focusMinutes, 25), waterGoalMl: number(saved.waterGoalMl, 2000) };
 }
 
 function readMusic(): MusicLog {
@@ -154,7 +165,7 @@ export function RetroView() {
   useEffect(() => {
     let cancelled = false;
     const now = Date.now();
-    const settings = loadSettings();
+    const settings = readGoals();
     const days = lastDayKeys(now);
     void Promise.all(
       days.map((day) => (isTauri() ? invoke<Segment[]>("activity_day", { day }).catch(() => [] as Segment[]) : Promise.resolve([] as Segment[]))),

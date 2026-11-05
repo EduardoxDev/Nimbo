@@ -1,17 +1,6 @@
-import React from "react";
+import React, { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import TranslationWindow from "./TranslationWindow";
-import SettingsWindow from "./SettingsWindow";
-import BuddyWindow from "./buddy/BuddyWindow";
-import DrawWindow from "./draw/DrawWindow";
-import DockWindow from "./dock/DockWindow";
-import LensWindow from "./lens/LensWindow";
-import DayWindow from "./day/DayWindow";
-import MusicWindow from "./music/MusicWindow";
-import AutomationsWindow from "./automations/AutomationsWindow";
-import MemoryWindow from "./memory/MemoryWindow";
-import MascotGallery from "./demo/MascotGallery";
+import "./base.css";
 import "./design/tokens.css";
 import { I18nProvider } from "./i18n";
 import { installDiagnostics } from "./diagnostics";
@@ -38,34 +27,34 @@ window.addEventListener(
 
 const windowKind = new URLSearchParams(window.location.search).get("window");
 
+// Each window downloads only its own code and styles: a small window no longer carries the whole island.
+const windows: Record<string, () => Promise<{ default: ComponentType }>> = {
+  translation: () => import("./TranslationWindow"),
+  settings: () => import("./SettingsWindow"),
+  buddy: () => import("./buddy/BuddyWindow"),
+  draw: () => import("./draw/DrawWindow"),
+  dock: () => import("./dock/DockWindow"),
+  day: () => import("./day/DayWindow"),
+  lens: () => import("./lens/LensWindow"),
+  music: () => import("./music/MusicWindow"),
+  automations: () => import("./automations/AutomationsWindow"),
+  memory: () => import("./memory/MemoryWindow"),
+};
+
+function pickWindow(): LazyExoticComponent<ComponentType> {
+  if (windowKind && windows[windowKind]) return lazy(windows[windowKind]);
+  if (windowKind === "mascots" && import.meta.env.DEV) return lazy(() => import("./demo/MascotGallery"));
+  return lazy(() => import("./App"));
+}
+
+const Window = pickWindow();
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <I18nProvider>
-      {windowKind === "translation" ? (
-        <TranslationWindow />
-      ) : windowKind === "settings" ? (
-        <SettingsWindow />
-      ) : windowKind === "buddy" ? (
-        <BuddyWindow />
-      ) : windowKind === "draw" ? (
-        <DrawWindow />
-      ) : windowKind === "dock" ? (
-        <DockWindow />
-      ) : windowKind === "day" ? (
-        <DayWindow />
-      ) : windowKind === "lens" ? (
-        <LensWindow />
-      ) : windowKind === "music" ? (
-        <MusicWindow />
-      ) : windowKind === "automations" ? (
-        <AutomationsWindow />
-      ) : windowKind === "memory" ? (
-        <MemoryWindow />
-      ) : windowKind === "mascots" && import.meta.env.DEV ? (
-        <MascotGallery />
-      ) : (
-        <App />
-      )}
+      <Suspense fallback={null}>
+        <Window />
+      </Suspense>
     </I18nProvider>
   </React.StrictMode>,
 );

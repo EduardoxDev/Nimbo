@@ -122,7 +122,7 @@ fn recognize(mut image: RgbaImage) -> Result<LensText, String> {
     let (width, height) = image.dimensions();
     let mut pixels = image.into_raw();
     // SoftwareBitmap wants BGRA.
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         pixel.swap(0, 2);
     }
     let read = || -> windows::core::Result<(Vec<String>, Vec<String>)> {

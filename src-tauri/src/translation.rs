@@ -8,7 +8,10 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size};
+use tauri::{
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
+};
 use windows::{
     core::w,
     Win32::{
@@ -51,11 +54,34 @@ pub fn init(app: &AppHandle) {
     }
 }
 
+// Async so building the window never blocks the main thread that has to create it.
 #[tauri::command]
-pub fn toggle_translation_window(app: AppHandle) -> Result<(), String> {
-    let window = app
-        .get_webview_window(WINDOW_LABEL)
-        .ok_or_else(|| "Translation window was not found.".to_string())?;
+pub async fn toggle_translation_window(app: AppHandle) -> Result<(), String> {
+    toggle_window(&app)
+}
+
+/// The window is only created the first time it is opened: kept hidden from startup, it held ~150 MB for nothing.
+fn translation_window(app: &AppHandle) -> Result<WebviewWindow, String> {
+    if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+        return Ok(window);
+    }
+    WebviewWindowBuilder::new(app, WINDOW_LABEL, WebviewUrl::App("index.html?window=translation".into()))
+        .title("Nimbo · Tradução")
+        .inner_size(480.0, 640.0)
+        .min_inner_size(480.0, 380.0)
+        .decorations(false)
+        .transparent(true)
+        .resizable(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .shadow(false)
+        .visible(false)
+        .build()
+        .map_err(|error| error.to_string())
+}
+
+fn toggle_window(app: &AppHandle) -> Result<(), String> {
+    let window = translation_window(app)?;
     if window.is_visible().map_err(|error| error.to_string())? {
         return window.hide().map_err(|error| error.to_string());
     }
@@ -116,10 +142,10 @@ pub fn toggle_translation_window(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn hide_translation_window(app: AppHandle) -> Result<(), String> {
-    app.get_webview_window(WINDOW_LABEL)
-        .ok_or_else(|| "Translation window was not found.".to_string())?
-        .hide()
-        .map_err(|error| error.to_string())
+    match app.get_webview_window(WINDOW_LABEL) {
+        Some(window) => window.hide().map_err(|error| error.to_string()),
+        None => Ok(()),
+    }
 }
 
 #[tauri::command]
@@ -353,7 +379,7 @@ unsafe extern "system" fn hotkey_window_proc(
 ) -> LRESULT {
     if message == WM_HOTKEY && wparam.0 == HOTKEY_ID as usize {
         if let Some(app) = APP.get() {
-            let _ = toggle_translation_window(app.clone());
+            let _ = toggle_window(app);
         }
         return LRESULT(0);
     }

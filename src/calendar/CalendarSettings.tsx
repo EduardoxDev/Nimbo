@@ -5,6 +5,7 @@ import { useTranslation } from "../i18n";
 import { Row, Section, Stepper, Toggle } from "../settings/controls";
 import { CALENDAR_CHANGED_KEY, type CalendarSource } from "./calendar";
 import { loadAutopilot, saveAutopilot } from "../autopilot/autopilot";
+import { MailSettings } from "../mail/MailSettings";
 
 function announceChange() {
   try {
@@ -139,6 +140,7 @@ export function CalendarSettingsPage({
           </p>
         )}
       </Section>
+      <MailSettings />
     </>
   );
 }

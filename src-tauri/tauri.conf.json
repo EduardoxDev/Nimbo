@@ -23,22 +23,6 @@
         "skipTaskbar": true,
         "visible": false,
         "shadow": false
-      },
-      {
-        "label": "translation",
-        "title": "Nimbo · Tradução",
-        "url": "index.html?window=translation",
-        "width": 480,
-        "height": 640,
-        "minWidth": 480,
-        "minHeight": 380,
-        "decorations": false,
-        "transparent": true,
-        "resizable": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "shadow": false
       }
     ],
     "security": {

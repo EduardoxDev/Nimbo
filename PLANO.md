@@ -193,3 +193,13 @@ Ideias para alguém instalar o Nimbo só por causa delas. Todas aproveitam peça
 | E7 | ✅ **O PC te encontra pela casa** | Longe do PC, o aviso chega pelo Echo da sala, por uma lâmpada ou pelo celular | Tempo parado, relay, Alexa, Home Assistant | M |
 
 Também na fila (rodada anterior, foco em quem programa com agentes de IA): medidor de cota e contexto do Claude, `nimbo run` (progresso de qualquer comando até o iPhone), PC acordado enquanto o agente trabalha, detector de agente em loop, ata de reunião pelas Legendas ao Vivo, mascote que vai até a janela do agente, perguntas com opções na ilha.
+
+---
+
+## 8. Leveza e contexto (05/11/2026)
+
+- ✅ **E-mail (Gmail) e Agenda Google**: aviso de e-mail novo, "Responder com IA" e marcar reunião por frase. Precisa de um ID OAuth próprio no Google Cloud com a conta em "Usuários de teste" (ou o app publicado).
+- ✅ **Cada janela carrega só o seu código** (`lazy()` em `main.tsx`, regras globais em `base.css`): a ilha caiu de 1,44 MB de JS para ~330 KB próprios + 428 KB comuns.
+- ✅ **Tradução criada só no primeiro Alt+C** (antes ficava carregada escondida). WebView2 no modo dev: 637 MB → 425 MB.
+- ✅ **Ilha que entende o contexto** (`src/context/contextPage.ts`): abre na Agenda numa reunião, em Agentes ao programar com agente trabalhando, no Foco e na Música. Só troca com a ilha fechada e respeita 10 min a página escolhida à mão.
+- Próximo: carregar só o idioma em uso (~190 KB a menos por janela) e medir a memória na versão final (`pnpm tauri build`).

@@ -1670,3 +1670,16 @@
   font: inherit;
   font-size: 13px;
 }
+
+/* Numbered how-to inside a settings card (Gmail setup). */
+.prefs-steps {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  color: var(--prefs-muted, rgba(235, 238, 245, 0.62));
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.prefs-steps li + li {
+  margin-top: 4px;
+}

@@ -35,6 +35,7 @@ mod workspace;
 mod activity;
 mod desk;
 mod cards;
+mod google;
 mod home_assistant;
 mod hud;
 mod ir_climate;
@@ -1540,11 +1541,10 @@ fn start_cursor_passthrough_loop(window: WebviewWindow) {
             }
             let should_ignore = !cursor_is_inside_island(&window);
 
-            if should_ignore != ignoring_cursor {
-                if window.set_ignore_cursor_events(should_ignore).is_ok() {
+            if should_ignore != ignoring_cursor
+                && window.set_ignore_cursor_events(should_ignore).is_ok() {
                     ignoring_cursor = should_ignore;
                 }
-            }
 
             thread::sleep(Duration::from_millis(12));
         }
@@ -1945,7 +1945,6 @@ pub fn run() {
 
             if let WindowEvent::Moved(position) = event {
                 record_dragged_position(*position);
-                return;
             }
 
             // Native Acrylic/Region is intentionally not reapplied on DPI
@@ -2152,6 +2151,13 @@ pub fn run() {
             desk::desk_restore,
             cards::card_create,
             cards::card_value,
+            google::google_status,
+            google::google_connect,
+            google::google_disconnect,
+            google::gmail_unread,
+            google::gmail_reply_draft,
+            google::calendar_plan,
+            google::calendar_create,
             secrets::clear_sensitive_clipboard,
             activity::activity_day,
             activity::activity_set_enabled,

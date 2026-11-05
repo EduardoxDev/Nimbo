@@ -101,7 +101,7 @@ fn is_card(text: &str) -> bool {
         .enumerate()
         .map(|(i, &x)| if i % 2 == 1 { let y = x * 2; if y > 9 { y - 9 } else { y } } else { x })
         .sum();
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 /// What kind of private thing this is, if any: kept out of history and worth a warning.

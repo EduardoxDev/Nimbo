@@ -555,6 +555,9 @@ function GeneralPage({ settings, update }: PageProps) {
       <Row title={t.mic.settingTitle} hint={t.mic.settingHint}>
         <Toggle label={t.mic.settingTitle} checked={settings.muteWarning} onChange={(muteWarning) => update({ muteWarning })} />
       </Row>
+      <Row title={t.life.contextTitle} hint={t.life.contextHint}>
+        <Toggle label={t.life.contextTitle} checked={settings.contextPages} onChange={(contextPages) => update({ contextPages })} />
+      </Row>
       <Row title={t.live.settingTitle} hint={t.live.settingHint}>
         <Toggle label={t.live.settingTitle} checked={settings.liveActivities} onChange={(liveActivities) => update({ liveActivities })} />
       </Row>

@@ -164,6 +164,7 @@ import { useBuddyDirector } from "./buddy/useBuddyDirector";
 import { agendaOfToday, validPinHash } from "./phone/alexa";
 import { useLifeHelpers } from "./life/useLifeHelpers";
 import { dayKey } from "./water/water";
+import { freshMail, gmailLink, loadMailConfig, loadSeen, MAIL_CHANGED_KEY, meetingRequestOf, replyTask, saveSeen, type MailItem } from "./mail/mail";
 import { cardRequestOf, cardStopOf, cardText, crossed, findCard, isDue, loadCards, MAX_CARDS, saveCards, type CardRecipe, type LiveCard } from "./cards/cards";
 import { isBuddyMode, type BuddyMode } from "./buddy/mode";
 import "./clipboard/ClipboardAi.css";
@@ -187,6 +188,7 @@ import { logPlay, MUSIC_LOG_KEY, RETRO_SEEN_KEY, retroDue } from "./retro/retro"
 import { IDLE_MUTE_WATCH, isOff, watchMute, type MicReading, type MuteWatch } from "./mic/muteWatch";
 import { daysSince, FIRST_RUN_KEY, nextTip, parseSeen, TIPS_LAST_KEY, TIPS_OFF_KEY, TIPS_SEEN_KEY, type TipId } from "./tips/tips";
 import { activityOfWindow, latestCopiedText } from "./phone/share";
+import { contextPageOf, initialContextMemory, nextContextPage, type ContextMemory } from "./context/contextPage";
 import { addReadLater, isLink, loadReadLater, markRead, READ_LATER_KEY, READ_LATER_REMINDED_KEY, readLaterDue, shortLink, unread, type ReadLaterItem } from "./readLater/readLater";
 import { getWeather, subscribeWeather } from "./weather/weather";
 import "./IslandSummary.css";
@@ -342,6 +344,7 @@ export type IslandSettings = {
   meetingMode: boolean;
   /** Tell when an app starts using the camera or microphone. */
   privacyGuard: boolean;
+  contextPages: boolean;
   /** Hold the island's notices during focus, calls and full screen. */
   smartDnd: boolean;
   /** Soft sounds when the island opens, a task is done or a notice arrives. */
@@ -579,6 +582,7 @@ export const DEFAULT_SETTINGS: IslandSettings = {
   hideInFullscreen: true,
   meetingMode: true,
   privacyGuard: true,
+  contextPages: true,
   smartDnd: true,
   uiSounds: false,
   liveActivities: true,
@@ -964,6 +968,7 @@ export function normalizeSettings(
         ? settings.hideInFullscreen
         : DEFAULT_SETTINGS.hideInFullscreen,
     privacyGuard: typeof settings?.privacyGuard === "boolean" ? settings.privacyGuard : DEFAULT_SETTINGS.privacyGuard,
+    contextPages: typeof settings?.contextPages === "boolean" ? settings.contextPages : DEFAULT_SETTINGS.contextPages,
     smartDnd: typeof settings?.smartDnd === "boolean" ? settings.smartDnd : DEFAULT_SETTINGS.smartDnd,
     uiSounds: typeof settings?.uiSounds === "boolean" ? settings.uiSounds : DEFAULT_SETTINGS.uiSounds,
     liveActivities: typeof settings?.liveActivities === "boolean" ? settings.liveActivities : DEFAULT_SETTINGS.liveActivities,
@@ -5602,6 +5607,74 @@ function IslandApp({
   }, [cards.length]);
   const cardNow = cards.length > 0 ? cardText(cards[cardTurn % cards.length], t.localeTag) : null;
 
+  // A reply written by the AI, left as a Gmail draft: Nimbo never sends mail by itself.
+  const draftReplyRef = useRef(async (id: string) => {
+    const copy = tRef.current;
+    try {
+      const draft = await invoke<{ text: string; link: string }>("gmail_reply_draft", { id, intent: null, language: copy.localeTag.startsWith("pt") ? "pt-BR" : copy.localeTag.startsWith("zh") ? "zh-CN" : "en" });
+      const preview = draft.text.length > 90 ? `${draft.text.slice(0, 88)}…` : draft.text;
+      lifePushRef.current({
+        text: copy.mail.drafted(preview),
+        actions: [{ label: copy.mail.openDraft, primary: true, run: () => void openUrl(draft.link).catch(() => {}) }, { label: copy.life.ok }],
+      });
+    } catch (error) {
+      const text = String(error).includes("GOOGLE_NEEDS_PERMISSION") ? copy.mail.needsPermission : aiErrorText(copy, error);
+      lifePushRef.current({ text, actions: [{ label: copy.life.ok, primary: true }] });
+    }
+  });
+  // Gmail: new important mail becomes a notice (Settings → Calendar → Email). Read-only.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let connected = false;
+    let firstLook = true;
+    let expiredTold = false;
+    const look = async () => {
+      if (!connected) return;
+      const items = await invoke<MailItem[]>("gmail_unread").catch((error) => {
+        if (String(error).includes("GOOGLE_SIGN_IN_EXPIRED") && !expiredTold) {
+          expiredTold = true;
+          lifePushRef.current({ text: tRef.current.mail.expired, actions: [{ label: tRef.current.life.ok, primary: true }] });
+        }
+        return null;
+      });
+      if (!items) return;
+      const seenBefore = loadSeen();
+      const result = freshMail(items, seenBefore, loadMailConfig(), firstLook && seenBefore.length === 0);
+      firstLook = false;
+      saveSeen(result.seen);
+      const copy = tRef.current.mail;
+      for (const item of result.tell.slice(0, 3)) {
+        lifePushRef.current({
+          text: copy.notice(item.from, item.subject),
+          actions: [
+            { label: copy.open, primary: true, run: () => void openUrl(gmailLink(item.threadId)).catch(() => {}) },
+            { label: copy.replyAi, run: () => void draftReplyRef.current(item.id) },
+            {
+              label: copy.makeTask,
+              run: () => setTodos((current) => [{ id: createTodoId(), title: replyTask(item, copy.taskPrefix), completed: false, createdAt: Date.now() }, ...current]),
+            },
+          ],
+        });
+      }
+    };
+    const refreshStatus = async () => {
+      const status = await invoke<{ connected: boolean }>("google_status").catch(() => null);
+      connected = Boolean(status?.connected);
+      expiredTold = false;
+      void look();
+    };
+    void refreshStatus();
+    const interval = window.setInterval(() => void look(), 3 * 60_000);
+    const follow = (event: StorageEvent) => {
+      if (event.key === MAIL_CHANGED_KEY) void refreshStatus();
+    };
+    window.addEventListener("storage", follow);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("storage", follow);
+    };
+  }, []);
+
   const liveNow = liveSummary(live, t.live, t.localeTag);
   const deliveryNow = deliverySummary(deliveries, t.deliveries, Date.now());
   const collapsedStatus: CollapsedStatus = {
@@ -7327,6 +7400,53 @@ function IslandApp({
     [agentStatus, t],
   );
 
+  // The island opens on the page that fits what you are doing (src/context/contextPage.ts).
+  const contextMemoryRef = useRef<ContextMemory>(initialContextMemory());
+  const contextAppRef = useRef<string | null>(null);
+  const choosePage = useCallback((nextPage: IslandPage) => {
+    contextMemoryRef.current = { ...contextMemoryRef.current, manualAt: Date.now() };
+    setPage(nextPage);
+  }, []);
+  const contextSignalsRef = useRef({ meeting: false, agentBusy: false, focusRunning: false, musicPlaying: false });
+  contextSignalsRef.current = {
+    meeting: Boolean(calendar.ongoing || calendar.reminder || callNow),
+    agentBusy: agentVisualState !== "idle",
+    focusRunning: focusTimer.state.status === "running" && focusTimer.state.phase === "focus",
+    musicPlaying: isMediaPlaying,
+  };
+  const contextPageRef = useRef(page);
+  contextPageRef.current = page;
+  const contextIslandOpen = mode === "expanded" && !isTucked;
+  const contextIslandOpenRef = useRef(contextIslandOpen);
+  contextIslandOpenRef.current = contextIslandOpen;
+  useEffect(() => {
+    if (!settings.contextPages || !isPageVisible || contextIslandOpen) return;
+    let cancelled = false;
+    const decide = () => {
+      const suggestion = contextPageOf({ ...contextSignalsRef.current, app: contextAppRef.current });
+      const next = nextContextPage(contextMemoryRef.current, suggestion, contextPageRef.current, Date.now(), contextIslandOpenRef.current);
+      contextMemoryRef.current = next.memory;
+      if (next.page) setPage(next.page);
+    };
+    const sample = () => {
+      if (!isTauri()) return decide();
+      void invoke<{ app: string; title: string } | null>("foreground_window")
+        .then((front) => {
+          if (cancelled) return;
+          contextAppRef.current = front?.app ?? null;
+          decide();
+        })
+        .catch(() => {});
+    };
+    sample();
+    // Only while the island is closed, and at a slow pace: it has to cost nothing.
+    const every = window.setInterval(sample, 4_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(every);
+    };
+  }, [settings.contextPages, isPageVisible, contextIslandOpen]);
+
   const openTranslator = useCallback(() => {
     void invoke("toggle_translation_window").catch((error) => {
       console.error("Failed to open translation", error);
@@ -8132,7 +8252,10 @@ function IslandApp({
           ),
         }}
         onWheelVolume={settings.wheelVolume ? islandHud.nudgeVolume : undefined}
-        onOpenPage={openIslandPage}
+        onOpenPage={(nextPage: IslandPage) => {
+          choosePage(nextPage);
+          openIslandPage(nextPage);
+        }}
         onWindowDragStart={startIslandDrag}
         onCollapse={collapseIsland}
         onResetPosition={resetIslandPosition}
@@ -8140,7 +8263,7 @@ function IslandApp({
         onOpenTranslator={openTranslator}
         onTuck={tuckIsland}
         onReveal={revealIsland}
-        onPageChange={setPage}
+        onPageChange={choosePage}
         openOnHover={settings.openMode === "hover"}
         pageTabs={islandPageLinks}
         canResetPosition={isPositionDetached}
@@ -8333,6 +8456,38 @@ function IslandApp({
               const routine = routineOf(text.replace(/^(?:ei|hey)\s+nimbo[,!]?\s*/i, ""));
               if (routine) {
                 void assistant.handleLocally(text, async () => ({ text: await runRoutine(routine), action: "run_routine" }));
+                return;
+              }
+              // "Marca reunião com ana@x.com quinta 15h": a plan first, created only after "Create and invite".
+              if (meetingRequestOf(text)) {
+                void assistant.handleLocally(text, async () => {
+                  const status = await invoke<{ connected: boolean }>("google_status").catch(() => null);
+                  if (!status?.connected) return { text: t.mail.notConnected, action: "calendar_plan" };
+                  const plan = await invoke<{ title: string; start: number; end: number; attendees: string[]; meet: boolean; conflicts: string[] }>("calendar_plan", { request: text });
+                  const day = new Date(plan.start).toLocaleDateString(t.localeTag, { weekday: "short", day: "numeric", month: "short" });
+                  const hours = `${new Date(plan.start).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" })}–${new Date(plan.end).toLocaleTimeString(t.localeTag, { hour: "2-digit", minute: "2-digit" })}`;
+                  const question = t.mail.meetingPlan(plan.title, `${day} ${hours}`, plan.attendees.join(", "), plan.conflicts.join(", "));
+                  lifePushRef.current({
+                    text: question,
+                    actions: [
+                      {
+                        label: t.mail.create,
+                        primary: true,
+                        run: () =>
+                          void invoke<{ link: string | null; meet: string | null }>("calendar_create", { plan })
+                            .then((made) =>
+                              lifePushRef.current({
+                                text: t.mail.created(plan.title),
+                                actions: made.link ? [{ label: t.mail.openEvent, primary: true, run: () => void openUrl(made.link!).catch(() => {}) }] : [{ label: t.life.ok, primary: true }],
+                              }),
+                            )
+                            .catch((error) => lifePushRef.current({ text: String(error).includes("GOOGLE_NEEDS_PERMISSION") ? t.mail.needsPermission : String(error), actions: [{ label: t.life.ok, primary: true }] })),
+                      },
+                      { label: t.mail.cancel },
+                    ],
+                  });
+                  return { text: question, action: "calendar_plan" };
+                });
                 return;
               }
               // Live cards: "acompanha o dólar" builds one, "para de acompanhar o dólar" removes it.

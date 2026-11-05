@@ -160,19 +160,12 @@ pub struct ClipboardHistoryImage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 struct PersistedClipboardHistory {
     settings: ClipboardHistorySettings,
     items: Vec<ClipboardHistoryItem>,
 }
 
-impl Default for PersistedClipboardHistory {
-    fn default() -> Self {
-        Self {
-            settings: ClipboardHistorySettings::default(),
-            items: Vec::new(),
-        }
-    }
-}
 
 struct ClipboardHistoryState {
     settings: ClipboardHistorySettings,
